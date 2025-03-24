@@ -1,244 +1,461 @@
 <?php
-// Vérifier si l'utilisateur est connecté
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
+require_once 'includes/config.php';
+require_once 'includes/chatgpt.php';
+
+// Redirection si non connecté
+redirectIfNotLoggedIn();
+
+// Récupération des données de l'utilisateur
+$stmt = $pdo->prepare("
+    SELECT u.*, wg.weekly_goal, wg.start_date, wg.target_date
+    FROM users u
+    LEFT JOIN weight_goals wg ON u.id = wg.user_id
+    WHERE u.id = ? AND wg.status = 'active'
+");
+$stmt->execute([$_SESSION['user_id']]);
+$user = $stmt->fetch();
+
+// Récupération des logs de poids
+$stmt = $pdo->prepare("
+    SELECT weight, date
+    FROM daily_logs
+    WHERE user_id = ?
+    ORDER BY date DESC
+    LIMIT 7
+");
+$stmt->execute([$_SESSION['user_id']]);
+$weight_logs = $stmt->fetchAll();
+
+// Calcul des statistiques
+$start_date = new DateTime($user['start_date']);
+$target_date = new DateTime($user['target_date']);
+$today = new DateTime();
+$progress = [
+    'days_elapsed' => $start_date->diff($today)->days,
+    'days_remaining' => $today->diff($target_date)->days,
+    'total_days' => $start_date->diff($target_date)->days,
+    'weight_lost' => $user['start_weight'] - $weight_logs[0]['weight'],
+    'weight_remaining' => $weight_logs[0]['weight'] - $user['target_weight']
+];
+$progress['percentage'] = ($progress['days_elapsed'] / $progress['total_days']) * 100;
+
+// Obtention des suggestions IA
+$chatgpt = new ChatGPT(CHATGPT_API_KEY);
+$meal_suggestion = $chatgpt->getMealSuggestion([
+    'current_weight' => $weight_logs[0]['weight'],
+    'target_weight' => $user['target_weight'],
+    'weekly_goal' => $user['weekly_goal']
+]);
+
+$exercise_suggestion = $chatgpt->getExercisePlan($user['activity_level']);
+
+include 'components/header.php';
+?>
+
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>Tableau de bord</h1>
+        <button id="addWeightBtn" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Ajouter un poids
+        </button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <h3>Progression</h3>
+                <span class="stat-date">Jour <?php echo $progress['days_elapsed']; ?> sur <?php echo $progress['total_days']; ?></span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress" style="width: <?php echo $progress['percentage']; ?>%"></div>
+            </div>
+            <div class="stat-details">
+                <div class="stat-item">
+                    <span class="stat-label">Poids perdu</span>
+                    <span class="stat-value"><?php echo number_format($progress['weight_lost'], 1); ?> kg</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Reste à perdre</span>
+                    <span class="stat-value"><?php echo number_format($progress['weight_remaining'], 1); ?> kg</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <h3>Objectif hebdomadaire</h3>
+                <span class="stat-date">Cette semaine</span>
+            </div>
+            <div class="stat-circle">
+                <svg viewBox="0 0 36 36" class="circular-chart">
+                    <path d="M18 2.0845
+                        a 15.9155 15.9155 0 0 1 0 31.831
+                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="#eee"
+                        stroke-width="3" />
+                    <path d="M18 2.0845
+                        a 15.9155 15.9155 0 0 1 0 31.831
+                        a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="var(--primary-color)"
+                        stroke-width="3"
+                        stroke-dasharray="<?php echo min($progress['weight_lost'] / $user['weekly_goal'] * 100, 100); ?>, 100" />
+                    <text x="18" y="20.35" class="percentage"><?php echo number_format($progress['weight_lost'], 1); ?></text>
+                </svg>
+                <div class="stat-circle-label">kg / <?php echo number_format($user['weekly_goal'], 1); ?> kg</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <h3>Derniers poids</h3>
+                <a href="weight-history.php" class="btn btn-link">Voir tout</a>
+            </div>
+            <div class="weight-chart">
+                <canvas id="weightChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="suggestions-grid">
+        <div class="suggestion-card">
+            <div class="suggestion-header">
+                <h3><i class="fas fa-utensils"></i> Suggestion de repas</h3>
+                <button class="btn btn-icon refresh-suggestion" data-type="meal">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="suggestion-content">
+                <?php echo $meal_suggestion; ?>
+            </div>
+        </div>
+
+        <div class="suggestion-card">
+            <div class="suggestion-header">
+                <h3><i class="fas fa-dumbbell"></i> Programme d'exercices</h3>
+                <button class="btn btn-icon refresh-suggestion" data-type="exercise">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="suggestion-content">
+                <?php echo $exercise_suggestion; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'ajout de poids -->
+<div id="weightModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Ajouter un poids</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <form id="weightForm" method="POST" action="add-weight.php">
+            <div class="form-group">
+                <label for="weight">Poids (kg)</label>
+                <input type="number" id="weight" name="weight" class="form-control" required step="0.1" min="30" max="300">
+            </div>
+            <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
+            </div>
+            <div class="form-group">
+                <label for="notes">Notes (optionnel)</label>
+                <textarea id="notes" name="notes" class="form-control" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Enregistrer</button>
+        </form>
+    </div>
+</div>
+
+<style>
+.dashboard {
+    padding: 2rem 0;
 }
 
-// Inclure la configuration et la connexion à la base de données
-require_once 'database/db.php';
-?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FitTrack - Tableau de bord</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
-<body>
-    <!-- En-tête -->
-    <header class="header">
-        <div class="container header-container">
-            <a href="index.php" class="logo">FitTrack</a>
-            <nav>
-                <ul class="nav-menu">
-                    <li><a href="dashboard.php" class="active">Tableau de bord</a></li>
-                    <li><a href="weight-log.php">Poids</a></li>
-                    <li><a href="meals.php">Repas</a></li>
-                    <li><a href="activities.php">Activités</a></li>
-                    <li><a href="profile.php">Profil</a></li>
-                    <li><a href="api/logout.php">Déconnexion</a></li>
-                </ul>
-                <button class="mobile-menu-btn">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
 
-    <!-- Navigation mobile -->
-    <nav class="mobile-nav">
-        <ul class="mobile-nav-menu">
-            <li>
-                <a href="dashboard.php" class="active">
-                    <i class="fas fa-home"></i>
-                    <span>Accueil</span>
-                </a>
-            </li>
-            <li>
-                <a href="meals.php">
-                    <i class="fas fa-utensils"></i>
-                    <span>Journal</span>
-                </a>
-            </li>
-            <li>
-                <a href="weight-log.php">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Progrès</span>
-                </a>
-            </li>
-            <li>
-                <a href="activities.php">
-                    <i class="fas fa-running"></i>
-                    <span>Plans</span>
-                </a>
-            </li>
-            <li>
-                <a href="profile.php">
-                    <i class="fas fa-ellipsis-h"></i>
-                    <span>Plus</span>
-                </a>
-            </li>
-        </ul>
-    </nav>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
 
-    <!-- Contenu principal -->
-    <main class="container" style="margin-top: 80px; margin-bottom: 80px;">
-        <!-- Message de bienvenue -->
-        <div class="card">
-            <div class="d-flex align-items-center">
-                <div>
-                    <h2>Bonjour, <span id="username"><?php echo htmlspecialchars($_SESSION['username']); ?></span> !</h2>
-                    <p>Nous sommes heureux de vous revoir. Continuez votre progression !</p>
-                </div>
-            </div>
-        </div>
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 
-        <!-- Résumé quotidien -->
-        <section class="section">
-            <h3>Aujourd'hui</h3>
-            <div class="row">
-                <!-- Calories -->
-                <div class="col-4">
-                    <div class="card text-center">
-                        <h4>Calories</h4>
-                        <div class="progress-circle" id="calories-circle">
-                            <div class="progress-circle-inner">
-                                <div class="progress-circle-value" id="current-calories">0</div>
-                                <div class="progress-circle-label">Restantes</div>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <span class="text-gray">Base</span>
-                                    <div id="base-goal">0</div>
-                                </div>
-                                <div>
-                                    <span class="text-gray">Nourriture</span>
-                                    <div id="food-calories">0</div>
-                                </div>
-                                <div>
-                                    <span class="text-gray">Exercice</span>
-                                    <div id="exercise-calories">0</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Pas -->
-                <div class="col-4">
-                    <div class="card text-center">
-                        <h4>Pas</h4>
-                        <div class="progress-circle" id="steps-circle">
-                            <div class="progress-circle-inner">
-                                <div class="progress-circle-value" id="current-steps">0</div>
-                                <div class="progress-circle-label">Pas</div>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <div class="progress">
-                                <div class="progress-bar" id="steps-progress-bar" style="width: 0%;"></div>
-                            </div>
-                            <div class="text-gray">Objectif: <span id="step-goal">10,000</span> pas</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Poids -->
-                <div class="col-4">
-                    <div class="card text-center">
-                        <h4>Poids</h4>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="text-gray">Initial</div>
-                                <div class="text-primary" id="initial-weight">0</div>
-                                <div class="text-gray">kg</div>
-                            </div>
-                            <div>
-                                <div class="text-gray">Actuel</div>
-                                <div class="text-primary" id="current-weight">0</div>
-                                <div class="text-gray">kg</div>
-                            </div>
-                            <div>
-                                <div class="text-gray">Objectif</div>
-                                <div class="text-primary" id="target-weight">0</div>
-                                <div class="text-gray">kg</div>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <div class="progress">
-                                <div class="progress-bar" id="weight-progress-bar" style="width: 0%;"></div>
-                            </div>
-                            <div class="text-gray">Perdu: <span id="weight-lost">0</span> kg</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
 
-        <!-- Activités récentes -->
-        <section class="section">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3>Activités récentes</h3>
-                <a href="activities.php" class="btn btn-sm btn-outline">Voir tout</a>
-            </div>
-            <div class="row" id="recent-activities">
-                <!-- Les activités seront chargées dynamiquement ici -->
-                <div class="col-12 text-center" id="no-activities" style="display: none;">
-                    <p>Aucune activité récente. <a href="activities.php">Ajouter une activité</a></p>
-                </div>
-            </div>
-        </section>
+.stat-date {
+    color: #666;
+    font-size: 0.9rem;
+}
 
-        <!-- Repas recommandés -->
-        <section class="section">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3>Repas recommandés</h3>
-                <a href="meals.php" class="btn btn-sm btn-outline">Voir tout</a>
-            </div>
-            <div class="row" id="recommended-meals">
-                <!-- Les repas recommandés seront chargés dynamiquement ici -->
-                <div class="col-12 text-center" id="loading-meals">
-                    <div class="loading-spinner"></div>
-                    <p class="mt-2">Chargement des recommandations...</p>
-                </div>
-            </div>
-        </section>
+.progress-bar {
+    height: 8px;
+    background: #eee;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
 
-        <!-- Programme personnalisé -->
-        <section class="section">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3>Programme personnalisé</h3>
-                <button id="generate-program-btn" class="btn btn-sm btn-primary">Générer</button>
-            </div>
-            <div class="card" id="custom-program">
-                <p class="text-center">Cliquez sur le bouton "Générer" pour créer un programme personnalisé basé sur votre profil et vos objectifs.</p>
-            </div>
-        </section>
+.progress {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
 
-        <!-- Analyse morphologique -->
-        <section class="section">
-            <h3>Analyse morphologique par IA</h3>
-            <div class="card">
-                <div class="upload-area" id="upload-area">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <h4>Téléchargez une photo</h4>
-                    <p>Notre IA analysera votre morphologie et vous proposera des exercices ciblés</p>
-                    <input type="file" id="image-upload" accept="image/*" style="display: none;">
-                </div>
-                <div id="analysis-results" style="display: none;">
-                    <div class="text-center mb-3">
-                        <img id="uploaded-image" src="" alt="Image téléchargée" style="max-width: 100%; max-height: 300px; border-radius: 10px;">
-                    </div>
-                    <div id="analysis-content"></div>
-                </div>
-            </div>
-        </section>
-    </main>
+.stat-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
 
-    <!-- Pied de page -->
-    <footer class="bg-light p-4 text-center" style="margin-bottom: 60px;">
-        <p>&copy; 2025 FitTrack. Tous droits réservés.</p>
-    </footer>
+.stat-item {
+    text-align: center;
+}
 
-    <!-- Scripts -->
-    <script src="js/main.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/dashboard.js"></script>
-</body>
-</html>
+.stat-label {
+    display: block;
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.stat-circle {
+    text-align: center;
+}
+
+.circular-chart {
+    width: 150px;
+    height: 150px;
+}
+
+.circular-chart .percentage {
+    fill: var(--text-color);
+    font-size: 0.5em;
+    text-anchor: middle;
+    font-weight: bold;
+}
+
+.stat-circle-label {
+    margin-top: 0.5rem;
+    color: #666;
+}
+
+.weight-chart {
+    height: 200px;
+}
+
+.suggestions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.suggestion-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.suggestion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.suggestion-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-icon:hover {
+    background: #f5f5f5;
+    color: var(--primary-color);
+}
+
+.suggestion-content {
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 500px;
+    margin: 1rem;
+    position: relative;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+}
+
+.modal-close:hover {
+    color: var(--danger-color);
+}
+
+@media (max-width: 768px) {
+    .dashboard {
+        padding: 1rem 0;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+    }
+    
+    .circular-chart {
+        width: 120px;
+        height: 120px;
+    }
+}
+</style>
+
+<script>
+// Graphique de poids
+const weightData = <?php echo json_encode(array_reverse($weight_logs)); ?>;
+const ctx = document.getElementById('weightChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: weightData.map(log => new Date(log.date).toLocaleDateString()),
+        datasets: [{
+            label: 'Poids (kg)',
+            data: weightData.map(log => log.weight),
+            borderColor: 'rgb(0, 102, 238)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: false
+            }
+        }
+    }
+});
+
+// Modal d'ajout de poids
+const modal = document.getElementById('weightModal');
+const addWeightBtn = document.getElementById('addWeightBtn');
+const closeBtn = document.querySelector('.modal-close');
+
+addWeightBtn.addEventListener('click', () => {
+    modal.classList.add('active');
+});
+
+closeBtn.addEventListener('click', () => {
+    modal.classList.remove('active');
+});
+
+modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+        modal.classList.remove('active');
+    }
+});
+
+// Rafraîchissement des suggestions
+document.querySelectorAll('.refresh-suggestion').forEach(button => {
+    button.addEventListener('click', async () => {
+        const type = button.dataset.type;
+        const card = button.closest('.suggestion-card');
+        const content = card.querySelector('.suggestion-content');
+        
+        button.classList.add('rotating');
+        
+        try {
+            const response = await fetch(`refresh-suggestion.php?type=${type}`);
+            const data = await response.json();
+            content.innerHTML = data.suggestion;
+        } catch (error) {
+            console.error('Erreur lors du rafraîchissement de la suggestion:', error);
+        }
+        
+        button.classList.remove('rotating');
+    });
+});
+</script>
+
+<?php include 'components/footer.php'; ?> 

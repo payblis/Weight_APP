@@ -1,92 +1,175 @@
 <?php
-session_start();
-// Rediriger si déjà connecté
-if(isset($_SESSION['user_id'])) {
-    header("Location: dashboard.php");
+require_once 'includes/config.php';
+
+// Redirection si déjà connecté
+if (isLoggedIn()) {
+    header('Location: dashboard.php');
     exit();
 }
+
+// Traitement du formulaire de connexion
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email']);
+    $password = $_POST['password'];
+    $remember = isset($_POST['remember']);
+
+    $errors = [];
+
+    if (empty($email) || empty($password)) {
+        $errors[] = "Tous les champs sont requis";
+    } else {
+        try {
+            $stmt = $pdo->prepare("SELECT id, username, password FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            
+            if ($user = $stmt->fetch()) {
+                if (password_verify($password, $user['password'])) {
+                    // Connexion réussie
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+
+                    // Si "Se souvenir de moi" est coché
+                    if ($remember) {
+                        $token = bin2hex(random_bytes(32));
+                        setcookie('remember_token', $token, time() + 60*60*24*30, '/', '', true, true);
+                        
+                        // Stockage du token en base
+                        $stmt = $pdo->prepare("UPDATE users SET remember_token = ? WHERE id = ?");
+                        $stmt->execute([$token, $user['id']]);
+                    }
+
+                    header('Location: dashboard.php');
+                    exit();
+                } else {
+                    $errors[] = "Email ou mot de passe incorrect";
+                }
+            } else {
+                $errors[] = "Email ou mot de passe incorrect";
+            }
+        } catch (PDOException $e) {
+            $errors[] = "Erreur lors de la connexion";
+        }
+    }
+}
+
+include 'components/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion - FitTrack</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <header>
-        <div class="container header-container">
-            <div class="logo">FitTrack</div>
-            <button class="mobile-menu-btn">
-                <i class="fas fa-bars"></i>
-            </button>
-            <ul class="nav-menu">
-                <li><a href="index.php">Accueil</a></li>
-                <li><a href="login.php">Connexion</a></li>
-                <li><a href="register.php">Inscription</a></li>
+
+<div class="login-container">
+    <div class="login-form-container">
+        <h1>Connexion</h1>
+        <p class="subtitle">Bienvenue sur <?php echo APP_NAME; ?></p>
+
+        <?php if (!empty($errors)): ?>
+        <div class="alert alert-danger">
+            <ul>
+                <?php foreach ($errors as $error): ?>
+                <li><?php echo htmlspecialchars($error); ?></li>
+                <?php endforeach; ?>
             </ul>
         </div>
-    </header>
+        <?php endif; ?>
 
-    <main>
-        <section class="section">
-            <div class="container">
-                <h2 class="section-title">Connexion</h2>
-                <div class="card" style="max-width: 500px; margin: 0 auto;">
-                    <form id="loginForm" action="api/login.php" method="post">
-                        <div class="form-group">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" id="email" name="email" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="password" class="form-label">Mot de passe</label>
-                            <input type="password" id="password" name="password" class="form-control" required>
-                        </div>
-                        <div class="form-group mt-4">
-                            <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
-                        </div>
-                        <div class="text-center mt-3">
-                            <p>Vous n'avez pas de compte ? <a href="register.php">Inscrivez-vous</a></p>
-                        </div>
-                    </form>
-                </div>
+        <form method="POST" class="login-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-control" required
+                       value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
             </div>
-        </section>
-    </main>
 
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3 class="footer-title">FitTrack</h3>
-                    <p>Votre partenaire pour atteindre vos objectifs de perte de poids et maintenir un mode de vie sain.</p>
-                </div>
-                <div class="footer-section">
-                    <h3 class="footer-title">Liens rapides</h3>
-                    <ul class="footer-links">
-                        <li><a href="index.php">Accueil</a></li>
-                        <li><a href="about.php">À propos</a></li>
-                        <li><a href="contact.php">Contact</a></li>
-                        <li><a href="privacy.php">Politique de confidentialité</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h3 class="footer-title">Nous contacter</h3>
-                    <ul class="footer-links">
-                        <li><i class="fas fa-envelope"></i> contact@fittrack.com</li>
-                        <li><i class="fas fa-phone"></i> +33 1 23 45 67 89</li>
-                    </ul>
-                </div>
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" name="password" class="form-control" required>
             </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 FitTrack. Tous droits réservés.</p>
+
+            <div class="form-group form-check">
+                <input type="checkbox" id="remember" name="remember" class="form-check-input"
+                       <?php echo isset($_POST['remember']) ? 'checked' : ''; ?>>
+                <label for="remember" class="form-check-label">Se souvenir de moi</label>
             </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
+        </form>
+
+        <div class="login-footer">
+            <p>
+                <a href="forgot-password.php">Mot de passe oublié ?</a>
+            </p>
+            <p>
+                Pas encore de compte ? <a href="register.php">Inscrivez-vous</a>
+            </p>
         </div>
-    </footer>
+    </div>
+</div>
 
-    <script src="js/main.js"></script>
-</body>
-</html>
+<style>
+.login-container {
+    max-width: 400px;
+    margin: 4rem auto;
+    padding: 0 1rem;
+}
+
+.login-form-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.login-form-container h1 {
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.form-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-check-input {
+    margin: 0;
+}
+
+.form-check-label {
+    margin: 0;
+    cursor: pointer;
+}
+
+.login-footer {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.login-footer p {
+    margin: 0.5rem 0;
+}
+
+.login-footer a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.login-footer a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .login-container {
+        margin: 2rem auto;
+    }
+    
+    .login-form-container {
+        padding: 1.5rem;
+    }
+}
+</style>
+
+<?php include 'components/footer.php'; ?> 
