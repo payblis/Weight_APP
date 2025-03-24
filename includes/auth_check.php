@@ -4,11 +4,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Fonction pour vérifier si l'utilisateur est connecté
-function isLoggedIn() {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
-}
-
 // Vérification de l'authentification
 if (!isLoggedIn()) {
     // Si l'utilisateur n'est pas connecté, on le redirige vers la page de connexion

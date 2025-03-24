@@ -64,60 +64,70 @@ CREATE TABLE food_categories (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table des aliments
-CREATE TABLE foods (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    barcode VARCHAR(50) UNIQUE,
-    name VARCHAR(255) NOT NULL,
-    brand VARCHAR(255),
-    category_id INT,
-    calories INT NOT NULL,
-    proteins DECIMAL(5,2) NOT NULL,
-    carbs DECIMAL(5,2) NOT NULL,
-    fats DECIMAL(5,2) NOT NULL,
-    fiber DECIMAL(5,2),
-    serving_size INT NOT NULL,
-    serving_unit VARCHAR(20) NOT NULL,
-    is_verified BOOLEAN DEFAULT FALSE,
-    created_by INT,
+-- Table des types de repas
+CREATE TABLE IF NOT EXISTS meal_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES food_categories(id),
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Table des aliments favoris
-CREATE TABLE favorite_foods (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
-    food_id INT NOT NULL,
+-- Données initiales pour les types de repas
+INSERT INTO meal_types (name) VALUES
+    ('Petit-déjeuner'),
+    ('Déjeuner'),
+    ('Dîner'),
+    ('Collation');
+
+-- Table des aliments
+CREATE TABLE IF NOT EXISTS foods (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    calories DECIMAL(10,2) NOT NULL,
+    proteins DECIMAL(10,2) NOT NULL,
+    carbs DECIMAL(10,2) NOT NULL,
+    fats DECIMAL(10,2) NOT NULL,
+    serving_size VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (food_id) REFERENCES foods(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_favorite (user_id, food_id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Données initiales pour les aliments
+INSERT INTO foods (name, calories, proteins, carbs, fats, serving_size) VALUES
+    ('Pain complet (tranche)', 80, 3.0, 15.0, 1.0, '30g'),
+    ('Œuf', 70, 6.0, 0.6, 4.8, '50g'),
+    ('Poulet (blanc)', 165, 31.0, 0.0, 3.6, '100g'),
+    ('Riz blanc cuit', 130, 2.7, 28.0, 0.3, '100g'),
+    ('Pomme', 52, 0.3, 14.0, 0.2, '100g'),
+    ('Yaourt nature', 59, 3.8, 4.7, 3.2, '100g'),
+    ('Saumon', 208, 22.0, 0.0, 13.0, '100g'),
+    ('Pâtes cuites', 131, 5.0, 25.0, 1.1, '100g'),
+    ('Tomate', 18, 0.9, 3.9, 0.2, '100g'),
+    ('Avocat', 160, 2.0, 8.5, 14.7, '100g');
 
 -- Table des repas
-CREATE TABLE meals (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS meals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    date DATE NOT NULL,
-    meal_type ENUM('breakfast', 'lunch', 'dinner', 'snack') NOT NULL,
-    name VARCHAR(255),
+    meal_type_id INT NOT NULL,
+    date DATETIME NOT NULL,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (meal_type_id) REFERENCES meal_types(id)
 );
 
--- Table des aliments dans les repas
-CREATE TABLE meal_foods (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+-- Table de liaison entre les repas et les aliments
+CREATE TABLE IF NOT EXISTS meal_foods (
+    id INT AUTO_INCREMENT PRIMARY KEY,
     meal_id INT NOT NULL,
     food_id INT NOT NULL,
-    servings DECIMAL(4,2) NOT NULL,
-    notes TEXT,
+    quantity DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE,
-    FOREIGN KEY (food_id) REFERENCES foods(id) ON DELETE CASCADE
+    FOREIGN KEY (food_id) REFERENCES foods(id)
 );
 
 -- Table des catégories d'exercices
@@ -128,18 +138,46 @@ CREATE TABLE exercise_categories (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table des exercices
-CREATE TABLE exercises (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(255) NOT NULL,
-    category_id INT NOT NULL,
-    description TEXT,
-    difficulty_level ENUM('beginner', 'intermediate', 'advanced') NOT NULL,
-    calories_per_hour INT,
-    instructions TEXT,
-    video_url VARCHAR(255),
+-- Table des types d'exercices
+CREATE TABLE IF NOT EXISTS exercise_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    calories_per_hour INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES exercise_categories(id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Données initiales pour les types d'exercices
+INSERT INTO exercise_types (name, calories_per_hour) VALUES
+('Course à pied', 600),
+('Marche rapide', 300),
+('Vélo', 450),
+('Natation', 500),
+('Musculation', 400),
+('Yoga', 250),
+('Pilates', 250),
+('Danse', 400),
+('Tennis', 500),
+('Football', 600),
+('Basketball', 550),
+('HIIT', 700),
+('Elliptique', 450),
+('Rameur', 600),
+('Stretching', 150);
+
+-- Table des exercices
+CREATE TABLE IF NOT EXISTS exercises (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    exercise_type_id INT NOT NULL,
+    date DATETIME NOT NULL,
+    duration INT NOT NULL COMMENT 'Durée en minutes',
+    intensity TINYINT NOT NULL COMMENT '1: Faible, 2: Modérée, 3: Élevée',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (exercise_type_id) REFERENCES exercise_types(id)
 );
 
 -- Table des séances d'exercice
@@ -173,13 +211,15 @@ CREATE TABLE workout_exercises (
 );
 
 -- Table des suggestions IA
-CREATE TABLE ai_suggestions (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS ai_suggestions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    type ENUM('meal', 'exercise', 'advice') NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
-    is_favorite BOOLEAN DEFAULT FALSE,
+    status ENUM('pending', 'implemented', 'rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -223,6 +263,36 @@ CREATE TABLE user_achievements (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (achievement_id) REFERENCES achievements(id),
     UNIQUE KEY unique_achievement (user_id, achievement_id)
+);
+
+-- Table des types de notifications
+CREATE TABLE IF NOT EXISTS notification_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    icon VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Données initiales pour les types de notifications
+INSERT INTO notification_types (name, icon) VALUES
+('achievement', 'fa-trophy'),
+('goal_completed', 'fa-flag-checkered'),
+('weight_goal', 'fa-weight'),
+('reminder', 'fa-bell'),
+('suggestion', 'fa-lightbulb'),
+('system', 'fa-info-circle');
+
+-- Table des notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    read_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (type_id) REFERENCES notification_types(id)
 );
 
 -- Index pour optimiser les performances
