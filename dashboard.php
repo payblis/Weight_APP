@@ -7,13 +7,22 @@ redirectIfNotLoggedIn();
 
 // Récupération des données de l'utilisateur
 $stmt = $pdo->prepare("
-    SELECT u.*, wg.weekly_goal, wg.start_date, wg.target_date
+    SELECT u.*, wg.weekly_goal, wg.start_date, wg.target_date, wg.start_weight as initial_weight
     FROM users u
-    LEFT JOIN weight_goals wg ON u.id = wg.user_id
-    WHERE u.id = ? AND wg.status = 'active'
+    LEFT JOIN weight_goals wg ON u.id = wg.user_id AND wg.status = 'active'
+    WHERE u.id = ?
 ");
 $stmt->execute([$_SESSION['user_id']]);
-$user = $stmt->fetch();
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$user) {
+    $_SESSION['flash'] = [
+        'type' => 'error',
+        'message' => 'Utilisateur non trouvé'
+    ];
+    header('Location: logout.php');
+    exit;
+}
 
 // Récupération des logs de poids
 $stmt = $pdo->prepare("
@@ -24,30 +33,55 @@ $stmt = $pdo->prepare("
     LIMIT 7
 ");
 $stmt->execute([$_SESSION['user_id']]);
-$weight_logs = $stmt->fetchAll();
+$weight_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Si aucun log de poids, utiliser le poids actuel de l'utilisateur
+$current_weight = $weight_logs[0]['weight'] ?? $user['current_weight'];
 
 // Calcul des statistiques
-$start_date = new DateTime($user['start_date']);
-$target_date = new DateTime($user['target_date']);
-$today = new DateTime();
-$progress = [
-    'days_elapsed' => $start_date->diff($today)->days,
-    'days_remaining' => $today->diff($target_date)->days,
-    'total_days' => $start_date->diff($target_date)->days,
-    'weight_lost' => $user['start_weight'] - $weight_logs[0]['weight'],
-    'weight_remaining' => $weight_logs[0]['weight'] - $user['target_weight']
-];
-$progress['percentage'] = ($progress['days_elapsed'] / $progress['total_days']) * 100;
+if ($user['start_date'] && $user['target_date']) {
+    $start_date = new DateTime($user['start_date']);
+    $target_date = new DateTime($user['target_date']);
+    $today = new DateTime();
+    
+    $progress = [
+        'days_elapsed' => $start_date->diff($today)->days,
+        'days_remaining' => $today->diff($target_date)->days,
+        'total_days' => $start_date->diff($target_date)->days,
+        'weight_lost' => $user['initial_weight'] - $current_weight,
+        'weight_remaining' => $current_weight - $user['target_weight']
+    ];
+    $progress['percentage'] = ($progress['days_elapsed'] / max(1, $progress['total_days'])) * 100;
+} else {
+    $progress = [
+        'days_elapsed' => 0,
+        'days_remaining' => 0,
+        'total_days' => 0,
+        'weight_lost' => 0,
+        'weight_remaining' => 0,
+        'percentage' => 0
+    ];
+}
 
 // Obtention des suggestions IA
-$chatgpt = new ChatGPT(CHATGPT_API_KEY);
-$meal_suggestion = $chatgpt->getMealSuggestion([
-    'current_weight' => $weight_logs[0]['weight'],
-    'target_weight' => $user['target_weight'],
-    'weekly_goal' => $user['weekly_goal']
-]);
+$chatgpt = new ChatGPT();
 
-$exercise_suggestion = $chatgpt->getExercisePlan($user['activity_level']);
+try {
+    $meal_suggestion = $chatgpt->generateMealSuggestion([
+        'current_weight' => $current_weight,
+        'target_weight' => $user['target_weight'],
+        'weekly_goal' => $user['weekly_goal'] ?? 0
+    ]);
+
+    $exercise_suggestion = $chatgpt->generateExerciseSuggestion([
+        'current_weight' => $current_weight,
+        'target_weight' => $user['target_weight'],
+        'activity_level' => $user['activity_level']
+    ]);
+} catch (Exception $e) {
+    $meal_suggestion = "Erreur lors de la génération des suggestions.";
+    $exercise_suggestion = "Erreur lors de la génération des suggestions.";
+}
 
 include 'components/header.php';
 ?>

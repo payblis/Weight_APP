@@ -1,19 +1,24 @@
 -- Création de la base de données
-CREATE DATABASE IF NOT EXISTS weight_app;
-USE weight_app;
+CREATE DATABASE IF NOT EXISTS test;
+USE test;
 
 -- Structure de la base de données pour l'application de suivi de poids
 
 -- Table des utilisateurs
 CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    height INT,
-    birth_date DATE,
-    gender ENUM('M', 'F', 'O'),
-    activity_level ENUM('sedentary', 'light', 'moderate', 'very', 'extra') NOT NULL DEFAULT 'moderate',
+    height DECIMAL(5,2),
+    current_weight DECIMAL(5,2),
+    target_weight DECIMAL(5,2),
+    target_weeks INT,
+    activity_level ENUM('sedentary', 'light', 'moderate', 'very_active') NOT NULL DEFAULT 'moderate',
+    age INT,
+    gender ENUM('M', 'F', 'other'),
+    bmr DECIMAL(8,2),
+    remember_token VARCHAR(64),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
