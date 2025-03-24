@@ -11,6 +11,14 @@ if (!isLoggedIn()) {
 // Récupération des données de l'utilisateur
 $userId = $_SESSION['user_id'];
 
+// Initialisation des variables par défaut
+$suggestions = [];
+$stats = [
+    'total_suggestions' => 0,
+    'active_days' => 0,
+    'implemented_suggestions' => 0
+];
+
 try {
     // Récupération des suggestions récentes
     $suggestionsStmt = $pdo->prepare("
@@ -28,7 +36,7 @@ try {
         SELECT 
             COUNT(*) as total_suggestions,
             COUNT(DISTINCT DATE(created_at)) as active_days,
-            COUNT(CASE WHEN implemented = 1 THEN 1 END) as implemented_suggestions
+            COUNT(CASE WHEN status = 'implemented' THEN 1 END) as implemented_suggestions
         FROM ai_suggestions
         WHERE user_id = ?
         AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
