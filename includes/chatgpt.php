@@ -67,19 +67,77 @@ class ChatGPT {
     }
 
     public function generateMealSuggestion($userData) {
+        // Validation des données requises
+        if (!isset($userData['current_weight']) || !isset($userData['target_weight'])) {
+            throw new Exception("Données utilisateur incomplètes pour la suggestion de repas");
+        }
+
         $prompt = "En tant que nutritionniste, suggère un repas sain adapté à cette personne:\n";
         $prompt .= "Poids actuel: {$userData['current_weight']} kg\n";
         $prompt .= "Poids cible: {$userData['target_weight']} kg\n";
-        $prompt .= "Objectif hebdomadaire: {$userData['weekly_goal']} kg\n";
+        
+        if (isset($userData['weekly_goal']) && $userData['weekly_goal'] > 0) {
+            $prompt .= "Objectif hebdomadaire: {$userData['weekly_goal']} kg\n";
+        }
+
+        if (isset($userData['activity_level'])) {
+            $prompt .= "Niveau d'activité: {$userData['activity_level']}\n";
+        }
+
+        $prompt .= "\nRéponds UNIQUEMENT avec un objet JSON valide au format suivant (sans texte avant ou après) :
+        {
+            \"nom_du_repas\": \"Nom du repas\",
+            \"description\": \"Description du repas\",
+            \"aliments\": [
+                {
+                    \"nom\": \"Nom de l'aliment\",
+                    \"quantite\": 100,
+                    \"unite\": \"g\",
+                    \"calories\": 200,
+                    \"proteines\": 20,
+                    \"glucides\": 30,
+                    \"lipides\": 10,
+                    \"fibres\": 5
+                }
+            ]
+        }";
         
         return $this->generateResponse($prompt);
     }
 
     public function generateExerciseSuggestion($userData) {
+        // Validation des données requises
+        if (!isset($userData['current_weight']) || !isset($userData['target_weight'])) {
+            throw new Exception("Données utilisateur incomplètes pour la suggestion d'exercices");
+        }
+
         $prompt = "En tant que coach sportif, suggère un programme d'exercices adapté à cette personne:\n";
         $prompt .= "Poids actuel: {$userData['current_weight']} kg\n";
         $prompt .= "Poids cible: {$userData['target_weight']} kg\n";
-        $prompt .= "Objectif hebdomadaire: {$userData['weekly_goal']} kg\n";
+        
+        if (isset($userData['weekly_goal']) && $userData['weekly_goal'] > 0) {
+            $prompt .= "Objectif hebdomadaire: {$userData['weekly_goal']} kg\n";
+        }
+
+        if (isset($userData['activity_level'])) {
+            $prompt .= "Niveau d'activité: {$userData['activity_level']}\n";
+        }
+
+        $prompt .= "\nRéponds UNIQUEMENT avec un objet JSON valide au format suivant (sans texte avant ou après) :
+        {
+            \"programme\": \"Nom du programme\",
+            \"description\": \"Description du programme\",
+            \"exercices\": [
+                {
+                    \"nom\": \"Nom de l'exercice\",
+                    \"duree\": 30,
+                    \"unite\": \"minutes\",
+                    \"intensite\": \"modérée\",
+                    \"calories\": 300,
+                    \"description\": \"Description de l'exercice\"
+                }
+            ]
+        }";
         
         return $this->generateResponse($prompt);
     }

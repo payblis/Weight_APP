@@ -2,494 +2,350 @@
 require_once 'includes/config.php';
 require_once 'includes/chatgpt.php';
 
-// Redirection si non connecté
-redirectIfNotLoggedIn();
-
-// Récupération des données de l'utilisateur
-$stmt = $pdo->prepare("
-    SELECT u.*, wg.weekly_goal, wg.start_date, wg.target_date, wg.start_weight as initial_weight
-    FROM users u
-    LEFT JOIN weight_goals wg ON u.id = wg.user_id AND wg.status = 'active'
-    WHERE u.id = ?
-");
-$stmt->execute([$_SESSION['user_id']]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if (!$user) {
-    $_SESSION['flash'] = [
-        'type' => 'error',
-        'message' => 'Utilisateur non trouvé'
-    ];
-    header('Location: logout.php');
+// Vérification si l'utilisateur est connecté
+if (!isLoggedIn()) {
+    header('Location: login.php');
     exit;
 }
 
-// Récupération des logs de poids
-$stmt = $pdo->prepare("
-    SELECT weight, date
-    FROM daily_logs
-    WHERE user_id = ?
-    ORDER BY date DESC
-    LIMIT 7
-");
-$stmt->execute([$_SESSION['user_id']]);
-$weight_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Si aucun log de poids, utiliser le poids actuel de l'utilisateur
-$current_weight = $weight_logs[0]['weight'] ?? $user['current_weight'];
-
-// Calcul des statistiques
-if ($user['start_date'] && $user['target_date']) {
-    $start_date = new DateTime($user['start_date']);
-    $target_date = new DateTime($user['target_date']);
-    $today = new DateTime();
-    
-    $progress = [
-        'days_elapsed' => $start_date->diff($today)->days,
-        'days_remaining' => $today->diff($target_date)->days,
-        'total_days' => $start_date->diff($target_date)->days,
-        'weight_lost' => $user['initial_weight'] - $current_weight,
-        'weight_remaining' => $current_weight - $user['target_weight']
-    ];
-    $progress['percentage'] = ($progress['days_elapsed'] / max(1, $progress['total_days'])) * 100;
-} else {
-    $progress = [
-        'days_elapsed' => 0,
-        'days_remaining' => 0,
-        'total_days' => 0,
-        'weight_lost' => 0,
-        'weight_remaining' => 0,
-        'percentage' => 0
-    ];
-}
-
-// Obtention des suggestions IA
-$chatgpt = new ChatGPT();
+// Récupération des données de l'utilisateur
+$userId = $_SESSION['user_id'];
+$userData = [];
 
 try {
-    $meal_suggestion = $chatgpt->generateMealSuggestion([
-        'current_weight' => $current_weight,
-        'target_weight' => $user['target_weight'],
-        'weekly_goal' => $user['weekly_goal'] ?? 0
-    ]);
+    // Données de poids
+    $weightStmt = $pdo->prepare("
+        SELECT weight, date 
+        FROM daily_logs 
+        WHERE user_id = ? 
+        ORDER BY date DESC 
+        LIMIT 7
+    ");
+    $weightStmt->execute([$userId]);
+    $weightData = $weightStmt->fetchAll();
 
-    $exercise_suggestion = $chatgpt->generateExerciseSuggestion([
-        'current_weight' => $current_weight,
-        'target_weight' => $user['target_weight'],
-        'activity_level' => $user['activity_level']
-    ]);
-} catch (Exception $e) {
-    $meal_suggestion = "Erreur lors de la génération des suggestions.";
-    $exercise_suggestion = "Erreur lors de la génération des suggestions.";
+    // Données caloriques
+    $calorieStmt = $pdo->prepare("
+        SELECT 
+            DATE(created_at) as date,
+            SUM(calories) as total_calories
+        FROM meal_foods
+        WHERE user_id = ?
+        AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY DATE(created_at)
+    ");
+    $calorieStmt->execute([$userId]);
+    $calorieData = $calorieStmt->fetchAll();
+
+    // Objectifs
+    $goalStmt = $pdo->prepare("
+        SELECT * FROM weight_goals 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC 
+        LIMIT 1
+    ");
+    $goalStmt->execute([$userId]);
+    $goalData = $goalStmt->fetch();
+
+    // Badges récents
+    $achievementStmt = $pdo->prepare("
+        SELECT a.* 
+        FROM achievements a
+        JOIN user_achievements ua ON a.id = ua.achievement_id
+        WHERE ua.user_id = ?
+        ORDER BY ua.earned_at DESC
+        LIMIT 3
+    ");
+    $achievementStmt->execute([$userId]);
+    $recentAchievements = $achievementStmt->fetchAll();
+
+    // Suggestions de l'IA
+    $aiStmt = $pdo->prepare("
+        SELECT * FROM ai_suggestions
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 3
+    ");
+    $aiStmt->execute([$userId]);
+    $aiSuggestions = $aiStmt->fetchAll();
+
+} catch (PDOException $e) {
+    // Gérer l'erreur
+    error_log("Erreur lors de la récupération des données : " . $e->getMessage());
 }
 
-include 'components/header.php';
+// Préparation des données pour les graphiques
+$chartData = [
+    'weight' => [
+        'dates' => array_reverse(array_column($weightData, 'date')),
+        'values' => array_reverse(array_column($weightData, 'weight'))
+    ],
+    'calories' => [
+        'dates' => array_column($calorieData, 'date'),
+        'values' => array_column($calorieData, 'total_calories')
+    ]
+];
+
+include 'components/user_header.php';
 ?>
 
-<div class="dashboard">
-    <div class="dashboard-header">
-        <h1>Tableau de bord</h1>
-        <button id="addWeightBtn" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Ajouter un poids
+<div class="container-fluid">
+    <!-- Titre de la page -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Tableau de bord</h1>
+        <button class="btn btn-primary" onclick="updateDailyLog()">
+            <i class="fas fa-plus me-2"></i>Ajouter une entrée
         </button>
     </div>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <h3>Progression</h3>
-                <span class="stat-date">Jour <?php echo $progress['days_elapsed']; ?> sur <?php echo $progress['total_days']; ?></span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress" style="width: <?php echo $progress['percentage']; ?>%"></div>
-            </div>
-            <div class="stat-details">
-                <div class="stat-item">
-                    <span class="stat-label">Poids perdu</span>
-                    <span class="stat-value"><?php echo number_format($progress['weight_lost'], 1); ?> kg</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Reste à perdre</span>
-                    <span class="stat-value"><?php echo number_format($progress['weight_remaining'], 1); ?> kg</span>
+    <!-- Cartes statistiques -->
+    <div class="row">
+        <!-- Poids actuel -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="stat-label">Poids actuel</div>
+                            <div class="stat-value">
+                                <?php echo number_format($weightData[0]['weight'], 1); ?> kg
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-weight stat-icon text-primary"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-header">
-                <h3>Objectif hebdomadaire</h3>
-                <span class="stat-date">Cette semaine</span>
-            </div>
-            <div class="stat-circle">
-                <svg viewBox="0 0 36 36" class="circular-chart">
-                    <path d="M18 2.0845
-                        a 15.9155 15.9155 0 0 1 0 31.831
-                        a 15.9155 15.9155 0 0 1 0 -31.831"
-                        fill="none"
-                        stroke="#eee"
-                        stroke-width="3" />
-                    <path d="M18 2.0845
-                        a 15.9155 15.9155 0 0 1 0 31.831
-                        a 15.9155 15.9155 0 0 1 0 -31.831"
-                        fill="none"
-                        stroke="var(--primary-color)"
-                        stroke-width="3"
-                        stroke-dasharray="<?php echo min($progress['weight_lost'] / $user['weekly_goal'] * 100, 100); ?>, 100" />
-                    <text x="18" y="20.35" class="percentage"><?php echo number_format($progress['weight_lost'], 1); ?></text>
-                </svg>
-                <div class="stat-circle-label">kg / <?php echo number_format($user['weekly_goal'], 1); ?> kg</div>
+        <!-- Objectif -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="stat-label">Objectif</div>
+                            <div class="stat-value">
+                                <?php echo number_format($goalData['target_weight'], 1); ?> kg
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-bullseye stat-icon text-success"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="stat-card">
-            <div class="stat-header">
-                <h3>Derniers poids</h3>
-                <a href="weight-history.php" class="btn btn-link">Voir tout</a>
+        <!-- Calories aujourd'hui -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="stat-label">Calories aujourd'hui</div>
+                            <div class="stat-value">
+                                <?php 
+                                $todayCalories = isset($calorieData[0]) ? $calorieData[0]['total_calories'] : 0;
+                                echo number_format($todayCalories);
+                                ?> kcal
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-fire stat-icon text-warning"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="weight-chart">
+        </div>
+
+        <!-- Badges gagnés -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="stat-label">Badges gagnés</div>
+                            <div class="stat-value">
+                                <?php 
+                                $badgeCount = count($recentAchievements);
+                                echo $badgeCount;
+                                ?>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-trophy stat-icon text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphiques -->
+    <div class="row">
+        <!-- Progression du poids -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="chart-container">
+                <h5 class="chart-title">Progression du poids</h5>
                 <canvas id="weightChart"></canvas>
             </div>
         </div>
+
+        <!-- Calories journalières -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="chart-container">
+                <h5 class="chart-title">Calories journalières</h5>
+                <canvas id="calorieChart"></canvas>
+            </div>
+        </div>
     </div>
 
-    <div class="suggestions-grid">
-        <div class="suggestion-card">
-            <div class="suggestion-header">
-                <h3><i class="fas fa-utensils"></i> Suggestion de repas</h3>
-                <button class="btn btn-icon refresh-suggestion" data-type="meal">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-            </div>
-            <div class="suggestion-content">
-                <?php echo $meal_suggestion; ?>
+    <!-- Suggestions et badges -->
+    <div class="row">
+        <!-- Suggestions de l'IA -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="m-0 font-weight-bold text-primary">Suggestions de votre coach IA</h5>
+                </div>
+                <div class="card-body">
+                    <?php if (empty($aiSuggestions)): ?>
+                        <p class="text-muted">Aucune suggestion pour le moment.</p>
+                    <?php else: ?>
+                        <?php foreach ($aiSuggestions as $suggestion): ?>
+                            <div class="ai-suggestion mb-3">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-robot text-primary fa-2x"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1"><?php echo htmlspecialchars($suggestion['title']); ?></h6>
+                                        <p class="mb-1"><?php echo htmlspecialchars($suggestion['content']); ?></p>
+                                        <small class="text-muted">
+                                            <?php echo date('d/m/Y H:i', strtotime($suggestion['created_at'])); ?>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
 
-        <div class="suggestion-card">
-            <div class="suggestion-header">
-                <h3><i class="fas fa-dumbbell"></i> Programme d'exercices</h3>
-                <button class="btn btn-icon refresh-suggestion" data-type="exercise">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-            </div>
-            <div class="suggestion-content">
-                <?php echo $exercise_suggestion; ?>
+        <!-- Badges récents -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h5 class="m-0 font-weight-bold text-primary">Badges récents</h5>
+                </div>
+                <div class="card-body">
+                    <?php if (empty($recentAchievements)): ?>
+                        <p class="text-muted">Aucun badge gagné pour le moment.</p>
+                    <?php else: ?>
+                        <?php foreach ($recentAchievements as $achievement): ?>
+                            <div class="achievement-item mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <?php if ($achievement['icon_url']): ?>
+                                            <img src="<?php echo htmlspecialchars($achievement['icon_url']); ?>" alt="Badge" class="achievement-icon">
+                                        <?php else: ?>
+                                            <i class="fas fa-trophy text-warning fa-2x"></i>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0"><?php echo htmlspecialchars($achievement['name']); ?></h6>
+                                        <small class="text-muted"><?php echo htmlspecialchars($achievement['description']); ?></small>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal d'ajout de poids -->
-<div id="weightModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Ajouter un poids</h2>
-            <button class="modal-close">&times;</button>
+<!-- Modal d'ajout d'entrée journalière -->
+<div class="modal fade" id="dailyLogModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter une entrée journalière</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="dailyLogForm" method="POST" action="/api/add_daily_log.php">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Poids (kg)</label>
+                        <input type="number" class="form-control" name="weight" step="0.1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
         </div>
-        <form id="weightForm" method="POST" action="add-weight.php">
-            <div class="form-group">
-                <label for="weight">Poids (kg)</label>
-                <input type="number" id="weight" name="weight" class="form-control" required step="0.1" min="30" max="300">
-            </div>
-            <div class="form-group">
-                <label for="date">Date</label>
-                <input type="date" id="date" name="date" class="form-control" required value="<?php echo date('Y-m-d'); ?>">
-            </div>
-            <div class="form-group">
-                <label for="notes">Notes (optionnel)</label>
-                <textarea id="notes" name="notes" class="form-control" rows="3"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">Enregistrer</button>
-        </form>
     </div>
 </div>
-
-<style>
-.dashboard {
-    padding: 2rem 0;
-}
-
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.stat-card {
-    background: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.stat-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.stat-date {
-    color: #666;
-    font-size: 0.9rem;
-}
-
-.progress-bar {
-    height: 8px;
-    background: #eee;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    overflow: hidden;
-}
-
-.progress {
-    height: 100%;
-    background: var(--primary-color);
-    border-radius: 4px;
-    transition: width 0.3s ease;
-}
-
-.stat-details {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-}
-
-.stat-item {
-    text-align: center;
-}
-
-.stat-label {
-    display: block;
-    color: #666;
-    font-size: 0.9rem;
-    margin-bottom: 0.25rem;
-}
-
-.stat-value {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-color);
-}
-
-.stat-circle {
-    text-align: center;
-}
-
-.circular-chart {
-    width: 150px;
-    height: 150px;
-}
-
-.circular-chart .percentage {
-    fill: var(--text-color);
-    font-size: 0.5em;
-    text-anchor: middle;
-    font-weight: bold;
-}
-
-.stat-circle-label {
-    margin-top: 0.5rem;
-    color: #666;
-}
-
-.weight-chart {
-    height: 200px;
-}
-
-.suggestions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-}
-
-.suggestion-card {
-    background: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.suggestion-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.suggestion-header h3 {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.btn-icon {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.btn-icon:hover {
-    background: #f5f5f5;
-    color: var(--primary-color);
-}
-
-.suggestion-content {
-    color: #333;
-    line-height: 1.6;
-}
-
-/* Modal */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal.active {
-    display: flex;
-}
-
-.modal-content {
-    background: white;
-    border-radius: 8px;
-    padding: 2rem;
-    width: 100%;
-    max-width: 500px;
-    margin: 1rem;
-    position: relative;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #666;
-}
-
-.modal-close:hover {
-    color: var(--danger-color);
-}
-
-@media (max-width: 768px) {
-    .dashboard {
-        padding: 1rem 0;
-    }
-    
-    .dashboard-header {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-    }
-    
-    .stat-card {
-        padding: 1rem;
-    }
-    
-    .circular-chart {
-        width: 120px;
-        height: 120px;
-    }
-}
-</style>
 
 <script>
-// Graphique de poids
-const weightData = <?php echo json_encode(array_reverse($weight_logs)); ?>;
-const ctx = document.getElementById('weightChart').getContext('2d');
-new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: weightData.map(log => new Date(log.date).toLocaleDateString()),
-        datasets: [{
-            label: 'Poids (kg)',
-            data: weightData.map(log => log.weight),
-            borderColor: 'rgb(0, 102, 238)',
-            tension: 0.1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: false
-            }
-        }
-    }
-});
+// Données pour les graphiques
+const weightData = <?php echo json_encode($chartData['weight']); ?>;
+const calorieData = <?php echo json_encode($chartData['calories']); ?>;
 
-// Modal d'ajout de poids
-const modal = document.getElementById('weightModal');
-const addWeightBtn = document.getElementById('addWeightBtn');
-const closeBtn = document.querySelector('.modal-close');
+// Fonction pour afficher le modal d'ajout d'entrée
+function updateDailyLog() {
+    const modal = new bootstrap.Modal(document.getElementById('dailyLogModal'));
+    modal.show();
+}
 
-addWeightBtn.addEventListener('click', () => {
-    modal.classList.add('active');
-});
-
-closeBtn.addEventListener('click', () => {
-    modal.classList.remove('active');
-});
-
-modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-        modal.classList.remove('active');
-    }
-});
-
-// Rafraîchissement des suggestions
-document.querySelectorAll('.refresh-suggestion').forEach(button => {
-    button.addEventListener('click', async () => {
-        const type = button.dataset.type;
-        const card = button.closest('.suggestion-card');
-        const content = card.querySelector('.suggestion-content');
+// Gestion du formulaire d'ajout d'entrée
+document.getElementById('dailyLogForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const form = e.target;
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Chargement...';
+    
+    try {
+        const formData = new FormData(form);
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData
+        });
         
-        button.classList.add('rotating');
-        
-        try {
-            const response = await fetch(`refresh-suggestion.php?type=${type}`);
-            const data = await response.json();
-            content.innerHTML = data.suggestion;
-        } catch (error) {
-            console.error('Erreur lors du rafraîchissement de la suggestion:', error);
+        if (!response.ok) {
+            throw new Error('Erreur réseau');
         }
         
-        button.classList.remove('rotating');
-    });
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Succès', 'Entrée ajoutée avec succès', 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showToast('Erreur', data.message || 'Une erreur est survenue', 'error');
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        showToast('Erreur', 'Une erreur est survenue', 'error');
+    } finally {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+        bootstrap.Modal.getInstance(document.getElementById('dailyLogModal')).hide();
+    }
 });
 </script>
 
-<?php include 'components/footer.php'; ?> 
+<?php include 'components/user_footer.php'; ?> 
