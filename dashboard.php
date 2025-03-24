@@ -27,15 +27,17 @@ try {
     // Données caloriques
     $calorieStmt = $pdo->prepare("
         SELECT 
-            DATE(created_at) as date,
-            SUM(calories) as total_calories
-        FROM meal_foods
-        WHERE user_id = ?
-        AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        GROUP BY DATE(created_at)
+            DATE(mf.created_at) as date,
+            SUM(f.calories * mf.quantity) as total_calories
+        FROM meal_foods mf
+        JOIN foods f ON mf.food_id = f.id
+        WHERE mf.user_id = ?
+        AND mf.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY DATE(mf.created_at)
+        ORDER BY DATE(mf.created_at) DESC
     ");
     $calorieStmt->execute([$userId]);
-    $calorieData = $calorieStmt->fetchAll();
+    $calorieData = $calorieStmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Objectifs
     $goalStmt = $pdo->prepare("
@@ -77,12 +79,12 @@ try {
 // Préparation des données pour les graphiques
 $chartData = [
     'weight' => [
-        'dates' => array_reverse(array_column($weightData, 'date')),
-        'values' => array_reverse(array_column($weightData, 'weight'))
+        'dates' => !empty($weightData) ? array_reverse(array_column($weightData, 'date')) : [],
+        'values' => !empty($weightData) ? array_reverse(array_column($weightData, 'weight')) : []
     ],
     'calories' => [
-        'dates' => array_column($calorieData, 'date'),
-        'values' => array_column($calorieData, 'total_calories')
+        'dates' => !empty($calorieData) ? array_column($calorieData, 'date') : [],
+        'values' => !empty($calorieData) ? array_column($calorieData, 'total_calories') : []
     ]
 ];
 
