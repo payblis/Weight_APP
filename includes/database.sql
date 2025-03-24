@@ -2,93 +2,126 @@
 CREATE DATABASE IF NOT EXISTS weight_app;
 USE weight_app;
 
+-- Structure de la base de données pour l'application de suivi de poids
+
 -- Table des utilisateurs
 CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    first_name VARCHAR(50),
-    last_name VARCHAR(50),
-    height FLOAT,
-    current_weight FLOAT,
-    target_weight FLOAT,
-    target_weeks INT,
-    activity_level ENUM('sedentary', 'light', 'moderate', 'very_active'),
-    age INT,
-    gender ENUM('M', 'F', 'other'),
-    bmr FLOAT,
-    daily_calories_target INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    name VARCHAR(100) NOT NULL,
+    height INT,
+    birth_date DATE,
+    gender ENUM('M', 'F', 'O'),
+    activity_level ENUM('sedentary', 'light', 'moderate', 'very', 'extra') NOT NULL DEFAULT 'moderate',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table des objectifs de poids
 CREATE TABLE weight_goals (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT,
-    start_weight FLOAT NOT NULL,
-    target_weight FLOAT NOT NULL,
+    user_id INT NOT NULL,
+    start_weight DECIMAL(5,2) NOT NULL,
+    target_weight DECIMAL(5,2) NOT NULL,
+    weekly_goal DECIMAL(3,2) NOT NULL,
     start_date DATE NOT NULL,
     target_date DATE NOT NULL,
-    weekly_goal FLOAT NOT NULL,
-    status ENUM('active', 'completed', 'failed') DEFAULT 'active',
+    status ENUM('active', 'completed', 'abandoned') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Table du suivi quotidien
+-- Table des journaux quotidiens de poids
 CREATE TABLE daily_logs (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT,
+    user_id INT NOT NULL,
     date DATE NOT NULL,
-    weight FLOAT,
-    calories_consumed INT,
-    calories_burned INT,
-    exercise_minutes INT,
-    water_intake FLOAT,
+    weight DECIMAL(5,2) NOT NULL,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE KEY unique_daily_weight (user_id, date)
 );
 
 -- Table des aliments
 CREATE TABLE foods (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(255) NOT NULL,
     calories INT NOT NULL,
-    protein FLOAT,
-    carbs FLOAT,
-    fats FLOAT,
-    serving_size VARCHAR(50),
-    serving_unit VARCHAR(20),
-    is_custom BOOLEAN DEFAULT FALSE,
-    created_by INT,
+    proteins DECIMAL(5,2) NOT NULL,
+    carbs DECIMAL(5,2) NOT NULL,
+    fats DECIMAL(5,2) NOT NULL,
+    fiber DECIMAL(5,2),
+    serving_size INT NOT NULL,
+    serving_unit VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table des repas
+CREATE TABLE meals (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    date DATE NOT NULL,
+    meal_type ENUM('breakfast', 'lunch', 'dinner', 'snack') NOT NULL,
+    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Table des aliments dans les repas
+CREATE TABLE meal_foods (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    meal_id INT NOT NULL,
+    food_id INT NOT NULL,
+    servings DECIMAL(4,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (meal_id) REFERENCES meals(id),
+    FOREIGN KEY (food_id) REFERENCES foods(id)
 );
 
 -- Table des exercices
 CREATE TABLE exercises (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
+    name VARCHAR(255) NOT NULL,
+    category ENUM('cardio', 'strength', 'flexibility', 'other') NOT NULL,
     calories_per_hour INT,
-    difficulty_level ENUM('beginner', 'intermediate', 'advanced'),
-    category VARCHAR(50),
-    is_custom BOOLEAN DEFAULT FALSE,
-    created_by INT,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table des séances d'exercice
+CREATE TABLE workout_sessions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    date DATE NOT NULL,
+    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Table des exercices effectués
+CREATE TABLE workout_exercises (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    workout_session_id INT NOT NULL,
+    exercise_id INT NOT NULL,
+    duration INT NOT NULL, -- en minutes
+    intensity ENUM('low', 'medium', 'high') NOT NULL,
+    calories_burned INT,
+    sets INT,
+    reps INT,
+    weight DECIMAL(5,2), -- en kg
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (workout_session_id) REFERENCES workout_sessions(id),
+    FOREIGN KEY (exercise_id) REFERENCES exercises(id)
 );
 
 -- Table des suggestions IA
 CREATE TABLE ai_suggestions (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT,
-    type ENUM('meal', 'exercise', 'motivation') NOT NULL,
+    user_id INT NOT NULL,
+    type ENUM('meal', 'exercise') NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    used_at TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id)
 ); 
