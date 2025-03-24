@@ -1,16 +1,16 @@
 <?php
 // Informations de connexion à la base de données
 define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'weight_app');
+define('DB_USER', 'test');
+define('DB_PASS', '8&03zHk8q');
+define('DB_NAME', 'test');
 
 // Configuration ChatGPT
 define('CHATGPT_API_KEY', 'YOUR_API_KEY');
 
 // Configuration de l'application
 define('APP_NAME', 'Weight APP');
-define('APP_URL', 'http://localhost/Weight_APP');
+define('APP_URL', 'https://test.payblis.com');
 
 // Configuration des sessions
 session_start();
