@@ -628,7 +628,7 @@ function recalculateCalories($user_id) {
     }
     
     // Vérifier que toutes les valeurs nécessaires sont présentes
-    if (!isset($profile['height']) || !isset($profile['age']) || !isset($profile['gender']) || !isset($profile['activity_level'])) {
+    if (!isset($profile['height']) || !isset($profile['birth_date']) || !isset($profile['gender']) || !isset($profile['activity_level'])) {
         error_log("Données du profil incomplètes pour le calcul des calories");
         return false;
     }
