@@ -8,21 +8,13 @@ error_log("Chemin d'inclusion actuel: " . getcwd());
 error_log("Chemin d'inclusion PHP: " . get_include_path());
 
 // Définir le chemin de base du site
-$base_path = dirname(__DIR__);
+define('BASE_PATH', dirname(__DIR__));
+error_log("BASE_PATH défini à: " . BASE_PATH);
 
 // Inclure les fichiers nécessaires
-$db_path = $base_path . '/config/database.php';
-$functions_path = $base_path . '/includes/functions.php';
-$admin_functions_path = $base_path . '/includes/admin_functions.php';
-
-error_log("Chemin de base: " . $base_path);
-error_log("Tentative d'inclusion de database.php: " . $db_path);
-error_log("Tentative d'inclusion de functions.php: " . $functions_path);
-error_log("Tentative d'inclusion de admin_functions.php: " . $admin_functions_path);
-
-require_once $db_path;
-require_once $functions_path;
-require_once $admin_functions_path;
+require_once BASE_PATH . '/config/database.php';
+require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/admin_functions.php';
 
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
