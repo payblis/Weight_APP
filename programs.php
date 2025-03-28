@@ -115,6 +115,37 @@ if (isset($_GET['action']) && $_GET['action'] === 'deactivate' && isset($_GET['i
     }
 }
 
+// Suppression d'un programme
+if ($action === 'delete' && isset($_GET['id'])) {
+    $program_id = (int)$_GET['id'];
+    
+    // Vérifier que le programme appartient à l'utilisateur
+    $sql = "SELECT * FROM programs WHERE id = ? AND user_id = ?";
+    $program = fetchOne($sql, [$program_id, $user_id]);
+    
+    if ($program) {
+        // Supprimer le programme
+        $sql = "DELETE FROM programs WHERE id = ? AND user_id = ?";
+        if (execute($sql, [$program_id, $user_id])) {
+            // Attendre un court instant pour s'assurer que la suppression est effectuée
+            usleep(100000); // 100ms
+            
+            // Recalculer les calories
+            if (recalculateCalories($user_id)) {
+                $_SESSION['success'] = "Programme supprimé avec succès.";
+            } else {
+                $_SESSION['error'] = "Programme supprimé mais erreur lors du recalcul des calories.";
+            }
+        } else {
+            $_SESSION['error'] = "Erreur lors de la suppression du programme.";
+        }
+    } else {
+        $_SESSION['error'] = "Programme non trouvé.";
+    }
+    
+    redirect('programs.php');
+}
+
 // Récupérer le programme actif de l'utilisateur
 $sql = "SELECT p.* FROM user_programs up 
         JOIN programs p ON up.program_id = p.id 

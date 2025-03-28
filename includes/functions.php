@@ -618,83 +618,104 @@ function ensureProfileWeight($user_id) {
 function recalculateCalories($user_id) {
     error_log("=== Début du recalcul des calories ===");
     
-    // Récupérer le profil de l'utilisateur
-    $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
-    $profile = fetchOne($sql, [$user_id]);
-    
-    if (!$profile) {
-        error_log("Profil utilisateur non trouvé pour le recalcul des calories");
-        return false;
-    }
-    
-    // Vérifier que toutes les valeurs nécessaires sont présentes
-    if (!isset($profile['height']) || !isset($profile['birth_date']) || !isset($profile['gender']) || !isset($profile['activity_level'])) {
-        error_log("Données du profil incomplètes pour le calcul des calories");
-        return false;
-    }
-    
-    // Vérifier et mettre à jour le poids si nécessaire
-    $current_weight = ensureProfileWeight($user_id);
-    if ($current_weight === null) {
-        error_log("Impossible de récupérer le poids actuel pour le recalcul des calories");
-        return false;
-    }
-    
-    // Calculer le BMR
-    $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
-    error_log("BMR calculé : " . $bmr);
-    
-    // Vérifier que le BMR est positif
-    if ($bmr <= 0) {
-        error_log("BMR négatif ou nul : " . $bmr);
-        return false;
-    }
-    
-    // Calculer le TDEE
-    $tdee = calculateTDEE($bmr, $profile['activity_level']);
-    error_log("TDEE calculé : " . $tdee);
-    
-    // Vérifier que le TDEE est positif
-    if ($tdee <= 0) {
-        error_log("TDEE négatif ou nul : " . $tdee);
-        return false;
-    }
-    
-    // Récupérer l'objectif actuel
-    $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-    $goal = fetchOne($sql, [$user_id]);
-    
-    if ($goal) {
-        // Calculer l'objectif calorique en fonction de l'objectif
-        $calorie_goal = calculateCalorieGoal($tdee, $goal['goal_type'], $goal['intensity'], $current_weight, $goal['target_weight'], $goal['target_date']);
-        error_log("Objectif calorique calculé : " . $calorie_goal);
+    global $pdo;
+    try {
+        $pdo->beginTransaction();
         
-        // Calculer l'ajustement quotidien
-        $daily_adjustment = $calorie_goal - $tdee;
+        // Récupérer le profil de l'utilisateur
+        $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
+        error_log("Récupération du profil utilisateur");
+        $profile = fetchOne($sql, [$user_id]);
         
-        // Avertir si l'ajustement est important (plus de 500 calories)
-        if (abs($daily_adjustment) > 500) {
-            error_log("ATTENTION : Ajustement calorique important détecté : " . $daily_adjustment);
+        if (!$profile) {
+            error_log("Profil utilisateur non trouvé pour le recalcul des calories");
+            $pdo->rollBack();
+            return false;
         }
         
-        // Mettre à jour les calories dans le profil
-        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
-        if (update($sql, [$calorie_goal, $user_id])) {
+        // Vérifier que toutes les valeurs nécessaires sont présentes
+        if (!isset($profile['height']) || !isset($profile['birth_date']) || !isset($profile['gender']) || !isset($profile['activity_level'])) {
+            error_log("Données du profil incomplètes pour le calcul des calories");
+            $pdo->rollBack();
+            return false;
+        }
+        
+        // Vérifier et mettre à jour le poids si nécessaire
+        $current_weight = ensureProfileWeight($user_id);
+        if ($current_weight === null) {
+            error_log("Impossible de récupérer le poids actuel pour le recalcul des calories");
+            $pdo->rollBack();
+            return false;
+        }
+        
+        // Calculer le BMR
+        $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+        error_log("BMR calculé : " . $bmr);
+        
+        // Vérifier que le BMR est positif
+        if ($bmr <= 0) {
+            error_log("BMR négatif ou nul : " . $bmr);
+            $pdo->rollBack();
+            return false;
+        }
+        
+        // Calculer le TDEE
+        $tdee = calculateTDEE($bmr, $profile['activity_level']);
+        error_log("TDEE calculé : " . $tdee);
+        
+        // Vérifier que le TDEE est positif
+        if ($tdee <= 0) {
+            error_log("TDEE négatif ou nul : " . $tdee);
+            $pdo->rollBack();
+            return false;
+        }
+        
+        // Récupérer l'objectif actuel
+        $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+        error_log("Récupération de l'objectif actuel");
+        $goal = fetchOne($sql, [$user_id]);
+        error_log("Résultat de la requête objectif : " . ($goal ? "Objectif trouvé" : "Aucun objectif trouvé"));
+        
+        if ($goal) {
+            // Calculer l'objectif calorique en fonction de l'objectif
+            $calorie_goal = calculateCalorieGoal($tdee, $goal['goal_type'], $goal['intensity'], $current_weight, $goal['target_weight'], $goal['target_date']);
+            error_log("Objectif calorique calculé : " . $calorie_goal);
+            
+            // Calculer l'ajustement quotidien
+            $daily_adjustment = $calorie_goal - $tdee;
+            
+            // Avertir si l'ajustement est important (plus de 500 calories)
+            if (abs($daily_adjustment) > 500) {
+                error_log("ATTENTION : Ajustement calorique important détecté : " . $daily_adjustment);
+            }
+            
+            // Mettre à jour les calories dans le profil
+            $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
+            if (!execute($sql, [$calorie_goal, $user_id])) {
+                error_log("Échec de la mise à jour des calories");
+                $pdo->rollBack();
+                return false;
+            }
             error_log("Calories mises à jour avec succès : " . $calorie_goal);
-            return true;
-        }
-    } else {
-        // Si pas d'objectif actif, utiliser le TDEE comme objectif
-        error_log("Pas d'objectif actif, utilisation du TDEE comme objectif : " . $tdee);
-        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
-        if (update($sql, [$tdee, $user_id])) {
+        } else {
+            // Si pas d'objectif actif, utiliser le TDEE comme objectif
+            error_log("Pas d'objectif actif, utilisation du TDEE comme objectif : " . $tdee);
+            $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
+            if (!execute($sql, [$tdee, $user_id])) {
+                error_log("Échec de la mise à jour des calories avec TDEE");
+                $pdo->rollBack();
+                return false;
+            }
             error_log("Calories mises à jour avec le TDEE : " . $tdee);
-            return true;
         }
+        
+        $pdo->commit();
+        return true;
+    } catch (PDOException $e) {
+        error_log("Erreur lors du recalcul des calories : " . $e->getMessage());
+        $pdo->rollBack();
+        return false;
     }
-    
-    error_log("Échec de la mise à jour des calories");
-    return false;
 }
 
 /**
@@ -706,10 +727,36 @@ function recalculateCalories($user_id) {
 function execute($sql, $params = []) {
     global $pdo;
     try {
+        error_log("Exécution de la requête execute : " . $sql);
+        error_log("Paramètres : " . print_r($params, true));
         $stmt = $pdo->prepare($sql);
-        return $stmt->execute($params);
+        $result = $stmt->execute($params);
+        error_log("Résultat de execute : " . ($result ? "Succès" : "Échec"));
+        return $result;
     } catch (PDOException $e) {
-        error_log("Erreur SQL: " . $e->getMessage());
+        error_log("Erreur SQL dans execute: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Exécute une requête SQL et retourne une seule ligne
+ * @param string $sql La requête SQL à exécuter
+ * @param array $params Les paramètres de la requête
+ * @return array|false La ligne de résultat ou false en cas d'erreur
+ */
+function fetchOne($sql, $params = []) {
+    global $pdo;
+    try {
+        error_log("Exécution de la requête fetchOne : " . $sql);
+        error_log("Paramètres : " . print_r($params, true));
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        error_log("Résultat de fetchOne : " . ($result ? "Données trouvées" : "Aucune donnée trouvée"));
+        return $result;
+    } catch (PDOException $e) {
+        error_log("Erreur SQL dans fetchOne: " . $e->getMessage());
         return false;
     }
 }
