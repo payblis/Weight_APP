@@ -5,317 +5,259 @@ session_start();
 // Inclure les fichiers nécessaires
 require_once '../config/database.php';
 require_once '../includes/functions.php';
+require_once '../includes/admin_functions.php';
 
-// Vérifier si l'utilisateur est connecté et est admin
-if (!isLoggedIn() || !isAdmin()) {
+// Vérifier si l'utilisateur est connecté
+if (!isLoggedIn()) {
     redirect('../login.php');
 }
 
+// Vérifier si l'utilisateur est un administrateur
+$user_id = $_SESSION['user_id'];
+if (!isAdmin($user_id)) {
+    $_SESSION['error'] = "Accès refusé. Vous devez être administrateur pour accéder à cette page.";
+    redirect('../dashboard.php');
+}
+
 // Récupérer la clé API ChatGPT
-$sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
-$api_key_setting = fetchOne($sql, []);
-$api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
+$chatgpt_api_key = '';
+try {
+    $sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+    $result = fetchOne($sql, []);
+    $chatgpt_api_key = $result ? $result['setting_value'] : '';
+} catch (Exception $e) {
+    $_SESSION['error'] = "Erreur lors de la récupération de la clé API: " . $e->getMessage();
+}
 
 // Initialiser les variables
+$action = isset($_GET['action']) ? sanitizeInput($_GET['action']) : 'create';
+$program_id = isset($_GET['program_id']) ? intval($_GET['program_id']) : 0;
 $success_message = '';
 $errors = [];
 
-// Traitement de la création d'un nouveau programme
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Récupérer les détails du programme si en mode édition
+$program = null;
+if ($action === 'edit' && $program_id > 0) {
     try {
-        $program_name = sanitizeInput($_POST['program_name'] ?? '');
-        $program_description = sanitizeInput($_POST['program_description'] ?? '');
-        $program_type = sanitizeInput($_POST['program_type'] ?? 'complet'); // complet, nutrition, exercice
-        $calorie_adjustment = (float)($_POST['calorie_adjustment'] ?? 0);
-        $protein_ratio = (float)($_POST['protein_ratio'] ?? 0.3);
-        $carbs_ratio = (float)($_POST['carbs_ratio'] ?? 0.4);
-        $fat_ratio = (float)($_POST['fat_ratio'] ?? 0.3);
-        
-        if (empty($program_name)) {
-            $errors[] = "Le nom du programme est requis";
+        $sql = "SELECT * FROM programs WHERE id = ?";
+        $program = fetchOne($sql, [$program_id]);
+        if (!$program) {
+            $_SESSION['error'] = "Programme non trouvé.";
+            redirect('../admin.php?section=programs');
         }
-        
-        if (empty($api_key)) {
-            $errors[] = "La clé API ChatGPT n'est pas configurée";
-        }
-        
-        if (empty($errors)) {
-            // Générer le contenu du programme avec ChatGPT
-            $prompt = "En tant qu'expert en nutrition et fitness, crée un programme détaillé avec les spécifications suivantes :\n\n";
-            $prompt .= "Type de programme : " . ucfirst($program_type) . "\n";
-            $prompt .= "Ajustement calorique : " . $calorie_adjustment . "%\n";
-            $prompt .= "Répartition des macronutriments :\n";
-            $prompt .= "- Protéines : " . ($protein_ratio * 100) . "%\n";
-            $prompt .= "- Glucides : " . ($carbs_ratio * 100) . "%\n";
-            $prompt .= "- Lipides : " . ($fat_ratio * 100) . "%\n\n";
-            $prompt .= "Génère un programme complet et détaillé qui inclut :\n";
-            if ($program_type === 'complet' || $program_type === 'nutrition') {
-                $prompt .= "- Un plan alimentaire détaillé avec les repas et les portions\n";
-                $prompt .= "- Les recommandations nutritionnelles\n";
-            }
-            if ($program_type === 'complet' || $program_type === 'exercice') {
-                $prompt .= "- Un programme d'exercices avec les séries et répétitions\n";
-                $prompt .= "- Les conseils d'entraînement\n";
-            }
-            
-            $response = callChatGPTAPI($prompt, $api_key);
-            
-            if ($response === false) {
-                $errors[] = "Une erreur s'est produite lors de la génération du programme";
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Erreur lors de la récupération du programme: " . $e->getMessage();
+        redirect('../admin.php?section=programs');
+    }
+}
+
+// Traitement du formulaire
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $name = sanitizeInput($_POST['name'] ?? '');
+    $description = sanitizeInput($_POST['description'] ?? '');
+    $type = sanitizeInput($_POST['type'] ?? 'complet');
+    $calorie_adjustment = floatval($_POST['calorie_adjustment'] ?? 0);
+    $protein_ratio = floatval($_POST['protein_ratio'] ?? 0.3);
+    $carbs_ratio = floatval($_POST['carbs_ratio'] ?? 0.4);
+    $fat_ratio = floatval($_POST['fat_ratio'] ?? 0.3);
+    
+    // Validation
+    if (empty($name)) {
+        $errors[] = "Le nom du programme est requis";
+    }
+    
+    if (empty($description)) {
+        $errors[] = "La description du programme est requise";
+    }
+    
+    if (!in_array($type, ['complet', 'nutrition', 'exercice'])) {
+        $errors[] = "Type de programme invalide";
+    }
+    
+    if ($protein_ratio + $carbs_ratio + $fat_ratio !== 1) {
+        $errors[] = "La somme des ratios de macronutriments doit être égale à 1 (100%)";
+    }
+    
+    if (empty($errors)) {
+        try {
+            if ($action === 'edit' && $program_id > 0) {
+                // Mise à jour du programme
+                $sql = "UPDATE programs SET 
+                        name = ?, 
+                        description = ?, 
+                        type = ?, 
+                        calorie_adjustment = ?, 
+                        protein_ratio = ?, 
+                        carbs_ratio = ?, 
+                        fat_ratio = ?,
+                        updated_at = NOW()
+                        WHERE id = ?";
+                $result = update($sql, [
+                    $name, 
+                    $description, 
+                    $type, 
+                    $calorie_adjustment, 
+                    $protein_ratio, 
+                    $carbs_ratio, 
+                    $fat_ratio,
+                    $program_id
+                ]);
+                
+                if ($result) {
+                    $_SESSION['success'] = "Programme mis à jour avec succès";
+                    redirect('../admin.php?section=programs');
+                } else {
+                    $errors[] = "Une erreur s'est produite lors de la mise à jour du programme";
+                }
             } else {
-                // Insérer le programme dans la base de données
-                $sql = "INSERT INTO programs (name, description, type, content, calorie_adjustment, protein_ratio, carbs_ratio, fat_ratio, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                // Création d'un nouveau programme
+                $sql = "INSERT INTO programs (name, description, type, calorie_adjustment, protein_ratio, carbs_ratio, fat_ratio, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
                 $result = insert($sql, [
-                    $program_name,
-                    $program_description,
-                    $program_type,
-                    $response,
-                    $calorie_adjustment,
-                    $protein_ratio,
-                    $carbs_ratio,
+                    $name, 
+                    $description, 
+                    $type, 
+                    $calorie_adjustment, 
+                    $protein_ratio, 
+                    $carbs_ratio, 
                     $fat_ratio
                 ]);
                 
                 if ($result) {
-                    $success_message = "Le programme a été créé avec succès !";
+                    $_SESSION['success'] = "Programme créé avec succès";
+                    redirect('../admin.php?section=programs');
                 } else {
-                    $errors[] = "Une erreur s'est produite lors de l'enregistrement du programme";
+                    $errors[] = "Une erreur s'est produite lors de la création du programme";
                 }
             }
+        } catch (Exception $e) {
+            $errors[] = "Erreur: " . $e->getMessage();
         }
-    } catch (Exception $e) {
-        $errors[] = "Une erreur s'est produite : " . $e->getMessage();
-        error_log("Erreur dans program-management.php: " . $e->getMessage());
     }
 }
-
-// Récupérer la liste des programmes
-$sql = "SELECT p.*, 
-        (SELECT COUNT(*) FROM user_programs up WHERE up.program_id = p.id AND up.status = 'actif') as active_users
-        FROM programs p 
-        ORDER BY p.created_at DESC";
-$programs = fetchAll($sql, []);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion des Programmes - Administration</title>
+    <title><?php echo $action === 'edit' ? 'Modifier' : 'Créer'; ?> un programme - Weight Tracker</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
-    <?php include 'admin-navigation.php'; ?>
+    <?php include '../navigation.php'; ?>
 
-    <div class="container py-4">
-        <h1 class="mb-4">Gestion des Programmes</h1>
-
-        <?php if (!empty($errors)): ?>
-            <div class="alert alert-danger">
-                <ul class="mb-0">
-                    <?php foreach ($errors as $error): ?>
-                        <li><?php echo $error; ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        <?php endif; ?>
-
-        <?php if (!empty($success_message)): ?>
-            <div class="alert alert-success">
-                <?php echo $success_message; ?>
-            </div>
-        <?php endif; ?>
-
-        <!-- Formulaire de création de programme -->
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Créer un nouveau programme</h5>
-            </div>
-            <div class="card-body">
-                <?php if (empty($api_key)): ?>
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-1"></i>
-                        La clé API ChatGPT n'est pas configurée. Veuillez la configurer dans les paramètres.
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h4 class="mb-0"><?php echo $action === 'edit' ? 'Modifier' : 'Créer'; ?> un programme</h4>
                     </div>
-                <?php else: ?>
-                    <form method="post" action="">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="program_name" class="form-label">Nom du programme</label>
-                                <input type="text" class="form-control" id="program_name" name="program_name" required>
+                    <div class="card-body">
+                        <?php if (!empty($errors)): ?>
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    <?php foreach ($errors as $error): ?>
+                                        <li><?php echo $error; ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="program_type" class="form-label">Type de programme</label>
-                                <select class="form-select" id="program_type" name="program_type" required>
-                                    <option value="complet">Complet (Nutrition + Exercice)</option>
-                                    <option value="nutrition">Nutrition uniquement</option>
-                                    <option value="exercice">Exercice uniquement</option>
+                        <?php endif; ?>
+
+                        <form method="POST" novalidate>
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Nom du programme</label>
+                                <input type="text" class="form-control" id="name" name="name" value="<?php echo htmlspecialchars($program['name'] ?? ''); ?>" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description" rows="3" required><?php echo htmlspecialchars($program['description'] ?? ''); ?></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="type" class="form-label">Type de programme</label>
+                                <select class="form-select" id="type" name="type" required>
+                                    <option value="complet" <?php echo ($program['type'] ?? '') === 'complet' ? 'selected' : ''; ?>>Complet (nutrition + exercice)</option>
+                                    <option value="nutrition" <?php echo ($program['type'] ?? '') === 'nutrition' ? 'selected' : ''; ?>>Nutrition uniquement</option>
+                                    <option value="exercice" <?php echo ($program['type'] ?? '') === 'exercice' ? 'selected' : ''; ?>>Exercice uniquement</option>
                                 </select>
                             </div>
-                        </div>
 
-                        <div class="mb-3">
-                            <label for="program_description" class="form-label">Description</label>
-                            <textarea class="form-control" id="program_description" name="program_description" rows="3"></textarea>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="mb-3">
                                 <label for="calorie_adjustment" class="form-label">Ajustement calorique (%)</label>
-                                <input type="number" class="form-control" id="calorie_adjustment" name="calorie_adjustment" value="0" step="0.1">
+                                <input type="number" class="form-control" id="calorie_adjustment" name="calorie_adjustment" 
+                                       value="<?php echo $program['calorie_adjustment'] ?? 0; ?>" step="0.01" required>
+                                <div class="form-text">Valeur positive pour un surplus, négative pour un déficit</div>
                             </div>
-                            <div class="col-md-6 mb-3">
+
+                            <div class="mb-3">
                                 <label class="form-label">Répartition des macronutriments</label>
-                                <div class="input-group mb-2">
-                                    <span class="input-group-text">Protéines</span>
-                                    <input type="number" class="form-control" name="protein_ratio" value="0.3" step="0.1" min="0" max="1">
-                                    <span class="input-group-text">%</span>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="protein_ratio" class="form-label">Protéines</label>
+                                        <input type="number" class="form-control" id="protein_ratio" name="protein_ratio" 
+                                               value="<?php echo ($program['protein_ratio'] ?? 0.3) * 100; ?>" step="0.1" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="carbs_ratio" class="form-label">Glucides</label>
+                                        <input type="number" class="form-control" id="carbs_ratio" name="carbs_ratio" 
+                                               value="<?php echo ($program['carbs_ratio'] ?? 0.4) * 100; ?>" step="0.1" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="fat_ratio" class="form-label">Lipides</label>
+                                        <input type="number" class="form-control" id="fat_ratio" name="fat_ratio" 
+                                               value="<?php echo ($program['fat_ratio'] ?? 0.3) * 100; ?>" step="0.1" required>
+                                    </div>
                                 </div>
-                                <div class="input-group mb-2">
-                                    <span class="input-group-text">Glucides</span>
-                                    <input type="number" class="form-control" name="carbs_ratio" value="0.4" step="0.1" min="0" max="1">
-                                    <span class="input-group-text">%</span>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text">Lipides</span>
-                                    <input type="number" class="form-control" name="fat_ratio" value="0.3" step="0.1" min="0" max="1">
-                                    <span class="input-group-text">%</span>
-                                </div>
+                                <div id="macros-warning" class="form-text text-danger"></div>
                             </div>
-                        </div>
 
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus me-1"></i>Créer le programme
-                            </button>
-                        </div>
-                    </form>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- Liste des programmes -->
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Programmes disponibles</h5>
-            </div>
-            <div class="card-body">
-                <?php if (empty($programs)): ?>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Aucun programme disponible.
+                            <div class="d-flex justify-content-between">
+                                <a href="../admin.php?section=programs" class="btn btn-outline-secondary">Annuler</a>
+                                <button type="submit" class="btn btn-primary">
+                                    <?php echo $action === 'edit' ? 'Mettre à jour' : 'Créer'; ?> le programme
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Nom</th>
-                                    <th>Type</th>
-                                    <th>Utilisateurs actifs</th>
-                                    <th>Date de création</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($programs as $program): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($program['name']); ?></td>
-                                        <td>
-                                            <?php
-                                            switch ($program['type']) {
-                                                case 'complet':
-                                                    echo '<span class="badge bg-primary">Complet</span>';
-                                                    break;
-                                                case 'nutrition':
-                                                    echo '<span class="badge bg-info">Nutrition</span>';
-                                                    break;
-                                                case 'exercice':
-                                                    echo '<span class="badge bg-warning">Exercice</span>';
-                                                    break;
-                                            }
-                                            ?>
-                                        </td>
-                                        <td><?php echo $program['active_users']; ?></td>
-                                        <td><?php echo date('d/m/Y', strtotime($program['created_at'])); ?></td>
-                                        <td>
-                                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#viewProgram<?php echo $program['id']; ?>">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteProgram<?php echo $program['id']; ?>">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Modals pour voir et supprimer les programmes -->
-    <?php foreach ($programs as $program): ?>
-        <!-- Modal pour voir le programme -->
-        <div class="modal fade" id="viewProgram<?php echo $program['id']; ?>" tabindex="-1">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><?php echo htmlspecialchars($program['name']); ?></h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <h6>Description</h6>
-                        <p><?php echo nl2br(htmlspecialchars($program['description'])); ?></p>
-                        
-                        <h6>Contenu du programme</h6>
-                        <div class="program-content">
-                            <?php echo nl2br(htmlspecialchars($program['content'])); ?>
-                        </div>
-                        
-                        <h6 class="mt-3">Paramètres</h6>
-                        <ul class="list-unstyled">
-                            <li>Ajustement calorique : <?php echo $program['calorie_adjustment']; ?>%</li>
-                            <li>Protéines : <?php echo ($program['protein_ratio'] * 100); ?>%</li>
-                            <li>Glucides : <?php echo ($program['carbs_ratio'] * 100); ?>%</li>
-                            <li>Lipides : <?php echo ($program['fat_ratio'] * 100); ?>%</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal pour supprimer le programme -->
-        <div class="modal fade" id="deleteProgram<?php echo $program['id']; ?>" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Supprimer le programme</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Êtes-vous sûr de vouloir supprimer le programme "<?php echo htmlspecialchars($program['name']); ?>" ?</p>
-                        <p class="text-danger">
-                            <i class="fas fa-exclamation-triangle me-1"></i>
-                            Cette action est irréversible et affectera tous les utilisateurs qui suivent ce programme.
-                        </p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <a href="delete-program.php?id=<?php echo $program['id']; ?>" class="btn btn-danger">
-                            <i class="fas fa-trash me-1"></i>Supprimer
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <?php endforeach; ?>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Validation des macronutriments
+        document.addEventListener('DOMContentLoaded', function() {
+            const proteinInput = document.getElementById('protein_ratio');
+            const carbsInput = document.getElementById('carbs_ratio');
+            const fatInput = document.getElementById('fat_ratio');
+            const macrosWarning = document.getElementById('macros-warning');
+            
+            function validateMacros() {
+                const protein = parseFloat(proteinInput.value) || 0;
+                const carbs = parseFloat(carbsInput.value) || 0;
+                const fat = parseFloat(fatInput.value) || 0;
+                const total = protein + carbs + fat;
+                
+                if (total !== 100) {
+                    macrosWarning.textContent = `La somme des pourcentages doit être égale à 100%. Actuellement: ${total}%`;
+                } else {
+                    macrosWarning.textContent = '';
+                }
+            }
+            
+            proteinInput.addEventListener('input', validateMacros);
+            carbsInput.addEventListener('input', validateMacros);
+            fatInput.addEventListener('input', validateMacros);
+            
+            // Validation initiale
+            validateMacros();
+        });
+    </script>
 </body>
 </html> 
