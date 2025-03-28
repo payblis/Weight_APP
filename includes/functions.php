@@ -617,178 +617,120 @@ function ensureProfileWeight($user_id) {
  */
 function recalculateCalories($user_id) {
     error_log("=== Début du recalcul des calories ===");
+    error_log("User ID : " . $user_id);
     
-    global $pdo;
-    try {
-        $pdo->beginTransaction();
+    // Récupérer le profil utilisateur
+    $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
+    $stmt = $GLOBALS['conn']->prepare($sql);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $profile = $result->fetch_assoc();
+    
+    if (!$profile) {
+        error_log("Profil utilisateur non trouvé");
+        return false;
+    }
+    
+    // Vérifier que toutes les données nécessaires sont présentes
+    if (!isset($profile['weight']) || !isset($profile['height']) || 
+        !isset($profile['birth_date']) || !isset($profile['gender']) || 
+        !isset($profile['activity_level'])) {
+        error_log("Données de profil incomplètes pour le calcul des calories");
+        return false;
+    }
+    
+    // Calculer l'âge à partir de la date de naissance
+    $birth_date = new DateTime($profile['birth_date']);
+    $today = new DateTime();
+    $age = $birth_date->diff($today)->y;
+    
+    // Calculer le BMR
+    $bmr = calculateBMR($profile['weight'], $profile['height'], $age, $profile['gender']);
+    error_log("BMR calculé : " . $bmr);
+    
+    // Calculer le TDEE
+    $tdee = calculateTDEE($bmr, $profile['activity_level']);
+    error_log("TDEE initial calculé : " . $tdee);
+    
+    // Récupérer le programme actif
+    $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1";
+    $stmt = $GLOBALS['conn']->prepare($sql);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $active_program = $result->fetch_assoc();
+    
+    if ($active_program) {
+        error_log("Programme actif trouvé : " . $active_program['type']);
+        // Appliquer l'ajustement calorique du programme sur le TDEE
+        $calorie_adjustment = $active_program['calorie_adjustment'] / 100;
+        $tdee = $tdee * (1 + $calorie_adjustment);
+        error_log("TDEE après ajustement du programme : " . $tdee);
+    }
+    
+    // Récupérer l'objectif actif
+    $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+    $stmt = $GLOBALS['conn']->prepare($sql);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $current_goal = $result->fetch_assoc();
+    
+    if ($current_goal) {
+        error_log("Objectif actif trouvé : " . $current_goal['type']);
+        // Calculer l'objectif calorique en fonction du type d'objectif
+        $caloric_goal = calculateCalorieGoal($tdee, $current_goal['goal_type'], $current_goal['intensity'], $profile['weight'], $current_goal['target_weight'], $current_goal['target_date']);
+        error_log("Objectif calorique calculé : " . $caloric_goal);
         
-        // Récupérer le profil de l'utilisateur
-        $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
-        error_log("Récupération du profil utilisateur");
-        $profile = fetchOne($sql, [$user_id]);
+        // Calculer l'ajustement quotidien nécessaire pour atteindre l'objectif
+        $weight_difference = $current_goal['target_weight'] - $profile['weight'];
+        $days_to_target = (strtotime($current_goal['target_date']) - time()) / (24 * 60 * 60);
+        $daily_adjustment = ($weight_difference * 7700) / $days_to_target;
         
-        if (!$profile) {
-            error_log("Profil utilisateur non trouvé pour le recalcul des calories");
-            $pdo->rollBack();
-            return false;
+        // Ajuster l'objectif calorique en fonction du déficit/surplus nécessaire
+        $caloric_goal += $daily_adjustment;
+        error_log("Objectif calorique final après ajustement : " . $caloric_goal);
+        
+        // Avertir si l'ajustement est important
+        if (abs($daily_adjustment) > 500) {
+            error_log("ATTENTION : Ajustement calorique important de " . $daily_adjustment . " calories par jour");
         }
-        
-        // Vérifier que toutes les valeurs nécessaires sont présentes
-        if (!isset($profile['height']) || !isset($profile['birth_date']) || !isset($profile['gender']) || !isset($profile['activity_level'])) {
-            error_log("Données du profil incomplètes pour le calcul des calories");
-            $pdo->rollBack();
-            return false;
-        }
-        
-        // Vérifier et mettre à jour le poids si nécessaire
-        $current_weight = ensureProfileWeight($user_id);
-        if ($current_weight === null) {
-            error_log("Impossible de récupérer le poids actuel pour le recalcul des calories");
-            $pdo->rollBack();
-            return false;
-        }
-        
-        // Calculer le BMR
-        $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
-        error_log("BMR calculé : " . $bmr);
-        
-        // Vérifier que le BMR est positif
-        if ($bmr <= 0) {
-            error_log("BMR négatif ou nul : " . $bmr);
-            $pdo->rollBack();
-            return false;
-        }
-        
-        // Calculer le TDEE
-        $tdee = calculateTDEE($bmr, $profile['activity_level']);
-        error_log("TDEE calculé : " . $tdee);
-        
-        // Vérifier que le TDEE est positif
-        if ($tdee <= 0) {
-            error_log("TDEE négatif ou nul : " . $tdee);
-            $pdo->rollBack();
-            return false;
-        }
-        
-        // Récupérer l'objectif actuel
-        $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-        error_log("Récupération de l'objectif actuel");
-        $goal = fetchOne($sql, [$user_id]);
-        error_log("Résultat de la requête objectif : " . ($goal ? "Objectif trouvé" : "Aucun objectif trouvé"));
-        
-        // Récupérer le programme actif
-        $sql = "SELECT p.* FROM user_programs up 
-                JOIN programs p ON up.program_id = p.id 
-                WHERE up.user_id = ? AND up.status = 'actif'";
-        $active_program = fetchOne($sql, [$user_id]);
-        error_log("Programme actif : " . ($active_program ? "Trouvé" : "Non trouvé"));
-        
-        // Vérifier si l'objectif existe toujours
-        if ($goal) {
-            $sql = "SELECT COUNT(*) as count FROM goals WHERE id = ? AND user_id = ?";
-            $check = fetchOne($sql, [$goal['id'], $user_id]);
-            if (!$check || $check['count'] == 0) {
-                error_log("L'objectif n'existe plus, utilisation du TDEE");
-                $goal = null;
-            }
-        }
-        
-        if ($goal) {
-            // Calculer l'objectif calorique en fonction de l'objectif
-            $calorie_goal = calculateCalorieGoal($tdee, $goal['goal_type'], $goal['intensity'], $current_weight, $goal['target_weight'], $goal['target_date']);
-            error_log("Objectif calorique calculé : " . $calorie_goal);
-            
-            // Calculer l'ajustement quotidien
-            $daily_adjustment = $calorie_goal - $tdee;
-            
-            // Ajuster selon le programme actif si présent
-            if ($active_program) {
-                $program_adjustment = $calorie_goal * ($active_program['calorie_adjustment'] / 100);
-                error_log("Ajustement du programme : " . $program_adjustment . " calories");
-                $calorie_goal += $program_adjustment;
-                error_log("Calories finales après ajustement programme : " . $calorie_goal);
-            }
-            
-            // Avertir si l'ajustement est important (plus de 500 calories)
-            if (abs($daily_adjustment) > 500) {
-                error_log("ATTENTION : Ajustement calorique important détecté : " . $daily_adjustment);
-            }
-            
-            // Calculer les ratios de macronutriments
-            $macro_ratios = calculateMacroRatios(
-                $current_weight,
-                $goal['target_weight'],
-                $active_program,
-                $profile['activity_level']
-            );
-            
-            // Mettre à jour les calories et les ratios dans le profil
-            $sql = "UPDATE user_profiles SET 
-                    daily_calories = ?,
-                    protein_ratio = ?,
-                    carbs_ratio = ?,
-                    fat_ratio = ?,
-                    updated_at = NOW()
-                    WHERE user_id = ?";
-            if (!execute($sql, [
-                $calorie_goal,
-                $macro_ratios['protein'],
-                $macro_ratios['carbs'],
-                $macro_ratios['fat'],
-                $user_id
-            ])) {
-                error_log("Échec de la mise à jour des calories et ratios");
-                $pdo->rollBack();
-                return false;
-            }
-            error_log("Calories et ratios mis à jour avec succès");
-        } else {
-            // Si pas d'objectif actif, utiliser le TDEE comme objectif
-            error_log("Pas d'objectif actif, utilisation du TDEE comme objectif : " . $tdee);
-            
-            // Ajuster selon le programme actif si présent
-            if ($active_program) {
-                $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
-                error_log("Ajustement du programme : " . $program_adjustment . " calories");
-                $tdee += $program_adjustment;
-                error_log("Calories finales après ajustement programme : " . $tdee);
-            }
-            
-            // Calculer les ratios de macronutriments pour le maintien
-            $macro_ratios = calculateMacroRatios(
-                $current_weight,
-                $current_weight, // Même poids pour le maintien
-                $active_program,
-                $profile['activity_level']
-            );
-            
-            // Mettre à jour les calories et les ratios dans le profil
-            $sql = "UPDATE user_profiles SET 
-                    daily_calories = ?,
-                    protein_ratio = ?,
-                    carbs_ratio = ?,
-                    fat_ratio = ?,
-                    updated_at = NOW()
-                    WHERE user_id = ?";
-            if (!execute($sql, [
-                $tdee,
-                $macro_ratios['protein'],
-                $macro_ratios['carbs'],
-                $macro_ratios['fat'],
-                $user_id
-            ])) {
-                error_log("Échec de la mise à jour des calories et ratios avec TDEE");
-                $pdo->rollBack();
-                return false;
-            }
-            error_log("Calories et ratios mis à jour avec le TDEE");
-        }
-        
-        $pdo->commit();
+    } else {
+        error_log("Pas d'objectif actif, utilisation du TDEE comme objectif");
+        $caloric_goal = $tdee;
+    }
+    
+    // Calculer les ratios de macronutriments
+    $macro_ratios = calculateMacroRatios($profile['weight'], 
+        $current_goal ? $current_goal['target_weight'] : $profile['weight'],
+        $active_program,
+        $profile['activity_level']);
+    
+    // Mettre à jour le profil avec les nouvelles valeurs
+    $sql = "UPDATE user_profiles SET 
+            daily_calories = ?,
+            protein_ratio = ?,
+            carbs_ratio = ?,
+            fat_ratio = ?
+            WHERE user_id = ?";
+    
+    $stmt = $GLOBALS['conn']->prepare($sql);
+    $stmt->bind_param("ddddi", 
+        $caloric_goal,
+        $macro_ratios['protein'],
+        $macro_ratios['carbs'],
+        $macro_ratios['fat'],
+        $user_id
+    );
+    
+    if ($stmt->execute()) {
+        error_log("Profil mis à jour avec succès");
+        error_log("=== Fin du recalcul des calories ===");
         return true;
-    } catch (PDOException $e) {
-        error_log("Erreur lors du recalcul des calories : " . $e->getMessage());
-        $pdo->rollBack();
+    } else {
+        error_log("Erreur lors de la mise à jour du profil : " . $stmt->error);
+        error_log("=== Fin du recalcul des calories ===");
         return false;
     }
 }
