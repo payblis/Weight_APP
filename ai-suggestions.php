@@ -46,31 +46,39 @@ $sql = "SELECT p.* FROM user_programs up
 $active_program = fetchOne($sql, [$user_id]);
 
 // Récupérer les préférences alimentaires de l'utilisateur
-$sql = "SELECT * FROM food_preferences WHERE user_id = ?";
-$preferences = fetchAll($sql, [$user_id]);
-
-// Organiser les préférences par type
 $favorite_foods = [];
 $blacklisted_foods = [];
 
-foreach ($preferences as $pref) {
-    if ($pref['preference_type'] === 'favori') {
-        if ($pref['food_id']) {
-            $sql = "SELECT name FROM foods WHERE id = ?";
-            $food_info = fetchOne($sql, [$pref['food_id']]);
-            $favorite_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
-        } else {
-            $favorite_foods[] = $pref['custom_food'];
-        }
-    } elseif ($pref['preference_type'] === 'blacklist') {
-        if ($pref['food_id']) {
-            $sql = "SELECT name FROM foods WHERE id = ?";
-            $food_info = fetchOne($sql, [$pref['food_id']]);
-            $blacklisted_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
-        } else {
-            $blacklisted_foods[] = $pref['custom_food'];
+try {
+    $sql = "SELECT * FROM food_preferences WHERE user_id = ?";
+    $preferences = fetchAll($sql, [$user_id]);
+    
+    if ($preferences) {
+        foreach ($preferences as $pref) {
+            if ($pref['preference_type'] === 'favori') {
+                if ($pref['food_id']) {
+                    $sql = "SELECT name FROM foods WHERE id = ?";
+                    $food_info = fetchOne($sql, [$pref['food_id']]);
+                    $favorite_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
+                } else {
+                    $favorite_foods[] = $pref['custom_food'];
+                }
+            } elseif ($pref['preference_type'] === 'blacklist') {
+                if ($pref['food_id']) {
+                    $sql = "SELECT name FROM foods WHERE id = ?";
+                    $food_info = fetchOne($sql, [$pref['food_id']]);
+                    $blacklisted_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
+                } else {
+                    $blacklisted_foods[] = $pref['custom_food'];
+                }
+            }
         }
     }
+} catch (PDOException $e) {
+    error_log("Table food_preferences non trouvée ou erreur lors de la récupération des préférences: " . $e->getMessage());
+    // Continuer avec des tableaux vides pour les préférences
+    $favorite_foods = [];
+    $blacklisted_foods = [];
 }
 
 // Fonction pour appeler l'API ChatGPT
