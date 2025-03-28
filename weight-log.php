@@ -108,11 +108,12 @@ $recent_weights = fetchAll($sql, [$user_id, $start_date, $end_date]);
 
 // Récupérer les entrées alimentaires du jour
 $today = date('Y-m-d');
-$sql = "SELECT fl.*, f.name as food_name, f.calories, f.protein, f.carbs, f.fat 
+$sql = "SELECT fl.*, f.name as food_name, f.calories, f.protein, f.carbs, f.fat, m.meal_type 
         FROM food_logs fl 
         LEFT JOIN foods f ON fl.food_id = f.id 
+        LEFT JOIN meals m ON fl.meal_id = m.id 
         WHERE fl.user_id = ? AND fl.log_date = ? 
-        ORDER BY fl.meal_type, fl.created_at";
+        ORDER BY m.meal_type, fl.created_at";
 $today_foods = fetchAll($sql, [$user_id, $today]);
 
 // Récupérer les exercices du jour
@@ -352,7 +353,7 @@ if ($latest_weight) {
                                 
                                 <div class="mb-3">
                                     <label for="log_date" class="form-label">Date</label>
-                                    <input type="date" class="form-control" id="log_date" name="log_date" value="<?php echo htmlspecialchars($log_date); ?>" required>
+                                    <input type="date" class="form-control" id="log_date" name="log_date" value="<?php echo $log_date instanceof DateTime ? $log_date->format('Y-m-d') : htmlspecialchars($log_date); ?>" required>
                                 </div>
                                 
                                 <div class="mb-4">
