@@ -128,31 +128,12 @@ if ($profile && $latest_weight) {
 // Récupérer les données caloriques pour aujourd'hui
 $today = date('Y-m-d');
 $sql = "SELECT 
-            SUM(CASE 
-                WHEN fl.food_id IS NOT NULL THEN 
-                    (SELECT f.calories * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                ELSE fl.custom_calories
-            END) as calories_in,
-            SUM(CASE 
-                WHEN fl.food_id IS NOT NULL THEN 
-                    (SELECT f.protein * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                ELSE fl.custom_protein
-            END) as protein_in,
-            SUM(CASE 
-                WHEN fl.food_id IS NOT NULL THEN 
-                    (SELECT f.carbs * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                ELSE fl.custom_carbs
-            END) as carbs_in,
-            SUM(CASE 
-                WHEN fl.food_id IS NOT NULL THEN 
-                    (SELECT f.fat * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                ELSE fl.custom_fat
-            END) as fat_in
-        FROM 
-            food_logs fl
-        WHERE 
-            fl.user_id = ? AND 
-            fl.log_date = ?";
+            SUM(m.total_calories) as calories_in,
+            SUM(m.total_protein) as protein_in,
+            SUM(m.total_carbs) as carbs_in,
+            SUM(m.total_fat) as fat_in
+        FROM meals m
+        WHERE m.user_id = ? AND m.log_date = ?";
 $today_food = fetchOne($sql, [$user_id, $today]);
 
 $sql = "SELECT SUM(calories_burned) as calories_out FROM exercise_logs WHERE user_id = ? AND log_date = ?";
@@ -190,22 +171,14 @@ foreach ($weight_data as $data) {
 
 // Récupérer les données caloriques pour le graphique
 $sql = "SELECT 
-            fl.log_date,
-            DATE_FORMAT(fl.log_date, '%d/%m') as formatted_date,
-            SUM(CASE 
-                WHEN fl.food_id IS NOT NULL THEN 
-                    (SELECT f.calories * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                ELSE fl.custom_calories
-            END) as calories_in,
-            (SELECT SUM(el.calories_burned) FROM exercise_logs el WHERE el.user_id = ? AND el.log_date = fl.log_date) as calories_out
-        FROM 
-            food_logs fl
-        WHERE 
-            fl.user_id = ? 
-        GROUP BY 
-            fl.log_date
-        ORDER BY 
-            fl.log_date DESC 
+            m.log_date,
+            DATE_FORMAT(m.log_date, '%d/%m') as formatted_date,
+            SUM(m.total_calories) as calories_in,
+            (SELECT SUM(el.calories_burned) FROM exercise_logs el WHERE el.user_id = ? AND el.log_date = m.log_date) as calories_out
+        FROM meals m
+        WHERE m.user_id = ? 
+        GROUP BY m.log_date
+        ORDER BY m.log_date DESC 
         LIMIT 7";
 $calorie_data = fetchAll($sql, [$user_id, $user_id]);
 $calorie_data = array_reverse($calorie_data);

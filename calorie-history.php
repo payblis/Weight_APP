@@ -326,7 +326,7 @@ $calorie_history = fetchAll($sql, [$user_id, $user_id]);
                 <h5 class="mb-0">Évolution des calories</h5>
             </div>
             <div class="card-body">
-                <canvas id="calorieChart" height="300"></canvas>
+                <canvas id="calorieChart" height="200"></canvas>
             </div>
         </div>
 
@@ -336,7 +336,7 @@ $calorie_history = fetchAll($sql, [$user_id, $user_id]);
                 <h5 class="mb-0">Évolution de l'IMC</h5>
             </div>
             <div class="card-body">
-                <canvas id="bmiChart" height="300"></canvas>
+                <canvas id="bmiChart" height="200"></canvas>
             </div>
         </div>
 
@@ -489,6 +489,7 @@ $calorie_history = fetchAll($sql, [$user_id, $user_id]);
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -553,6 +554,7 @@ $calorie_history = fetchAll($sql, [$user_id, $user_id]);
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     y: {
                         beginAtZero: false,
