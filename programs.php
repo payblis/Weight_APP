@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['program_id'])) {
                     // Calculer le BMR de base
                     $bmr = calculateBMR($profile['weight'], $profile['height'], $profile['birth_date'], $profile['gender']);
                     
-                    // Calculer le TDEE
+                    // Calculer le TDEE (calories de base)
                     $tdee = calculateTDEE($bmr, $profile['activity_level']);
                     
                     // Ajuster les calories selon le programme
@@ -109,7 +109,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'deactivate' && isset($_GET['i
                     // Calculer le BMR de base
                     $bmr = calculateBMR($profile['weight'], $profile['height'], $profile['birth_date'], $profile['gender']);
                     
-                    // Calculer le TDEE
+                    // Calculer le TDEE (calories de base)
                     $tdee = calculateTDEE($bmr, $profile['activity_level']);
                     
                     // Réinitialiser les objectifs aux valeurs par défaut
