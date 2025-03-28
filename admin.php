@@ -234,9 +234,10 @@ if ($section === 'program_management' || $section === 'delete_program') {
         $description = sanitizeInput($_POST['description'] ?? '');
         $type = sanitizeInput($_POST['type'] ?? 'complet');
         $calorie_adjustment = floatval($_POST['calorie_adjustment'] ?? 0);
-        $protein_ratio = floatval($_POST['protein_ratio'] ?? 0.3);
-        $carbs_ratio = floatval($_POST['carbs_ratio'] ?? 0.4);
-        $fat_ratio = floatval($_POST['fat_ratio'] ?? 0.3);
+        // Convertir les pourcentages en décimales
+        $protein_ratio = floatval($_POST['protein_ratio'] ?? 30) / 100;
+        $carbs_ratio = floatval($_POST['carbs_ratio'] ?? 40) / 100;
+        $fat_ratio = floatval($_POST['fat_ratio'] ?? 30) / 100;
         
         // Validation
         if (empty($name)) {
@@ -251,8 +252,13 @@ if ($section === 'program_management' || $section === 'delete_program') {
             $errors[] = "Type de programme invalide";
         }
         
-        if ($protein_ratio + $carbs_ratio + $fat_ratio !== 1) {
-            $errors[] = "La somme des ratios de macronutriments doit être égale à 1 (100%)";
+        // Vérifier que la somme des pourcentages est égale à 100
+        $total_percentage = floatval($_POST['protein_ratio'] ?? 30) + 
+                          floatval($_POST['carbs_ratio'] ?? 40) + 
+                          floatval($_POST['fat_ratio'] ?? 30);
+        
+        if ($total_percentage !== 100) {
+            $errors[] = "La somme des pourcentages de macronutriments doit être égale à 100%";
         }
         
         if (empty($errors)) {
