@@ -288,6 +288,7 @@ $programs = fetchAll($sql, []);
                                         
                                         <?php if (!$active_program): ?>
                                             <form method="post" action="" class="d-inline">
+                                                <input type="hidden" name="action" value="activate">
                                                 <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
                                                 <button type="submit" class="btn btn-success btn-sm">
                                                     <i class="fas fa-check me-1"></i>Choisir ce programme
