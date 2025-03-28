@@ -423,14 +423,20 @@ if (!$result) {
     execute($sql);
 }
 
-// Vérifier si la colonne daily_calories existe dans user_profiles
-$sql = "SHOW COLUMNS FROM user_profiles LIKE 'daily_calories'";
-$result = fetchOne($sql, []);
-
-if (!$result) {
-    // Ajouter la colonne daily_calories à user_profiles
-    $sql = "ALTER TABLE user_profiles ADD COLUMN daily_calories INT DEFAULT 2000 AFTER activity_level";
-    execute($sql);
+// Vérifier et ajouter les colonnes manquantes dans user_profiles
+try {
+    $sql = "SHOW COLUMNS FROM user_profiles LIKE 'protein_ratio'";
+    $result = fetchOne($sql);
+    
+    if (!$result) {
+        $sql = "ALTER TABLE user_profiles 
+                ADD COLUMN protein_ratio FLOAT DEFAULT 0.3 AFTER daily_calories,
+                ADD COLUMN carbs_ratio FLOAT DEFAULT 0.4 AFTER protein_ratio,
+                ADD COLUMN fat_ratio FLOAT DEFAULT 0.3 AFTER carbs_ratio";
+        execute($sql);
+    }
+} catch (Exception $e) {
+    error_log("Erreur lors de la vérification des colonnes user_profiles: " . $e->getMessage());
 }
 
 // Récupérer les programmes
