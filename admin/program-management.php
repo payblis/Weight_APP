@@ -11,10 +11,32 @@ error_log("Chemin d'inclusion PHP: " . get_include_path());
 define('BASE_PATH', dirname(__DIR__));
 error_log("BASE_PATH défini à: " . BASE_PATH);
 
-// Inclure les fichiers nécessaires
-require_once BASE_PATH . '/config/database.php';
-require_once BASE_PATH . '/includes/functions.php';
-require_once BASE_PATH . '/includes/admin_functions.php';
+// Inclure d'abord database.php
+$db_file = BASE_PATH . '/config/database.php';
+error_log("Tentative d'inclusion de database.php: " . $db_file);
+if (!file_exists($db_file)) {
+    error_log("ERREUR: Le fichier database.php n'existe pas à: " . $db_file);
+    die("Erreur: Fichier de configuration de la base de données non trouvé");
+}
+require_once $db_file;
+
+// Ensuite inclure functions.php
+$functions_file = BASE_PATH . '/includes/functions.php';
+error_log("Tentative d'inclusion de functions.php: " . $functions_file);
+if (!file_exists($functions_file)) {
+    error_log("ERREUR: Le fichier functions.php n'existe pas à: " . $functions_file);
+    die("Erreur: Fichier functions.php non trouvé");
+}
+require_once $functions_file;
+
+// Enfin inclure admin_functions.php
+$admin_functions_file = BASE_PATH . '/includes/admin_functions.php';
+error_log("Tentative d'inclusion de admin_functions.php: " . $admin_functions_file);
+if (!file_exists($admin_functions_file)) {
+    error_log("ERREUR: Le fichier admin_functions.php n'existe pas à: " . $admin_functions_file);
+    die("Erreur: Fichier admin_functions.php non trouvé");
+}
+require_once $admin_functions_file;
 
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
