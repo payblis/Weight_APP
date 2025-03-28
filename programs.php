@@ -83,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $new_program = fetchOne($sql, [$user_id, $program_id]);
                 error_log("Nouveau programme créé : " . print_r($new_program, true));
                 
-                error_log("Programme activé avec succès, appel de recalculateCalories");
                 // Récupérer les valeurs du programme
                 $sql = "SELECT * FROM programs WHERE id = ?";
                 $program = fetchOne($sql, [$program_id]);
@@ -111,15 +110,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                              ", carbs_ratio=" . $program['carbs_ratio'] . 
                              ", fat_ratio=" . $program['fat_ratio']);
                     error_log("Résultat de la mise à jour : " . ($update_result ? "Succès" : "Échec"));
+                    
+                    // Maintenant que le programme est actif, on peut recalculer les calories
+                    error_log("Programme activé avec succès, appel de recalculateCalories");
+                    if (recalculateCalories($user_id)) {
+                        error_log("Recalcul des calories réussi");
+                    } else {
+                        error_log("Échec du recalcul des calories");
+                    }
                 } else {
                     error_log("Programme non trouvé avec l'ID : " . $program_id);
-                }
-                
-                // Recalculer les calories et les ratios
-                if (recalculateCalories($user_id)) {
-                    error_log("Recalcul des calories réussi");
-                } else {
-                    error_log("Échec du recalcul des calories");
                 }
                 
                 $pdo->commit();
