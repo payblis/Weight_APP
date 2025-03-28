@@ -68,7 +68,11 @@ $response = curl_exec($ch);
 $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
+// Log de la réponse brute
+error_log("Réponse brute de l'API ChatGPT: " . $response);
+
 if ($http_code !== 200) {
+    error_log("Erreur HTTP lors de l'appel à l'API ChatGPT: " . $http_code);
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Erreur lors de l\'appel à l\'API ChatGPT']);
     exit;
@@ -76,20 +80,42 @@ if ($http_code !== 200) {
 
 $result = json_decode($response, true);
 
-if (!isset($result['choices'][0]['message']['content'])) {
+if (json_last_error() !== JSON_ERROR_NONE) {
+    error_log("Erreur de décodage JSON: " . json_last_error_msg());
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Réponse invalide de l\'API ChatGPT']);
+    echo json_encode(['success' => false, 'error' => 'Réponse invalide de l\'API ChatGPT: ' . json_last_error_msg()]);
     exit;
 }
+
+if (!isset($result['choices'][0]['message']['content'])) {
+    error_log("Structure de réponse invalide: " . print_r($result, true));
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Structure de réponse invalide de l\'API ChatGPT']);
+    exit;
+}
+
+// Log du contenu de la réponse
+error_log("Contenu de la réponse ChatGPT: " . $result['choices'][0]['message']['content']);
 
 // Parser la réponse JSON de ChatGPT
 $program_data = json_decode($result['choices'][0]['message']['content'], true);
 
+if (json_last_error() !== JSON_ERROR_NONE) {
+    error_log("Erreur de décodage JSON du programme: " . json_last_error_msg());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Format de programme invalide: ' . json_last_error_msg()]);
+    exit;
+}
+
 if (!$program_data) {
+    error_log("Programme data est null ou vide");
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Format de réponse invalide']);
     exit;
 }
+
+// Log des données du programme
+error_log("Données du programme: " . print_r($program_data, true));
 
 // Valider et formater les données
 $program = [
@@ -102,6 +128,9 @@ $program = [
     'fat_ratio' => floatval($program_data['fat_ratio'] ?? 0.3)
 ];
 
+// Log du programme formaté
+error_log("Programme formaté: " . print_r($program, true));
+
 // Vérifier que la somme des ratios est égale à 1
 $total_ratio = $program['protein_ratio'] + $program['carbs_ratio'] + $program['fat_ratio'];
 if (abs($total_ratio - 1) > 0.01) {
@@ -110,5 +139,8 @@ if (abs($total_ratio - 1) > 0.01) {
     $program['carbs_ratio'] /= $total_ratio;
     $program['fat_ratio'] /= $total_ratio;
 }
+
+// Log de la réponse finale
+error_log("Réponse finale: " . json_encode(['success' => true, 'program' => $program]));
 
 echo json_encode(['success' => true, 'program' => $program]); 
