@@ -316,11 +316,15 @@ $programs = fetchAll($sql, []);
                     </div>
                     
                     <div class="mt-3">
-                        <a href="programs.php?action=deactivate&id=<?php echo $active_program['id']; ?>" 
-                           class="btn btn-danger" 
-                           onclick="return confirm('Êtes-vous sûr de vouloir quitter ce programme ? Vos objectifs seront réinitialisés.');">
-                            <i class="fas fa-times me-1"></i>Quitter le programme
-                        </a>
+                        <form method="post" action="" class="d-inline">
+                            <input type="hidden" name="action" value="deactivate">
+                            <input type="hidden" name="program_id" value="<?php echo $active_program['id']; ?>">
+                            <button type="submit" 
+                                    class="btn btn-danger" 
+                                    onclick="return confirm('Êtes-vous sûr de vouloir quitter ce programme ? Vos objectifs seront réinitialisés.');">
+                                <i class="fas fa-times me-1"></i>Quitter le programme
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
