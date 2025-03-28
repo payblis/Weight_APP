@@ -46,47 +46,35 @@ $sql = "SELECT p.* FROM user_programs up
 $active_program = fetchOne($sql, [$user_id]);
 
 // Récupérer les préférences alimentaires de l'utilisateur
+$sql = "SELECT * FROM food_preferences WHERE user_id = ?";
+$preferences = fetchAll($sql, [$user_id]);
+
+// Organiser les préférences par type
 $favorite_foods = [];
 $blacklisted_foods = [];
 
-try {
-    $sql = "SELECT * FROM food_preferences WHERE user_id = ?";
-    $preferences = fetchAll($sql, [$user_id]);
-    
-    if ($preferences) {
-        foreach ($preferences as $pref) {
-            if ($pref['preference_type'] === 'favori') {
-                if ($pref['food_id']) {
-                    $sql = "SELECT name FROM foods WHERE id = ?";
-                    $food_info = fetchOne($sql, [$pref['food_id']]);
-                    $favorite_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
-                } else {
-                    $favorite_foods[] = $pref['custom_food'];
-                }
-            } elseif ($pref['preference_type'] === 'blacklist') {
-                if ($pref['food_id']) {
-                    $sql = "SELECT name FROM foods WHERE id = ?";
-                    $food_info = fetchOne($sql, [$pref['food_id']]);
-                    $blacklisted_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
-                } else {
-                    $blacklisted_foods[] = $pref['custom_food'];
-                }
-            }
+foreach ($preferences as $pref) {
+    if ($pref['preference_type'] === 'favori') {
+        if ($pref['food_id']) {
+            $sql = "SELECT name FROM foods WHERE id = ?";
+            $food_info = fetchOne($sql, [$pref['food_id']]);
+            $favorite_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
+        } else {
+            $favorite_foods[] = $pref['custom_food'];
+        }
+    } elseif ($pref['preference_type'] === 'blacklist') {
+        if ($pref['food_id']) {
+            $sql = "SELECT name FROM foods WHERE id = ?";
+            $food_info = fetchOne($sql, [$pref['food_id']]);
+            $blacklisted_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
+        } else {
+            $blacklisted_foods[] = $pref['custom_food'];
         }
     }
-} catch (PDOException $e) {
-    error_log("Table food_preferences non trouvée ou erreur lors de la récupération des préférences: " . $e->getMessage());
-    // Continuer avec des tableaux vides pour les préférences
-    $favorite_foods = [];
-    $blacklisted_foods = [];
 }
 
 // Fonction pour appeler l'API ChatGPT
 function callChatGPTAPI($prompt, $api_key) {
-    error_log("=== DÉBUT DE L'APPEL À L'API CHATGPT ===");
-    error_log("URL: https://api.openai.com/v1/chat/completions");
-    error_log("Clé API (partielle): " . substr($api_key, 0, 4) . "..." . substr($api_key, -4));
-    
     $url = 'https://api.openai.com/v1/chat/completions';
     
     $data = [
@@ -94,7 +82,7 @@ function callChatGPTAPI($prompt, $api_key) {
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'Tu es un expert en nutrition et en fitness qui fournit des conseils personnalisés et détaillés. Format ta réponse de manière claire et structurée.'
+                'content' => 'Tu es un expert en nutrition et en fitness qui fournit des conseils personnalisés et détaillés.'
             ],
             [
                 'role' => 'user',
@@ -102,12 +90,8 @@ function callChatGPTAPI($prompt, $api_key) {
             ]
         ],
         'temperature' => 0.7,
-        'max_tokens' => 2000,
-        'presence_penalty' => 0.6,
-        'frequency_penalty' => 0.6
+        'max_tokens' => 1000
     ];
-    
-    error_log("Données de la requête: " . json_encode($data, JSON_PRETTY_PRINT));
     
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -117,104 +101,50 @@ function callChatGPTAPI($prompt, $api_key) {
         'Content-Type: application/json',
         'Authorization: Bearer ' . $api_key
     ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     
-    error_log("Envoi de la requête cURL...");
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_error = curl_error($ch);
     curl_close($ch);
     
-    error_log("Code HTTP reçu: " . $http_code);
-    if ($curl_error) {
-        error_log("ERREUR cURL: " . $curl_error);
-        return false;
-    }
-    
     if ($http_code !== 200) {
-        error_log("ERREUR HTTP: " . $response);
+        error_log("Erreur API ChatGPT: " . $response);
         return false;
     }
     
     $response_data = json_decode($response, true);
     
-    if (!isset($response_data['choices'][0]['message']['content'])) {
-        error_log("ERREUR: Structure de réponse invalide");
-        error_log("Réponse reçue: " . $response);
-        return false;
+    if (isset($response_data['choices'][0]['message']['content'])) {
+        return $response_data['choices'][0]['message']['content'];
     }
     
-    error_log("Réponse valide reçue de l'API");
-    error_log("=== FIN DE L'APPEL À L'API CHATGPT ===");
-    
-    return $response_data['choices'][0]['message']['content'];
+    return false;
 }
 
 // Fonction pour générer une suggestion de repas
 function generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods) {
     global $api_key;
     
-    error_log("=== DÉBUT DE LA GÉNÉRATION DE SUGGESTION DE REPAS ===");
-    
     if (empty($api_key)) {
-        error_log("ERREUR: Clé API ChatGPT manquante");
         return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.";
     }
-    
-    // Log des données d'entrée
-    error_log("Données du profil: " . print_r($profile, true));
-    error_log("Dernier poids: " . print_r($latest_weight, true));
-    error_log("Objectif actuel: " . print_r($current_goal, true));
-    error_log("Programme actif: " . print_r($active_program, true));
-    error_log("Aliments préférés: " . print_r($favorite_foods, true));
-    error_log("Aliments à éviter: " . print_r($blacklisted_foods, true));
     
     // Construire le prompt pour ChatGPT
     $prompt = "En tant que nutritionniste expert, génère un plan de repas personnalisé avec les informations suivantes :\n\n";
     $prompt .= "Profil : " . ($profile['gender'] === 'homme' ? 'Homme' : 'Femme') . ", " . 
                (date('Y') - date('Y', strtotime($profile['birth_date']))) . " ans\n";
-    $prompt .= "Niveau d'activité : " . ucfirst($profile['activity_level']) . "\n";
     $prompt .= "Poids actuel : " . ($latest_weight ? $latest_weight['weight'] . " kg" : "Non renseigné") . "\n";
     $prompt .= "Objectif : " . ($current_goal ? $current_goal['target_weight'] . " kg" : "Non défini") . "\n";
     $prompt .= "Programme : " . ($active_program ? $active_program['name'] : "Aucun") . "\n";
-    
-    if (!empty($favorite_foods)) {
-        $prompt .= "Aliments préférés : " . implode(", ", array_slice($favorite_foods, 0, 5)) . "\n";
-    }
-    
-    if (!empty($blacklisted_foods)) {
-        $prompt .= "Aliments à éviter : " . implode(", ", array_slice($blacklisted_foods, 0, 5)) . "\n";
-    }
-    
-    $prompt .= "\nGénère un plan de repas équilibré avec :\n";
-    $prompt .= "1. Petit-déjeuner (avec calories et macronutriments)\n";
-    $prompt .= "2. Déjeuner (avec calories et macronutriments)\n";
-    $prompt .= "3. Dîner (avec calories et macronutriments)\n";
-    $prompt .= "4. Collations (2-3 par jour, avec calories et macronutriments)\n\n";
-    
-    $prompt .= "Format de réponse souhaité :\n";
-    $prompt .= "PETIT-DÉJEUNER\n";
-    $prompt .= "- Liste des aliments avec quantités\n";
-    $prompt .= "- Calories totales : X kcal\n";
-    $prompt .= "- Protéines : Xg\n";
-    $prompt .= "- Glucides : Xg\n";
-    $prompt .= "- Lipides : Xg\n\n";
-    $prompt .= "[Répéter le même format pour chaque repas]";
-    
-    error_log("Prompt généré: " . $prompt);
+    $prompt .= "Aliments préférés : " . implode(", ", array_slice($favorite_foods, 0, 5)) . "\n";
+    $prompt .= "Aliments à éviter : " . implode(", ", array_slice($blacklisted_foods, 0, 5)) . "\n\n";
+    $prompt .= "Génère un plan de repas équilibré avec petit-déjeuner, déjeuner, dîner et collations. Inclus les calories et macronutriments pour chaque repas.";
     
     // Appeler l'API ChatGPT
-    error_log("Appel de l'API ChatGPT...");
     $response = callChatGPTAPI($prompt, $api_key);
     
     if ($response === false) {
-        error_log("ERREUR: Échec de l'appel à l'API ChatGPT");
         return "Une erreur s'est produite lors de la génération de la suggestion. Veuillez réessayer plus tard.";
     }
-    
-    error_log("Réponse reçue de l'API ChatGPT: " . $response);
-    error_log("=== FIN DE LA GÉNÉRATION DE SUGGESTION DE REPAS ===");
     
     return $response;
 }
@@ -378,84 +308,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
-    <style>
-        .suggestion-wrapper {
-            font-size: 1.1em;
-            line-height: 1.6;
-        }
-        
-        .meal-section {
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #e9ecef;
-        }
-        
-        .meal-section:last-child {
-            border-bottom: none;
-        }
-        
-        .meal-section h6 {
-            font-weight: 600;
-            color: #0d6efd;
-            margin-bottom: 1rem;
-        }
-        
-        .meal-item {
-            margin-bottom: 0.5rem;
-            padding-left: 1.5rem;
-            position: relative;
-        }
-        
-        .meal-item:before {
-            content: "•";
-            color: #0d6efd;
-            position: absolute;
-            left: 0;
-        }
-        
-        .nutrition-info {
-            margin-top: 1rem;
-            padding: 0.5rem;
-            background-color: #f8f9fa;
-            border-radius: 0.25rem;
-        }
-        
-        .nutrition-info strong {
-            color: #0d6efd;
-        }
-        
-        .accordion-button:not(.collapsed) {
-            background-color: #e7f1ff;
-            color: #0d6efd;
-        }
-        
-        .accordion-button:focus {
-            box-shadow: none;
-            border-color: rgba(0,0,0,.125);
-        }
-        
-        .badge {
-            font-size: 0.8em;
-            padding: 0.5em 0.8em;
-        }
-        
-        #loader {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.9);
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
-        
-        .spinner-border {
-            width: 3rem;
-            height: 3rem;
-        }
-    </style>
 </head>
 <body>
     <?php include 'navigation.php'; ?>
@@ -525,7 +377,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                                 La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.
                             </div>
                         <?php else: ?>
-                            <form method="POST" action="ai-suggestions.php?type=<?php echo htmlspecialchars($suggestion_type); ?>" id="suggestionForm">
+                            <form method="post" action="ai-suggestions.php">
                                 <input type="hidden" name="suggestion_type" value="<?php echo htmlspecialchars($suggestion_type); ?>">
                                 
                                 <p>
@@ -539,19 +391,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                                 </p>
                                 
                                 <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary" id="generateButton">
+                                    <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-robot me-1"></i>Générer une suggestion
                                     </button>
                                 </div>
                             </form>
-
-                            <!-- Loader -->
-                            <div id="loader" class="text-center mt-3 d-none">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Chargement...</span>
-                                </div>
-                                <p class="mt-2">Génération de la suggestion en cours...</p>
-                            </div>
                         <?php endif; ?>
                         
                         <div class="mt-3">
@@ -626,28 +470,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                                         </h2>
                                         <div id="collapse<?php echo $index; ?>" class="accordion-collapse collapse <?php echo $index === 0 ? 'show' : ''; ?>" aria-labelledby="heading<?php echo $index; ?>" data-bs-parent="#suggestionsAccordion">
                                             <div class="accordion-body">
-                                                <div class="mb-3 suggestion-content">
-                                                    <?php 
-                                                    $content = nl2br(htmlspecialchars($suggestion['content']));
-                                                    // Ajouter des classes CSS pour améliorer la lisibilité
-                                                    $content = str_replace('PETIT-DÉJEUNER', '<div class="meal-section"><h6 class="text-primary mb-3">PETIT-DÉJEUNER</h6>', $content);
-                                                    $content = str_replace('DÉJEUNER', '</div><div class="meal-section"><h6 class="text-primary mb-3">DÉJEUNER</h6>', $content);
-                                                    $content = str_replace('DÎNER', '</div><div class="meal-section"><h6 class="text-primary mb-3">DÎNER</h6>', $content);
-                                                    $content = str_replace('COLLATION', '</div><div class="meal-section"><h6 class="text-primary mb-3">COLLATION</h6>', $content);
-                                                    $content .= '</div>';
-                                                    
-                                                    // Ajouter des classes pour les listes et les éléments
-                                                    $content = str_replace('- ', '<li class="meal-item">', $content);
-                                                    $content = str_replace("\n", '</li>', $content);
-                                                    $content = str_replace('Calories totales :', '<div class="nutrition-info"><strong>Calories totales :</strong>', $content);
-                                                    $content = str_replace('Protéines :', '</div><div class="nutrition-info"><strong>Protéines :</strong>', $content);
-                                                    $content = str_replace('Glucides :', '</div><div class="nutrition-info"><strong>Glucides :</strong>', $content);
-                                                    $content = str_replace('Lipides :', '</div><div class="nutrition-info"><strong>Lipides :</strong>', $content);
-                                                    
-                                                    echo '<div class="suggestion-wrapper">' . $content . '</div>';
-                                                    ?>
+                                                <div class="mb-3">
+                                                    <?php echo nl2br(htmlspecialchars($suggestion['content'])); ?>
                                                 </div>
-                                                <div class="d-flex justify-content-end mt-3">
+                                                <div class="d-flex justify-content-end">
                                                     <?php if (!$suggestion['is_applied']): ?>
                                                         <a href="ai-suggestions.php?type=<?php echo urlencode($suggestion_type); ?>&action=apply&id=<?php echo $suggestion['id']; ?>" class="btn btn-sm btn-success me-2">
                                                             <i class="fas fa-check me-1"></i>Marquer comme appliqué
@@ -713,62 +539,5 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
 
     <!-- Scripts JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('suggestionForm');
-            const generateButton = document.getElementById('generateButton');
-            const loader = document.getElementById('loader');
-
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    
-                    // Désactiver le bouton et afficher le loader
-                    generateButton.disabled = true;
-                    generateButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Génération en cours...';
-                    loader.classList.remove('d-none');
-                    
-                    // Récupérer les données du formulaire
-                    const formData = new FormData(form);
-                    
-                    // Envoyer la requête
-                    fetch(form.action, {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Erreur réseau');
-                        }
-                        return response.text();
-                    })
-                    .then(html => {
-                        // Créer un DOM parser pour analyser la réponse
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-                        
-                        // Vérifier s'il y a des messages d'erreur
-                        const errorAlert = doc.querySelector('.alert-danger');
-                        if (errorAlert) {
-                            throw new Error(errorAlert.textContent);
-                        }
-                        
-                        // Recharger la page pour afficher la nouvelle suggestion
-                        window.location.reload();
-                    })
-                    .catch(error => {
-                        console.error('Erreur:', error);
-                        alert('Une erreur est survenue lors de la génération de la suggestion. Veuillez réessayer.');
-                    })
-                    .finally(() => {
-                        // Réactiver le bouton et cacher le loader
-                        generateButton.disabled = false;
-                        generateButton.innerHTML = '<i class="fas fa-robot me-1"></i>Générer une suggestion';
-                        loader.classList.add('d-none');
-                    });
-                });
-            }
-        });
-    </script>
 </body>
 </html>
