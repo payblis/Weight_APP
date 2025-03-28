@@ -385,7 +385,7 @@ $meals = fetchAll($sql, [$user_id, $date_filter]);
 
 // Récupérer les repas prédéfinis
 $sql = "SELECT * FROM predefined_meals 
-        WHERE user_id = ? OR is_public = 1 OR created_by_admin = 1 
+        WHERE user_id = ? OR is_public = 1 
         ORDER BY name";
 $predefined_meals = fetchAll($sql, [$user_id]);
 
@@ -511,46 +511,43 @@ function updateMealTotals($meal_id) {
     $foods = fetchAll($sql, [$meal_id]);
     error_log("Aliments dans le repas avant mise à jour: " . print_r($foods, true));
     
-    $sql = "UPDATE meals m 
-            SET total_calories = (
-                SELECT COALESCE(SUM(CASE 
-                    WHEN fl.food_id IS NOT NULL THEN 
-                        (SELECT f.calories * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                    ELSE fl.custom_calories
-                END), 0)
-                FROM food_logs fl 
-                WHERE fl.meal_id = m.id
-            ),
-            total_protein = (
-                SELECT COALESCE(SUM(CASE 
-                    WHEN fl.food_id IS NOT NULL THEN 
-                        (SELECT f.protein * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                    ELSE fl.custom_protein
-                END), 0)
-                FROM food_logs fl 
-                WHERE fl.meal_id = m.id
-            ),
-            total_carbs = (
-                SELECT COALESCE(SUM(CASE 
-                    WHEN fl.food_id IS NOT NULL THEN 
-                        (SELECT f.carbs * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                    ELSE fl.custom_carbs
-                END), 0)
-                FROM food_logs fl 
-                WHERE fl.meal_id = m.id
-            ),
-            total_fat = (
-                SELECT COALESCE(SUM(CASE 
-                    WHEN fl.food_id IS NOT NULL THEN 
-                        (SELECT f.fat * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                    ELSE fl.custom_fat
-                END), 0)
-                FROM food_logs fl 
-                WHERE fl.meal_id = m.id
-            )
-            WHERE m.id = ?";
+    // Calculer les totaux
+    $total_calories = 0;
+    $total_protein = 0;
+    $total_carbs = 0;
+    $total_fat = 0;
+    
+    foreach ($foods as $food) {
+        if ($food['food_id'] > 0) {
+            // Aliment de la base de données
+            $total_calories += ($food['food_calories'] * $food['quantity']) / 100;
+            $total_protein += ($food['food_protein'] * $food['quantity']) / 100;
+            $total_carbs += ($food['food_carbs'] * $food['quantity']) / 100;
+            $total_fat += ($food['food_fat'] * $food['quantity']) / 100;
+        } else {
+            // Aliment personnalisé
+            $total_calories += $food['custom_calories'];
+            $total_protein += $food['custom_protein'];
+            $total_carbs += $food['custom_carbs'];
+            $total_fat += $food['custom_fat'];
+        }
+    }
+    
+    // Mettre à jour les totaux dans la table meals
+    $sql = "UPDATE meals 
+            SET total_calories = ?, 
+                total_protein = ?, 
+                total_carbs = ?, 
+                total_fat = ?
+            WHERE id = ?";
             
-    $result = update($sql, [$meal_id]);
+    $result = update($sql, [
+        round($total_calories),
+        round($total_protein, 1),
+        round($total_carbs, 1),
+        round($total_fat, 1),
+        $meal_id
+    ]);
     
     // Debug: Vérifier les totaux après la mise à jour
     $sql = "SELECT total_calories, total_protein, total_carbs, total_fat FROM meals WHERE id = ?";
