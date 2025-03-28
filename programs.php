@@ -50,64 +50,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($_POST['action'] === 'activate') {
             error_log("Tentative d'activation du programme");
             
-            // Désactiver tous les programmes actifs de l'utilisateur
-            $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ?";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$user_id]);
-            error_log("Programmes précédents désactivés");
-            
-            // Activer le nouveau programme
-            $sql = "INSERT INTO user_programs (user_id, program_id, status, created_at) VALUES (?, ?, 'actif', NOW())";
-            $stmt = $pdo->prepare($sql);
-            $result = $stmt->execute([$user_id, $program_id]);
-            error_log("Résultat de l'insertion du nouveau programme : " . ($result ? "Succès" : "Échec"));
-            
-            if ($result) {
-                error_log("Programme activé avec succès, appel de recalculateCalories");
-                // Récupérer les valeurs du programme
-                $sql = "SELECT * FROM programs WHERE id = ?";
-                $program = fetchOne($sql, [$program_id]);
+            try {
+                $pdo->beginTransaction();
                 
-                if ($program) {
-                    error_log("Valeurs du programme récupérées : " . print_r($program, true));
+                // Désactiver tous les programmes précédents
+                $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ?";
+                $stmt = $pdo->prepare($sql);
+                $result = $stmt->execute([$user_id]);
+                error_log("Programmes précédents désactivés : " . ($result ? "Succès" : "Échec"));
+                
+                // Activer le nouveau programme
+                $sql = "INSERT INTO user_programs (user_id, program_id, status) VALUES (?, ?, 'actif')";
+                $stmt = $pdo->prepare($sql);
+                $result = $stmt->execute([$user_id, $program_id]);
+                error_log("Résultat de l'insertion du nouveau programme : " . ($result ? "Succès" : "Échec"));
+                
+                if ($result) {
+                    error_log("Programme activé avec succès, appel de recalculateCalories");
+                    // Récupérer les valeurs du programme
+                    $sql = "SELECT * FROM programs WHERE id = ?";
+                    $program = fetchOne($sql, [$program_id]);
                     
-                    // Mettre à jour le profil utilisateur avec les valeurs du programme
-                    $sql = "UPDATE user_profiles SET 
-                            daily_calories = ?,
-                            protein_ratio = ?,
-                            carbs_ratio = ?,
-                            fat_ratio = ?
-                            WHERE user_id = ?";
-                    $stmt = $pdo->prepare($sql);
-                    $update_result = $stmt->execute([
-                        $program['daily_calories'],
-                        $program['protein_ratio'],
-                        $program['carbs_ratio'],
-                        $program['fat_ratio'],
-                        $user_id
-                    ]);
-                    error_log("Mise à jour du profil utilisateur avec les valeurs : daily_calories=" . $program['daily_calories'] . 
-                             ", protein_ratio=" . $program['protein_ratio'] . 
-                             ", carbs_ratio=" . $program['carbs_ratio'] . 
-                             ", fat_ratio=" . $program['fat_ratio']);
-                    error_log("Résultat de la mise à jour : " . ($update_result ? "Succès" : "Échec"));
+                    if ($program) {
+                        error_log("Valeurs du programme récupérées : " . print_r($program, true));
+                        
+                        // Mettre à jour le profil utilisateur avec les valeurs du programme
+                        $sql = "UPDATE user_profiles SET 
+                                daily_calories = ?,
+                                protein_ratio = ?,
+                                carbs_ratio = ?,
+                                fat_ratio = ?
+                                WHERE user_id = ?";
+                        $stmt = $pdo->prepare($sql);
+                        $update_result = $stmt->execute([
+                            $program['daily_calories'],
+                            $program['protein_ratio'],
+                            $program['carbs_ratio'],
+                            $program['fat_ratio'],
+                            $user_id
+                        ]);
+                        error_log("Mise à jour du profil utilisateur avec les valeurs : daily_calories=" . $program['daily_calories'] . 
+                                 ", protein_ratio=" . $program['protein_ratio'] . 
+                                 ", carbs_ratio=" . $program['carbs_ratio'] . 
+                                 ", fat_ratio=" . $program['fat_ratio']);
+                        error_log("Résultat de la mise à jour : " . ($update_result ? "Succès" : "Échec"));
+                    } else {
+                        error_log("Programme non trouvé avec l'ID : " . $program_id);
+                    }
+                    
+                    // Recalculer les calories et les ratios
+                    if (recalculateCalories($user_id)) {
+                        error_log("Recalcul des calories réussi");
+                    } else {
+                        error_log("Échec du recalcul des calories");
+                    }
+                    
+                    $pdo->commit();
+                    $_SESSION['success'] = "Programme activé avec succès.";
                 } else {
-                    error_log("Programme non trouvé avec l'ID : " . $program_id);
+                    error_log("Échec de l'activation du programme");
+                    $pdo->rollBack();
+                    $_SESSION['error'] = "Erreur lors de l'activation du programme.";
                 }
-                
-                // Recalculer les calories et les ratios
-                if (recalculateCalories($user_id)) {
-                    error_log("Recalcul des calories réussi");
-                } else {
-                    error_log("Échec du recalcul des calories");
-                }
-                
-                $pdo->commit();
-                $_SESSION['success'] = "Programme activé avec succès.";
-            } else {
-                error_log("Échec de l'activation du programme");
+            } catch (PDOException $e) {
+                error_log("Erreur lors de l'activation du programme : " . $e->getMessage());
                 $pdo->rollBack();
-                $_SESSION['error'] = "Erreur lors de l'activation du programme.";
+                $_SESSION['error'] = "Une erreur est survenue lors de l'activation du programme.";
             }
         } elseif ($_POST['action'] === 'deactivate') {
             error_log("Tentative de désactivation du programme");
