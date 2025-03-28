@@ -84,12 +84,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $final_calories = $tdee + $program_adjustment + $daily_calories_adjustment;
                     } else {
                         // Si la date cible est dépassée, utiliser uniquement l'ajustement du programme
-                        $final_calories = $tdee * (1 + ($active_program['calorie_adjustment'] / 100));
+                        $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                        $final_calories = $tdee + $program_adjustment;
                     }
                 }
                 // Si seulement un programme est actif
                 elseif ($active_program) {
-                    $final_calories = $tdee * (1 + ($active_program['calorie_adjustment'] / 100));
+                    $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                    $final_calories = $tdee + $program_adjustment;
                 }
                 // Si seulement un objectif est actif
                 elseif ($current_goal) {

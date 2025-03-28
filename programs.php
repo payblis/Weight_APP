@@ -55,7 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['program_id'])) {
                     $tdee = calculateTDEE($bmr, $profile['activity_level']);
                     
                     // Ajuster les calories selon le programme
-                    $adjusted_calories = $tdee * (1 + ($program['calorie_adjustment'] / 100));
+                    // Pour une réduction de 50%, calorie_adjustment = -50
+                    // Pour une augmentation de 50%, calorie_adjustment = 50
+                    $program_adjustment = $tdee * ($program['calorie_adjustment'] / 100);
+                    $adjusted_calories = $tdee + $program_adjustment;
                     
                     // Mettre à jour les objectifs de l'utilisateur
                     $sql = "UPDATE user_profiles SET 
