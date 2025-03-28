@@ -21,6 +21,20 @@ $success_message = '';
 $errors = [];
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
+// Vérifier et mettre à jour la structure de la table si nécessaire
+$sql = "SHOW COLUMNS FROM programs LIKE 'calorie_adjustment'";
+$result = fetchOne($sql, []);
+
+if (!$result) {
+    // Ajouter les colonnes manquantes
+    $sql = "ALTER TABLE programs 
+            ADD COLUMN calorie_adjustment FLOAT DEFAULT 0 AFTER description,
+            ADD COLUMN protein_ratio FLOAT DEFAULT 0.3 AFTER calorie_adjustment,
+            ADD COLUMN carbs_ratio FLOAT DEFAULT 0.4 AFTER protein_ratio,
+            ADD COLUMN fat_ratio FLOAT DEFAULT 0.3 AFTER carbs_ratio";
+    execute($sql);
+}
+
 // Gérer l'activation/désactivation des programmes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     error_log("=== Début de la gestion de l'action POST ===");
