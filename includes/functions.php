@@ -676,6 +676,16 @@ function recalculateCalories($user_id) {
         $goal = fetchOne($sql, [$user_id]);
         error_log("Résultat de la requête objectif : " . ($goal ? "Objectif trouvé" : "Aucun objectif trouvé"));
         
+        // Vérifier si l'objectif existe toujours
+        if ($goal) {
+            $sql = "SELECT COUNT(*) as count FROM goals WHERE id = ? AND user_id = ?";
+            $check = fetchOne($sql, [$goal['id'], $user_id]);
+            if (!$check || $check['count'] == 0) {
+                error_log("L'objectif n'existe plus, utilisation du TDEE");
+                $goal = null;
+            }
+        }
+        
         if ($goal) {
             // Calculer l'objectif calorique en fonction de l'objectif
             $calorie_goal = calculateCalorieGoal($tdee, $goal['goal_type'], $goal['intensity'], $current_weight, $goal['target_weight'], $goal['target_date']);

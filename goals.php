@@ -224,6 +224,37 @@ if (isset($_GET['action']) && $_GET['action'] === 'cancel' && isset($_GET['id'])
     }
 }
 
+// Suppression d'un objectif
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+    $goal_id = (int)$_GET['id'];
+    
+    // Vérifier que l'objectif appartient à l'utilisateur
+    $sql = "SELECT * FROM goals WHERE id = ? AND user_id = ?";
+    $goal = fetchOne($sql, [$goal_id, $user_id]);
+    
+    if ($goal) {
+        // Supprimer l'objectif
+        $sql = "DELETE FROM goals WHERE id = ? AND user_id = ?";
+        if (execute($sql, [$goal_id, $user_id])) {
+            // Attendre un court instant pour s'assurer que la suppression est effectuée
+            usleep(100000); // 100ms
+            
+            // Recalculer les calories
+            if (recalculateCalories($user_id)) {
+                $_SESSION['success'] = "Objectif supprimé avec succès.";
+            } else {
+                $_SESSION['error'] = "Objectif supprimé mais erreur lors du recalcul des calories.";
+            }
+        } else {
+            $_SESSION['error'] = "Erreur lors de la suppression de l'objectif.";
+        }
+    } else {
+        $_SESSION['error'] = "Objectif non trouvé.";
+    }
+    
+    redirect('goals.php');
+}
+
 // Récupérer l'historique des objectifs
 $sql = "SELECT *, DATE_FORMAT(created_at, '%d/%m/%Y') as formatted_created_date, 
                DATE_FORMAT(target_date, '%d/%m/%Y') as formatted_target_date
