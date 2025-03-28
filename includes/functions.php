@@ -619,13 +619,13 @@ function recalculateCalories($user_id) {
     error_log("=== Début du recalcul des calories ===");
     error_log("User ID : " . $user_id);
     
+    global $pdo;
+    
     // Récupérer le profil utilisateur
     $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
-    $stmt = $GLOBALS['conn']->prepare($sql);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $profile = $result->fetch_assoc();
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$user_id]);
+    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$profile) {
         error_log("Profil utilisateur non trouvé");
@@ -655,11 +655,9 @@ function recalculateCalories($user_id) {
     
     // Récupérer le programme actif
     $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1";
-    $stmt = $GLOBALS['conn']->prepare($sql);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $active_program = $result->fetch_assoc();
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$user_id]);
+    $active_program = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($active_program) {
         error_log("Programme actif trouvé : " . $active_program['type']);
@@ -671,11 +669,9 @@ function recalculateCalories($user_id) {
     
     // Récupérer l'objectif actif
     $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-    $stmt = $GLOBALS['conn']->prepare($sql);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $current_goal = $result->fetch_assoc();
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$user_id]);
+    $current_goal = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($current_goal) {
         error_log("Objectif actif trouvé : " . $current_goal['type']);
@@ -715,21 +711,21 @@ function recalculateCalories($user_id) {
             fat_ratio = ?
             WHERE user_id = ?";
     
-    $stmt = $GLOBALS['conn']->prepare($sql);
-    $stmt->bind_param("ddddi", 
+    $stmt = $pdo->prepare($sql);
+    $result = $stmt->execute([
         $caloric_goal,
         $macro_ratios['protein'],
         $macro_ratios['carbs'],
         $macro_ratios['fat'],
         $user_id
-    );
+    ]);
     
-    if ($stmt->execute()) {
+    if ($result) {
         error_log("Profil mis à jour avec succès");
         error_log("=== Fin du recalcul des calories ===");
         return true;
     } else {
-        error_log("Erreur lors de la mise à jour du profil : " . $stmt->error);
+        error_log("Erreur lors de la mise à jour du profil : " . print_r($stmt->errorInfo(), true));
         error_log("=== Fin du recalcul des calories ===");
         return false;
     }
