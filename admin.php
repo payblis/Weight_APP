@@ -422,7 +422,18 @@ try {
                 ADD COLUMN calorie_adjustment FLOAT DEFAULT 0 AFTER type,
                 ADD COLUMN protein_ratio FLOAT DEFAULT 0.3 AFTER calorie_adjustment,
                 ADD COLUMN carbs_ratio FLOAT DEFAULT 0.4 AFTER protein_ratio,
-                ADD COLUMN fat_ratio FLOAT DEFAULT 0.3 AFTER carbs_ratio";
+                ADD COLUMN fat_ratio FLOAT DEFAULT 0.3 AFTER carbs_ratio,
+                ADD COLUMN daily_calories INT DEFAULT 2000 AFTER fat_ratio";
+        execute($sql);
+    }
+    
+    // Vérifier si la colonne daily_calories existe
+    $sql = "SHOW COLUMNS FROM programs LIKE 'daily_calories'";
+    $result = fetchOne($sql, []);
+    
+    if (!$result) {
+        // Ajouter la colonne daily_calories si elle n'existe pas
+        $sql = "ALTER TABLE programs ADD COLUMN daily_calories INT DEFAULT 2000 AFTER fat_ratio";
         execute($sql);
     }
     
