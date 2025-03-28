@@ -20,6 +20,9 @@ if (!file_exists($db_file)) {
 }
 require_once $db_file;
 
+// Indiquer que database.php a déjà été inclus
+define('DATABASE_INCLUDED', true);
+
 // Ensuite inclure functions.php
 $functions_file = BASE_PATH . '/includes/functions.php';
 error_log("Tentative d'inclusion de functions.php: " . $functions_file);
