@@ -276,7 +276,7 @@ try {
             ORDER BY p.created_at DESC";
     $programs = fetchAll($sql, []);
 } catch (Exception $e) {
-    $errors[] = "Erreur lors de la récupération des programmes: " . $e->getMessage();
+    $_SESSION['error'] = "Erreur lors de la récupération des programmes: " . $e->getMessage();
 }
 
 // Récupérer les détails d'un programme spécifique si demandé
@@ -882,8 +882,8 @@ try {
                                             <tr>
                                                 <td><?php echo htmlspecialchars($program['name']); ?></td>
                                                 <td>
-                                                    <span class="badge bg-<?php echo $program['type'] === 'complet' ? 'primary' : ($program['type'] === 'nutrition' ? 'success' : 'warning'); ?>">
-                                                        <?php echo ucfirst($program['type']); ?>
+                                                    <span class="badge bg-<?php echo isset($program['type']) ? ($program['type'] === 'complet' ? 'primary' : ($program['type'] === 'nutrition' ? 'success' : 'warning')) : 'secondary'; ?>">
+                                                        <?php echo isset($program['type']) ? ucfirst($program['type']) : 'Non défini'; ?>
                                                     </span>
                                                 </td>
                                                 <td><?php echo htmlspecialchars(substr($program['description'], 0, 100)) . (strlen($program['description']) > 100 ? '...' : ''); ?></td>
@@ -913,7 +913,7 @@ try {
                                                             <p>Êtes-vous sûr de vouloir supprimer ce programme ? Cette action est irréversible.</p>
                                                         </div>
                                                         <div class="modal-footer">
-                                                            <form action="admin.php?section=delete_program" method="POST">
+                                                            <form action="admin/delete-program.php" method="POST">
                                                                 <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                                                                 <button type="submit" class="btn btn-danger">Supprimer</button>

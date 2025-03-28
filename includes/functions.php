@@ -1,6 +1,9 @@
 <?php
-// Inclure les fonctions utilitaires
-require_once 'config/database.php';
+// Définir le chemin de base
+define('BASE_PATH', dirname(__DIR__));
+
+// Inclure les fichiers nécessaires
+require_once BASE_PATH . '/config/database.php';
 
 /**
  * Nettoie les données d'entrée pour éviter les injections
@@ -21,7 +24,28 @@ function sanitizeInput($data) {
  * @return bool True si l'utilisateur est connecté, false sinon
  */
 function isLoggedIn() {
-    return isset($_SESSION['user_id']) && isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+    return isset($_SESSION['user_id']);
+}
+
+/**
+ * Vérifie si l'utilisateur est un administrateur
+ * 
+ * @param int $user_id ID de l'utilisateur
+ * @return bool True si l'utilisateur est un administrateur, false sinon
+ */
+function isAdmin($user_id) {
+    global $pdo;
+    try {
+        $sql = "SELECT r.name FROM users u 
+                JOIN roles r ON u.role_id = r.id 
+                WHERE u.id = ? AND r.name = 'admin'";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id]);
+        return $stmt->fetch() !== false;
+    } catch (Exception $e) {
+        error_log("Erreur dans isAdmin: " . $e->getMessage());
+        return false;
+    }
 }
 
 /**
@@ -32,7 +56,7 @@ function isLoggedIn() {
  */
 function redirect($url) {
     header("Location: $url");
-    exit;
+    exit();
 }
 
 /**
@@ -462,7 +486,7 @@ function generateExerciseRecommendations($goal_type) {
     } else { // maintien
         $recommendations['general'] = "Pour maintenir votre poids et votre forme physique, adoptez une approche équilibrée combinant différents types d'exercices.";
         $recommendations['recommended_exercises'] = [
-            'Cardio: 150 minutes par semaine d\'intensité modérée',
+            'Cardio: 150 minutes par semaine d'intensité modérée',
             'Renforcement: 2-3 séances par semaine',
             'Flexibilité et équilibre: yoga, pilates, étirements'
         ];
@@ -504,4 +528,111 @@ function truncateText($text, $length = 100, $suffix = '...') {
     }
     
     return substr($text, 0, $length) . $suffix;
+}
+
+// Fonction pour récupérer une seule ligne
+function fetchOne($sql, $params = []) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log("Erreur dans fetchOne: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Fonction pour récupérer plusieurs lignes
+function fetchAll($sql, $params = []) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log("Erreur dans fetchAll: " . $e->getMessage());
+        return [];
+    }
+}
+
+// Fonction pour insérer une ligne
+function insert($sql, $params = []) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute($params);
+    } catch (Exception $e) {
+        error_log("Erreur dans insert: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Fonction pour mettre à jour une ligne
+function update($sql, $params = []) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute($params);
+    } catch (Exception $e) {
+        error_log("Erreur dans update: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Fonction pour supprimer une ligne
+function delete($sql, $params = []) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute($params);
+    } catch (Exception $e) {
+        error_log("Erreur dans delete: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Fonction pour appeler l'API ChatGPT
+function callChatGPTAPI($prompt, $api_key) {
+    if (empty($api_key)) {
+        return false;
+    }
+
+    $url = 'https://api.openai.com/v1/chat/completions';
+    $data = [
+        'model' => 'gpt-3.5-turbo',
+        'messages' => [
+            [
+                'role' => 'system',
+                'content' => 'Vous êtes un expert en nutrition et fitness.'
+            ],
+            [
+                'role' => 'user',
+                'content' => $prompt
+            ]
+        ],
+        'temperature' => 0.7,
+        'max_tokens' => 1000
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $api_key
+    ]);
+
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($http_code !== 200) {
+        error_log("Erreur API ChatGPT: " . $response);
+        return false;
+    }
+
+    $result = json_decode($response, true);
+    return $result['choices'][0]['message']['content'] ?? false;
 }
