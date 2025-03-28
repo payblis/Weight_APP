@@ -94,7 +94,7 @@ function callChatGPTAPI($prompt, $api_key) {
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'Tu es un expert en nutrition et en fitness qui fournit des conseils personnalisés et détaillés.'
+                'content' => 'Tu es un expert en nutrition et en fitness qui fournit des conseils personnalisés et détaillés. Format ta réponse de manière claire et structurée.'
             ],
             [
                 'role' => 'user',
@@ -102,7 +102,9 @@ function callChatGPTAPI($prompt, $api_key) {
             ]
         ],
         'temperature' => 0.7,
-        'max_tokens' => 1000
+        'max_tokens' => 2000,
+        'presence_penalty' => 0.6,
+        'frequency_penalty' => 0.6
     ];
     
     error_log("Données de la requête: " . json_encode($data, JSON_PRETTY_PRINT));
@@ -115,7 +117,7 @@ function callChatGPTAPI($prompt, $api_key) {
         'Content-Type: application/json',
         'Authorization: Bearer ' . $api_key
     ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     
     error_log("Envoi de la requête cURL...");
@@ -546,8 +548,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                                         </h2>
                                         <div id="collapse<?php echo $index; ?>" class="accordion-collapse collapse <?php echo $index === 0 ? 'show' : ''; ?>" aria-labelledby="heading<?php echo $index; ?>" data-bs-parent="#suggestionsAccordion">
                                             <div class="accordion-body">
-                                                <div class="mb-3">
-                                                    <?php echo nl2br(htmlspecialchars($suggestion['content'])); ?>
+                                                <div class="mb-3 suggestion-content">
+                                                    <?php 
+                                                    $content = nl2br(htmlspecialchars($suggestion['content']));
+                                                    $content = str_replace('PETIT-DÉJEUNER', '<h6 class="text-primary mt-3">PETIT-DÉJEUNER</h6>', $content);
+                                                    $content = str_replace('DÉJEUNER', '<h6 class="text-primary mt-3">DÉJEUNER</h6>', $content);
+                                                    $content = str_replace('DÎNER', '<h6 class="text-primary mt-3">DÎNER</h6>', $content);
+                                                    $content = str_replace('COLLATION', '<h6 class="text-primary mt-3">COLLATION</h6>', $content);
+                                                    echo $content;
+                                                    ?>
                                                 </div>
                                                 <div class="d-flex justify-content-end">
                                                     <?php if (!$suggestion['is_applied']): ?>
