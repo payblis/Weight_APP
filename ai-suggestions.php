@@ -75,6 +75,10 @@ foreach ($preferences as $pref) {
 
 // Fonction pour appeler l'API ChatGPT
 function callChatGPTAPI($prompt, $api_key) {
+    error_log("=== DÉBUT DE L'APPEL À L'API CHATGPT ===");
+    error_log("URL: https://api.openai.com/v1/chat/completions");
+    error_log("Clé API (partielle): " . substr($api_key, 0, 4) . "..." . substr($api_key, -4));
+    
     $url = 'https://api.openai.com/v1/chat/completions';
     
     $data = [
@@ -93,6 +97,8 @@ function callChatGPTAPI($prompt, $api_key) {
         'max_tokens' => 1000
     ];
     
+    error_log("Données de la requête: " . json_encode($data, JSON_PRETTY_PRINT));
+    
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -101,32 +107,58 @@ function callChatGPTAPI($prompt, $api_key) {
         'Content-Type: application/json',
         'Authorization: Bearer ' . $api_key
     ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     
+    error_log("Envoi de la requête cURL...");
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
     curl_close($ch);
     
+    error_log("Code HTTP reçu: " . $http_code);
+    if ($curl_error) {
+        error_log("ERREUR cURL: " . $curl_error);
+        return false;
+    }
+    
     if ($http_code !== 200) {
-        error_log("Erreur API ChatGPT: " . $response);
+        error_log("ERREUR HTTP: " . $response);
         return false;
     }
     
     $response_data = json_decode($response, true);
     
-    if (isset($response_data['choices'][0]['message']['content'])) {
-        return $response_data['choices'][0]['message']['content'];
+    if (!isset($response_data['choices'][0]['message']['content'])) {
+        error_log("ERREUR: Structure de réponse invalide");
+        error_log("Réponse reçue: " . $response);
+        return false;
     }
     
-    return false;
+    error_log("Réponse valide reçue de l'API");
+    error_log("=== FIN DE L'APPEL À L'API CHATGPT ===");
+    
+    return $response_data['choices'][0]['message']['content'];
 }
 
 // Fonction pour générer une suggestion de repas
 function generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods) {
     global $api_key;
     
+    error_log("=== DÉBUT DE LA GÉNÉRATION DE SUGGESTION DE REPAS ===");
+    
     if (empty($api_key)) {
+        error_log("ERREUR: Clé API ChatGPT manquante");
         return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.";
     }
+    
+    // Log des données d'entrée
+    error_log("Données du profil: " . print_r($profile, true));
+    error_log("Dernier poids: " . print_r($latest_weight, true));
+    error_log("Objectif actuel: " . print_r($current_goal, true));
+    error_log("Programme actif: " . print_r($active_program, true));
+    error_log("Aliments préférés: " . print_r($favorite_foods, true));
+    error_log("Aliments à éviter: " . print_r($blacklisted_foods, true));
     
     // Construire le prompt pour ChatGPT
     $prompt = "En tant que nutritionniste expert, génère un plan de repas personnalisé avec les informations suivantes :\n\n";
@@ -160,12 +192,19 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
     $prompt .= "- Lipides : Xg\n\n";
     $prompt .= "[Répéter le même format pour chaque repas]";
     
+    error_log("Prompt généré: " . $prompt);
+    
     // Appeler l'API ChatGPT
+    error_log("Appel de l'API ChatGPT...");
     $response = callChatGPTAPI($prompt, $api_key);
     
     if ($response === false) {
+        error_log("ERREUR: Échec de l'appel à l'API ChatGPT");
         return "Une erreur s'est produite lors de la génération de la suggestion. Veuillez réessayer plus tard.";
     }
+    
+    error_log("Réponse reçue de l'API ChatGPT: " . $response);
+    error_log("=== FIN DE LA GÉNÉRATION DE SUGGESTION DE REPAS ===");
     
     return $response;
 }
