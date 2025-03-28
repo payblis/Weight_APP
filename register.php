@@ -111,8 +111,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // L'insertion a réussi, vérifier si la table user_profiles existe
                     if (tableExists('user_profiles')) {
                         try {
+                            // Calculer l'âge à partir de la date de naissance
+                            $birth_date_obj = new DateTime($birth_date);
+                            $today = new DateTime();
+                            $age = $birth_date_obj->diff($today)->y;
+                            
                             // Calculer le BMR de base
-                            $bmr = calculateBMR($weight, $height, $birth_date, $gender);
+                            $bmr = calculateBMR($weight, $height, $age, $gender);
                             
                             // Calculer le TDEE (calories de base)
                             $tdee = calculateTDEE($bmr, $activity_level);

@@ -142,6 +142,66 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_calories' && isset($
     redirect('profile.php');
 }
 
+// Ajouter le traitement de l'action de recalcul des calories
+if (isset($_POST['action']) && $_POST['action'] === 'recalculate_calories') {
+    try {
+        // Récupérer le dernier poids enregistré
+        $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
+        $latest_weight = fetchOne($sql, [$user_id]);
+        
+        if ($latest_weight) {
+            // Calculer l'âge à partir de la date de naissance
+            $birth_date_obj = new DateTime($profile['birth_date']);
+            $today = new DateTime();
+            $age = $birth_date_obj->diff($today)->y;
+            
+            // Calculer le BMR de base
+            $bmr = calculateBMR($latest_weight['weight'], $profile['height'], $age, $profile['gender']);
+            
+            // Calculer le TDEE (calories de base)
+            $tdee = calculateTDEE($bmr, $profile['activity_level']);
+            
+            // Vérifier si l'utilisateur a un programme actif
+            $sql = "SELECT p.* FROM user_programs up 
+                    JOIN programs p ON up.program_id = p.id 
+                    WHERE up.user_id = ? AND up.status = 'actif'";
+            $active_program = fetchOne($sql, [$user_id]);
+            
+            // Vérifier si l'utilisateur a un objectif actif
+            $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+            $current_goal = fetchOne($sql, [$user_id]);
+            
+            $final_calories = $tdee;
+            
+            // Ajuster les calories selon le programme actif
+            if ($active_program) {
+                $final_calories = $tdee * (1 + ($active_program['calorie_adjustment'] / 100));
+            }
+            // Sinon, ajuster selon l'objectif
+            elseif ($current_goal) {
+                if ($current_goal['target_weight'] < $latest_weight['weight']) {
+                    // Objectif de perte de poids (déficit de 500 calories)
+                    $final_calories = $tdee - 500;
+                } elseif ($current_goal['target_weight'] > $latest_weight['weight']) {
+                    // Objectif de prise de poids (surplus de 500 calories)
+                    $final_calories = $tdee + 500;
+                }
+            }
+            
+            // Mettre à jour les calories dans le profil
+            $sql = "UPDATE user_profiles SET daily_calories = ?, updated_at = NOW() WHERE user_id = ?";
+            update($sql, [$final_calories, $user_id]);
+            
+            $success_message = "Vos besoins caloriques ont été recalculés avec succès !";
+        } else {
+            $errors[] = "Aucun poids enregistré trouvé. Veuillez d'abord enregistrer votre poids.";
+        }
+    } catch (Exception $e) {
+        $errors[] = "Une erreur s'est produite lors du recalcul des calories : " . $e->getMessage();
+        error_log("Erreur dans profile.php (recalculate_calories): " . $e->getMessage());
+    }
+}
+
 // Récupérer le dernier poids enregistré
 $sql = "SELECT * FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
 $latest_weight = fetchOne($sql, [$user_id]);
@@ -356,6 +416,12 @@ if ($latest_weight && $profile && $age > 0) {
                             <a href="goals.php?action=add" class="btn btn-outline-primary">
                                 <i class="fas fa-bullseye me-1"></i>Définir un objectif
                             </a>
+                            <form action="profile.php" method="POST" class="d-grid">
+                                <input type="hidden" name="action" value="recalculate_calories">
+                                <button type="submit" class="btn btn-outline-info">
+                                    <i class="fas fa-calculator me-1"></i>Recalculer les calories
+                                </button>
+                            </form>
                             <a href="settings.php" class="btn btn-outline-secondary">
                                 <i class="fas fa-cog me-1"></i>Paramètres du compte
                             </a>
