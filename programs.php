@@ -48,42 +48,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['program_id'])) {
                 $profile = fetchOne($sql, [$user_id]);
                 
                 if ($profile) {
-                    // Calculer le BMR de base
-                    $bmr = calculateBMR($profile['weight'], $profile['height'], $profile['birth_date'], $profile['gender']);
-                    error_log("=== Début du calcul des calories pour l'activation du programme ===");
-                    error_log("BMR calculé : " . $bmr);
+                    // Vérifier et mettre à jour le poids dans le profil
+                    $current_weight = ensureProfileWeight($user_id);
                     
-                    // Calculer le TDEE (calories de base)
-                    $tdee = calculateTDEE($bmr, $profile['activity_level']);
-                    error_log("TDEE calculé : " . $tdee);
-                    error_log("Niveau d'activité : " . $profile['activity_level']);
-                    
-                    // Ajuster les calories selon le programme
-                    error_log("Programme sélectionné : " . $program['name']);
-                    error_log("Ajustement calorique du programme : " . $program['calorie_adjustment'] . "%");
-                    $program_adjustment = round($tdee * (floatval($program['calorie_adjustment']) / 100));
-                    error_log("Ajustement calculé : " . $program_adjustment);
-                    $adjusted_calories = round($tdee + $program_adjustment);
-                    error_log("Calories finales : " . $adjusted_calories);
-                    error_log("=== Fin du calcul des calories pour l'activation du programme ===");
-                    
-                    // Mettre à jour les objectifs de l'utilisateur
-                    $sql = "UPDATE user_profiles SET 
-                            daily_calories = ?,
-                            protein_ratio = ?,
-                            carbs_ratio = ?,
-                            fat_ratio = ?,
-                            updated_at = NOW()
-                            WHERE user_id = ?";
-                    update($sql, [
-                        $adjusted_calories,
-                        $program['protein_ratio'],
-                        $program['carbs_ratio'],
-                        $program['fat_ratio'],
-                        $user_id
-                    ]);
-                    
-                    $success_message = "Le programme a été activé avec succès ! Vos objectifs ont été ajustés.";
+                    if ($current_weight === null) {
+                        $errors[] = "Veuillez d'abord enregistrer votre poids avant d'activer un programme.";
+                    } else {
+                        // Calculer le BMR de base
+                        $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+                        error_log("=== Début du calcul des calories pour l'activation du programme ===");
+                        error_log("Poids actuel : " . $current_weight . " kg");
+                        error_log("BMR calculé : " . $bmr);
+                        
+                        // Calculer le TDEE (calories de base)
+                        $tdee = calculateTDEE($bmr, $profile['activity_level']);
+                        error_log("TDEE calculé : " . $tdee);
+                        error_log("Niveau d'activité : " . $profile['activity_level']);
+                        
+                        // Ajuster les calories selon le programme
+                        error_log("Programme sélectionné : " . $program['name']);
+                        error_log("Ajustement calorique du programme : " . $program['calorie_adjustment'] . "%");
+                        $program_adjustment = round($tdee * (floatval($program['calorie_adjustment']) / 100));
+                        error_log("Ajustement calculé : " . $program_adjustment);
+                        $adjusted_calories = round($tdee + $program_adjustment);
+                        error_log("Calories finales : " . $adjusted_calories);
+                        error_log("=== Fin du calcul des calories pour l'activation du programme ===");
+                        
+                        // Mettre à jour les objectifs de l'utilisateur
+                        $sql = "UPDATE user_profiles SET 
+                                daily_calories = ?,
+                                protein_ratio = ?,
+                                carbs_ratio = ?,
+                                fat_ratio = ?,
+                                updated_at = NOW()
+                                WHERE user_id = ?";
+                        update($sql, [
+                            $adjusted_calories,
+                            $program['protein_ratio'],
+                            $program['carbs_ratio'],
+                            $program['fat_ratio'],
+                            $user_id
+                        ]);
+                        
+                        $success_message = "Le programme a été activé avec succès ! Vos objectifs ont été ajustés.";
+                    }
                 }
             } else {
                 $errors[] = "Une erreur s'est produite lors de l'activation du programme.";
@@ -116,23 +124,37 @@ if (isset($_GET['action']) && $_GET['action'] === 'deactivate' && isset($_GET['i
                 $profile = fetchOne($sql, [$user_id]);
                 
                 if ($profile) {
-                    // Calculer le BMR de base
-                    $bmr = calculateBMR($profile['weight'], $profile['height'], $profile['birth_date'], $profile['gender']);
+                    // Vérifier et mettre à jour le poids dans le profil
+                    $current_weight = ensureProfileWeight($user_id);
                     
-                    // Calculer le TDEE (calories de base)
-                    $tdee = calculateTDEE($bmr, $profile['activity_level']);
-                    
-                    // Réinitialiser les objectifs aux valeurs par défaut
-                    $sql = "UPDATE user_profiles SET 
-                            daily_calories = ?,
-                            protein_ratio = 0.3,
-                            carbs_ratio = 0.4,
-                            fat_ratio = 0.3,
-                            updated_at = NOW()
-                            WHERE user_id = ?";
-                    update($sql, [$tdee, $user_id]);
-                    
-                    $success_message = "Le programme a été désactivé avec succès ! Vos objectifs ont été réinitialisés.";
+                    if ($current_weight === null) {
+                        $errors[] = "Veuillez d'abord enregistrer votre poids avant de désactiver le programme.";
+                    } else {
+                        error_log("=== Début de la sortie du programme ===");
+                        error_log("Poids actuel : " . $current_weight);
+                        
+                        // Calculer le BMR de base
+                        $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+                        error_log("BMR calculé : " . $bmr);
+                        
+                        // Calculer le TDEE (calories de base)
+                        $tdee = calculateTDEE($bmr, $profile['activity_level']);
+                        error_log("TDEE calculé : " . $tdee);
+                        
+                        // Mettre à jour les objectifs de l'utilisateur pour le maintien
+                        $sql = "UPDATE user_profiles SET 
+                                daily_calories = ?,
+                                protein_ratio = 0.3,
+                                carbs_ratio = 0.4,
+                                fat_ratio = 0.3,
+                                updated_at = NOW()
+                                WHERE user_id = ?";
+                        update($sql, [$tdee, $user_id]);
+                        error_log("Calories mises à jour pour le maintien : " . $tdee);
+                        error_log("=== Fin de la sortie du programme ===");
+                        
+                        $success_message = "Le programme a été désactivé avec succès ! Vos objectifs ont été réinitialisés.";
+                    }
                 }
             } else {
                 $errors[] = "Une erreur s'est produite lors de la désactivation du programme.";

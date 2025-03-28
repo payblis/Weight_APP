@@ -96,15 +96,20 @@ function getBMICategory($bmi) {
 }
 
 /**
- * Calcule le métabolisme de base (BMR) avec la formule de Mifflin-St Jeor
+ * Calcule le métabolisme de base (BMR) selon la formule de Mifflin-St Jeor
  * 
  * @param float $weight Poids en kg
  * @param float $height Taille en cm
- * @param int $age Âge
+ * @param string $birth_date Date de naissance au format Y-m-d
  * @param string $gender Genre ('homme' ou 'femme')
  * @return float BMR en calories
  */
-function calculateBMR($weight, $height, $age, $gender) {
+function calculateBMR($weight, $height, $birth_date, $gender) {
+    // Calculer l'âge à partir de la date de naissance
+    $birth = new DateTime($birth_date);
+    $today = new DateTime();
+    $age = $birth->diff($today)->y;
+    
     if ($gender === 'homme') {
         return 10 * $weight + 6.25 * $height - 5 * $age + 5;
     } else {
@@ -462,7 +467,7 @@ function generateExerciseRecommendations($goal_type) {
     } else { // maintien
         $recommendations['general'] = "Pour maintenir votre poids et votre forme physique, adoptez une approche équilibrée combinant différents types d'exercices.";
         $recommendations['recommended_exercises'] = [
-            'Cardio: 150 minutes par semaine d\'intensité modérée',
+            'Cardio: 150 minutes par semaine d'intensité modérée',
             'Renforcement: 2-3 séances par semaine',
             'Flexibilité et équilibre: yoga, pilates, étirements'
         ];
@@ -521,4 +526,45 @@ function execute($sql, $params = []) {
         error_log("Erreur SQL: " . $e->getMessage());
         return false;
     }
+}
+
+/**
+ * Vérifie et met à jour le poids dans user_profiles si nécessaire
+ * @param int $user_id L'ID de l'utilisateur
+ * @return float|null Le poids actuel (stocké ou récupéré)
+ */
+function ensureProfileWeight($user_id) {
+    error_log("=== Début de la vérification du poids dans user_profiles ===");
+    
+    // Récupérer le profil de l'utilisateur
+    $sql = "SELECT weight FROM user_profiles WHERE user_id = ?";
+    $profile = fetchOne($sql, [$user_id]);
+    
+    if (!$profile) {
+        error_log("Profil utilisateur non trouvé");
+        return null;
+    }
+    
+    // Si le poids n'est pas défini dans le profil
+    if ($profile['weight'] === null) {
+        error_log("Poids non défini dans user_profiles, récupération depuis weight_logs");
+        
+        // Récupérer le dernier poids enregistré
+        $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC, created_at DESC LIMIT 1";
+        $latest_weight = fetchOne($sql, [$user_id]);
+        
+        if ($latest_weight) {
+            // Mettre à jour le poids dans le profil
+            $sql = "UPDATE user_profiles SET weight = ? WHERE user_id = ?";
+            update($sql, [$latest_weight['weight'], $user_id]);
+            error_log("Poids mis à jour dans user_profiles : " . $latest_weight['weight']);
+            return $latest_weight['weight'];
+        } else {
+            error_log("Aucun poids trouvé dans weight_logs");
+            return null;
+        }
+    }
+    
+    error_log("Poids déjà défini dans user_profiles : " . $profile['weight']);
+    return $profile['weight'];
 }

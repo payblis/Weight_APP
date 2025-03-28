@@ -61,76 +61,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $final_calories = $tdee;
                 
-                // Calculer l'ajustement calorique en fonction du programme et de l'objectif
-                if ($active_program && $current_goal) {
-                    // Calculer la différence de poids à perdre/gagner
-                    $weight_difference = $current_goal['target_weight'] - $latest_weight['weight'];
+                // Calculer les calories nécessaires pour l'objectif
+                if ($current_goal) {
+                    error_log("=== Début du calcul des calories pour l'objectif ===");
+                    error_log("Poids actuel : " . $profile['weight']);
+                    error_log("Poids cible : " . $current_goal['target_weight']);
                     
-                    // Calculer le nombre de jours jusqu'à la date cible
-                    $target_date = new DateTime($current_goal['target_date']);
-                    $today = new DateTime();
-                    $days_until_target = $today->diff($target_date)->days;
+                    // Calculer la différence de poids
+                    $weight_diff = $current_goal['target_weight'] - $profile['weight'];
+                    error_log("Différence de poids : " . $weight_diff . " kg");
                     
-                    if ($days_until_target > 0) {
-                        // Calculer le déficit/surplus calorique quotidien nécessaire
-                        // 1 kg de graisse = 7700 calories
-                        $total_calories_needed = $weight_difference * 7700;
-                        $daily_calories_adjustment = $total_calories_needed / $days_until_target;
+                    // Calculer le nombre de jours jusqu'à l'objectif
+                    $days_to_goal = (strtotime($current_goal['target_date']) - time()) / (60 * 60 * 24);
+                    error_log("Jours jusqu'à l'objectif : " . $days_to_goal);
+                    
+                    // Calculer les calories totales nécessaires (1 kg = 7700 calories)
+                    $total_calories_needed = $weight_diff * 7700;
+                    error_log("Calories totales nécessaires : " . $total_calories_needed);
+                    
+                    // Calculer l'ajustement quotidien nécessaire
+                    $daily_adjustment = $total_calories_needed / $days_to_goal;
+                    error_log("Ajustement quotidien pour l'objectif : " . $daily_adjustment);
+                    
+                    // Vérifier si un programme est actif
+                    $sql = "SELECT p.*, up.status 
+                            FROM user_programs up 
+                            JOIN programs p ON up.program_id = p.id 
+                            WHERE up.user_id = ? AND up.status = 'actif'";
+                    $active_program = fetchOne($sql, [$user_id]);
+                    
+                    if ($active_program) {
+                        error_log("Programme actif : " . $active_program['name']);
+                        error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
                         
-                        error_log("=== Début du calcul des calories pour l'objectif ===");
-                        error_log("Différence de poids : " . $weight_difference . " kg");
-                        error_log("Jours jusqu'à l'objectif : " . $days_until_target);
-                        error_log("Calories totales nécessaires : " . $total_calories_needed);
-                        error_log("Ajustement quotidien pour l'objectif : " . $daily_calories_adjustment);
+                        // Calculer l'ajustement du programme
+                        $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                        error_log("Ajustement du programme calculé : " . $program_adjustment);
                         
-                        // Appliquer l'ajustement du programme
-                        if ($active_program) {
-                            error_log("Programme actif : " . $active_program['name']);
-                            error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
-                            $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
-                            error_log("Ajustement du programme calculé : " . $program_adjustment);
-                        } else {
-                            $program_adjustment = 0;
-                            error_log("Aucun programme actif");
-                        }
-                        
-                        // Combiner les ajustements
-                        $final_calories = $tdee + $program_adjustment + $daily_calories_adjustment;
-                        error_log("TDEE : " . $tdee);
-                        error_log("Calories finales : " . $final_calories);
-                        error_log("=== Fin du calcul des calories pour l'objectif ===");
-                    } else {
-                        // Si la date cible est dépassée, utiliser uniquement l'ajustement du programme
-                        error_log("=== Début du calcul des calories (date cible dépassée) ===");
-                        if ($active_program) {
-                            error_log("Programme actif : " . $active_program['name']);
-                            error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
-                            $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
-                            error_log("Ajustement du programme calculé : " . $program_adjustment);
-                        } else {
-                            $program_adjustment = 0;
-                            error_log("Aucun programme actif");
-                        }
-                        $final_calories = $tdee + $program_adjustment;
-                        error_log("TDEE : " . $tdee);
-                        error_log("Calories finales : " . $final_calories);
-                        error_log("=== Fin du calcul des calories ===");
+                        // Ajouter l'ajustement du programme aux calories de base
+                        $tdee += $program_adjustment;
+                        error_log("TDEE après ajustement programme : " . $tdee);
                     }
-                }
-                // Si seulement un programme est actif
-                elseif ($active_program) {
-                    $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
-                    $final_calories = $tdee + $program_adjustment;
-                }
-                // Si seulement un objectif est actif
-                elseif ($current_goal) {
-                    if ($current_goal['target_weight'] < $latest_weight['weight']) {
-                        // Objectif de perte de poids (déficit de 500 calories)
-                        $final_calories = $tdee - 500;
-                    } elseif ($current_goal['target_weight'] > $latest_weight['weight']) {
-                        // Objectif de prise de poids (surplus de 500 calories)
-                        $final_calories = $tdee + 500;
-                    }
+                    
+                    // Ajouter l'ajustement quotidien pour l'objectif
+                    $daily_calories = $tdee + $daily_adjustment;
+                    error_log("Calories finales : " . $daily_calories);
+                    error_log("=== Fin du calcul des calories pour l'objectif ===");
                 }
                 
                 // Mettre à jour les calories dans le profil

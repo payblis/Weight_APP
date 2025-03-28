@@ -62,6 +62,7 @@ CREATE TABLE user_profiles (
     gender ENUM('homme', 'femme', 'autre') NOT NULL,
     birth_date DATE NOT NULL,
     height INT NOT NULL,
+    weight DECIMAL(5,2) NULL,
     activity_level ENUM('sedentaire', 'leger', 'modere', 'actif', 'tres_actif') NOT NULL DEFAULT 'modere',
     preferred_bmr_formula VARCHAR(50) DEFAULT 'mifflin_st_jeor',
     nutrition_program_id INT NULL,
@@ -426,4 +427,37 @@ CREATE INDEX idx_predefined_meals_name ON predefined_meals(name);
 CREATE INDEX idx_predefined_meals_is_public ON predefined_meals(is_public);
 CREATE INDEX idx_exercises_name ON exercises(name);
 CREATE INDEX idx_exercises_category ON exercises(category);
-CREATE INDEX idx_exercises_is_public ON exercises(is_public); 
+CREATE INDEX idx_exercises_is_public ON exercises(is_public);
+
+-- Créer un trigger pour mettre à jour le poids dans user_profiles lors de l'insertion dans weight_logs
+DELIMITER //
+CREATE TRIGGER after_weight_log_insert
+AFTER INSERT ON weight_logs
+FOR EACH ROW
+BEGIN
+    -- Vérifier si c'est le premier poids enregistré pour cet utilisateur
+    IF NOT EXISTS (
+        SELECT 1 FROM weight_logs 
+        WHERE user_id = NEW.user_id 
+        AND log_date < NEW.log_date
+    ) THEN
+        -- Mettre à jour le poids dans user_profiles
+        UPDATE user_profiles 
+        SET weight = NEW.weight 
+        WHERE user_id = NEW.user_id;
+    END IF;
+END //
+DELIMITER ;
+
+-- Mettre à jour les poids existants dans user_profiles
+UPDATE user_profiles up
+JOIN (
+    SELECT user_id, weight
+    FROM weight_logs wl1
+    WHERE NOT EXISTS (
+        SELECT 1 FROM weight_logs wl2
+        WHERE wl2.user_id = wl1.user_id
+        AND wl2.log_date < wl1.log_date
+    )
+) first_weights ON up.user_id = first_weights.user_id
+SET up.weight = first_weights.weight; 
