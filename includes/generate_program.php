@@ -43,7 +43,16 @@ Le programme doit inclure :
 - Un ajustement calorique en pourcentage (-20 à +20)
 - Une répartition des macronutriments (protéines, glucides, lipides) en pourcentage
 
-Réponds uniquement avec un objet JSON contenant ces informations.";
+IMPORTANT: Réponds UNIQUEMENT avec un objet JSON valide contenant ces informations, sans texte supplémentaire. Le format doit être exactement comme ceci:
+{
+    \"name\": \"Nom du programme\",
+    \"description\": \"Description détaillée\",
+    \"type\": \"complet\",
+    \"calorie_adjustment\": -10,
+    \"protein_ratio\": 0.3,
+    \"carbs_ratio\": 0.4,
+    \"fat_ratio\": 0.3
+}";
 
 $user_prompt = "Crée un programme basé sur cette description : " . $prompt;
 
@@ -60,7 +69,8 @@ $request_data = [
         ['role' => 'system', 'content' => $system_prompt],
         ['role' => 'user', 'content' => $user_prompt]
     ],
-    'temperature' => 0.7
+    'temperature' => 0.7,
+    'max_tokens' => 500
 ];
 
 // Log de la requête complète
@@ -75,6 +85,7 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json',
     'Authorization: Bearer ' . $api_key
 ]);
+curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Timeout après 30 secondes
 
 // Log des options cURL
 error_log("Options cURL configurées:");
@@ -114,6 +125,14 @@ if ($http_code !== 200) {
     exit;
 }
 
+if (empty($response)) {
+    error_log("=== ERREUR RÉPONSE VIDE ===");
+    error_log("La réponse de l'API est vide");
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'La réponse de l\'API est vide']);
+    exit;
+}
+
 $result = json_decode($response, true);
 
 if (json_last_error() !== JSON_ERROR_NONE) {
@@ -139,6 +158,13 @@ $content = $result['choices'][0]['message']['content'];
 error_log("=== CONTENU DE LA RÉPONSE ===");
 error_log("Contenu brut: " . $content);
 
+// Nettoyer le contenu pour s'assurer qu'il ne contient que du JSON valide
+$content = trim($content);
+if (strpos($content, '```json') !== false) {
+    $content = preg_replace('/```json\s*|\s*```/', '', $content);
+}
+$content = trim($content);
+
 // Parser la réponse JSON de ChatGPT
 $program_data = json_decode($content, true);
 
@@ -161,19 +187,37 @@ if (!$program_data) {
     exit;
 }
 
+// Vérifier que tous les champs requis sont présents
+$required_fields = ['name', 'description', 'type', 'calorie_adjustment', 'protein_ratio', 'carbs_ratio', 'fat_ratio'];
+$missing_fields = [];
+foreach ($required_fields as $field) {
+    if (!isset($program_data[$field])) {
+        $missing_fields[] = $field;
+    }
+}
+
+if (!empty($missing_fields)) {
+    error_log("=== ERREUR CHAMPS MANQUANTS ===");
+    error_log("Champs manquants: " . implode(', ', $missing_fields));
+    error_log("Données reçues: " . print_r($program_data, true));
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Champs manquants dans la réponse: ' . implode(', ', $missing_fields)]);
+    exit;
+}
+
 // Log des données du programme
 error_log("=== DONNÉES DU PROGRAMME ===");
 error_log("Données brutes: " . print_r($program_data, true));
 
 // Valider et formater les données
 $program = [
-    'name' => $program_data['name'] ?? '',
-    'description' => $program_data['description'] ?? '',
-    'type' => $program_data['type'] ?? 'complet',
-    'calorie_adjustment' => floatval($program_data['calorie_adjustment'] ?? 0),
-    'protein_ratio' => floatval($program_data['protein_ratio'] ?? 0.3),
-    'carbs_ratio' => floatval($program_data['carbs_ratio'] ?? 0.4),
-    'fat_ratio' => floatval($program_data['fat_ratio'] ?? 0.3)
+    'name' => trim($program_data['name']),
+    'description' => trim($program_data['description']),
+    'type' => trim($program_data['type']),
+    'calorie_adjustment' => floatval($program_data['calorie_adjustment']),
+    'protein_ratio' => floatval($program_data['protein_ratio']),
+    'carbs_ratio' => floatval($program_data['carbs_ratio']),
+    'fat_ratio' => floatval($program_data['fat_ratio'])
 ];
 
 // Log du programme formaté
