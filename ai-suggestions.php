@@ -647,8 +647,23 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                         method: 'POST',
                         body: formData
                     })
-                    .then(response => response.text())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erreur réseau');
+                        }
+                        return response.text();
+                    })
                     .then(html => {
+                        // Créer un DOM parser pour analyser la réponse
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        
+                        // Vérifier s'il y a des messages d'erreur
+                        const errorAlert = doc.querySelector('.alert-danger');
+                        if (errorAlert) {
+                            throw new Error(errorAlert.textContent);
+                        }
+                        
                         // Recharger la page pour afficher la nouvelle suggestion
                         window.location.reload();
                     })
