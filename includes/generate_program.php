@@ -64,17 +64,37 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer ' . $api_key
 ]);
 
+// Log de la requête
+error_log("Requête envoyée à l'API ChatGPT: " . json_encode([
+    'model' => 'gpt-3.5-turbo',
+    'messages' => [
+        ['role' => 'system', 'content' => $system_prompt],
+        ['role' => 'user', 'content' => $user_prompt]
+    ],
+    'temperature' => 0.7
+]));
+
 $response = curl_exec($ch);
 $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curl_error = curl_error($ch);
 curl_close($ch);
 
-// Log de la réponse brute
+// Log de la réponse brute et des erreurs cURL
+error_log("Code HTTP de la réponse: " . $http_code);
+error_log("Erreur cURL (si présente): " . $curl_error);
 error_log("Réponse brute de l'API ChatGPT: " . $response);
+
+if ($curl_error) {
+    error_log("Erreur cURL: " . $curl_error);
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Erreur de connexion à l\'API ChatGPT: ' . $curl_error]);
+    exit;
+}
 
 if ($http_code !== 200) {
     error_log("Erreur HTTP lors de l'appel à l'API ChatGPT: " . $http_code);
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Erreur lors de l\'appel à l\'API ChatGPT']);
+    echo json_encode(['success' => false, 'error' => 'Erreur lors de l\'appel à l\'API ChatGPT (HTTP ' . $http_code . ')']);
     exit;
 }
 
@@ -82,6 +102,7 @@ $result = json_decode($response, true);
 
 if (json_last_error() !== JSON_ERROR_NONE) {
     error_log("Erreur de décodage JSON: " . json_last_error_msg());
+    error_log("Réponse qui a causé l'erreur: " . $response);
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Réponse invalide de l\'API ChatGPT: ' . json_last_error_msg()]);
     exit;
@@ -95,13 +116,15 @@ if (!isset($result['choices'][0]['message']['content'])) {
 }
 
 // Log du contenu de la réponse
-error_log("Contenu de la réponse ChatGPT: " . $result['choices'][0]['message']['content']);
+$content = $result['choices'][0]['message']['content'];
+error_log("Contenu de la réponse ChatGPT: " . $content);
 
 // Parser la réponse JSON de ChatGPT
-$program_data = json_decode($result['choices'][0]['message']['content'], true);
+$program_data = json_decode($content, true);
 
 if (json_last_error() !== JSON_ERROR_NONE) {
     error_log("Erreur de décodage JSON du programme: " . json_last_error_msg());
+    error_log("Contenu qui a causé l'erreur: " . $content);
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Format de programme invalide: ' . json_last_error_msg()]);
     exit;
@@ -109,6 +132,7 @@ if (json_last_error() !== JSON_ERROR_NONE) {
 
 if (!$program_data) {
     error_log("Programme data est null ou vide");
+    error_log("Contenu reçu: " . $content);
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Format de réponse invalide']);
     exit;
@@ -141,6 +165,16 @@ if (abs($total_ratio - 1) > 0.01) {
 }
 
 // Log de la réponse finale
-error_log("Réponse finale: " . json_encode(['success' => true, 'program' => $program]));
+$final_response = ['success' => true, 'program' => $program];
+error_log("Réponse finale: " . json_encode($final_response));
 
-echo json_encode(['success' => true, 'program' => $program]); 
+// S'assurer que la réponse est bien encodée en JSON
+$json_response = json_encode($final_response);
+if ($json_response === false) {
+    error_log("Erreur d'encodage JSON de la réponse finale: " . json_last_error_msg());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Erreur lors de l\'encodage de la réponse']);
+    exit;
+}
+
+echo $json_response; 
