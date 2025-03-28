@@ -150,6 +150,7 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
     $prompt .= "2. Déjeuner (avec calories et macronutriments)\n";
     $prompt .= "3. Dîner (avec calories et macronutriments)\n";
     $prompt .= "4. Collations (2-3 par jour, avec calories et macronutriments)\n\n";
+    
     $prompt .= "Format de réponse souhaité :\n";
     $prompt .= "PETIT-DÉJEUNER\n";
     $prompt .= "- Liste des aliments avec quantités\n";
@@ -397,7 +398,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                                 La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.
                             </div>
                         <?php else: ?>
-                            <form method="POST" action="ai-suggestions.php?type=<?php echo htmlspecialchars($suggestion_type); ?>">
+                            <form method="POST" action="ai-suggestions.php?type=<?php echo htmlspecialchars($suggestion_type); ?>" id="suggestionForm">
                                 <input type="hidden" name="suggestion_type" value="<?php echo htmlspecialchars($suggestion_type); ?>">
                                 
                                 <p>
@@ -411,11 +412,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                                 </p>
                                 
                                 <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary">
+                                    <button type="submit" class="btn btn-primary" id="generateButton">
                                         <i class="fas fa-robot me-1"></i>Générer une suggestion
                                     </button>
                                 </div>
                             </form>
+
+                            <!-- Loader -->
+                            <div id="loader" class="text-center mt-3 d-none">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Chargement...</span>
+                                </div>
+                                <p class="mt-2">Génération de la suggestion en cours...</p>
+                            </div>
                         <?php endif; ?>
                         
                         <div class="mt-3">
@@ -559,5 +568,47 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
 
     <!-- Scripts JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('suggestionForm');
+            const generateButton = document.getElementById('generateButton');
+            const loader = document.getElementById('loader');
+
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Désactiver le bouton et afficher le loader
+                    generateButton.disabled = true;
+                    generateButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Génération en cours...';
+                    loader.classList.remove('d-none');
+                    
+                    // Récupérer les données du formulaire
+                    const formData = new FormData(form);
+                    
+                    // Envoyer la requête
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        // Recharger la page pour afficher la nouvelle suggestion
+                        window.location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert('Une erreur est survenue lors de la génération de la suggestion. Veuillez réessayer.');
+                    })
+                    .finally(() => {
+                        // Réactiver le bouton et cacher le loader
+                        generateButton.disabled = false;
+                        generateButton.innerHTML = '<i class="fas fa-robot me-1"></i>Générer une suggestion';
+                        loader.classList.add('d-none');
+                    });
+                });
+            }
+        });
+    </script>
 </body>
 </html>
