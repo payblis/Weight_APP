@@ -83,15 +83,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm'])) {
     $result = insert($sql, [$user_id, $pending_goal['target_weight'], $pending_goal['target_date'], $pending_goal['notes']]);
     
     if ($result) {
+        // Calculer les ratios de macronutriments
+        $macro_ratios = calculateMacroRatios(
+            $current_weight,
+            $pending_goal['target_weight'],
+            $active_program,
+            $profile['activity_level']
+        );
+        
         // Mettre à jour les objectifs de l'utilisateur
         $sql = "UPDATE user_profiles SET 
                 daily_calories = ?,
-                protein_ratio = 0.3,
-                carbs_ratio = 0.4,
-                fat_ratio = 0.3,
+                protein_ratio = ?,
+                carbs_ratio = ?,
+                fat_ratio = ?,
                 updated_at = NOW()
                 WHERE user_id = ?";
-        update($sql, [$daily_calories, $user_id]);
+        update($sql, [
+            $daily_calories,
+            $macro_ratios['protein'],
+            $macro_ratios['carbs'],
+            $macro_ratios['fat'],
+            $user_id
+        ]);
         
         // Nettoyer la session
         unset($_SESSION['pending_goal']);

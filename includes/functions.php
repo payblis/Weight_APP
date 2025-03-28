@@ -748,3 +748,100 @@ function execute($sql, $params = []) {
         return false;
     }
 }
+
+/**
+ * Calcule les ratios de macronutriments en fonction de l'objectif et de l'activité
+ * @param float $current_weight Poids actuel
+ * @param float $target_weight Poids cible
+ * @param array|null $active_program Programme actif
+ * @param string $activity_level Niveau d'activité
+ * @return array Ratios de macronutriments
+ */
+function calculateMacroRatios($current_weight, $target_weight, $active_program, $activity_level) {
+    error_log("=== Début du calcul des ratios de macronutriments ===");
+    error_log("Poids actuel : " . $current_weight);
+    error_log("Poids cible : " . $target_weight);
+    error_log("Niveau d'activité : " . $activity_level);
+    
+    // Déterminer si c'est une perte ou prise de poids
+    $is_weight_loss = $target_weight < $current_weight;
+    error_log("Type d'objectif : " . ($is_weight_loss ? "Perte de poids" : "Prise de poids"));
+    
+    // Base ratios selon le type d'objectif
+    if ($is_weight_loss) {
+        // Perte de poids : plus de protéines pour préserver la masse musculaire
+        $base_ratios = [
+            'protein' => 0.40,  // 40% protéines
+            'carbs' => 0.30,    // 30% glucides
+            'fat' => 0.30       // 30% lipides
+        ];
+        error_log("Ratios de base pour la perte de poids : " . print_r($base_ratios, true));
+    } else {
+        // Prise de poids : plus de glucides pour l'énergie
+        $base_ratios = [
+            'protein' => 0.30,  // 30% protéines
+            'carbs' => 0.50,    // 50% glucides
+            'fat' => 0.20       // 20% lipides
+        ];
+        error_log("Ratios de base pour la prise de poids : " . print_r($base_ratios, true));
+    }
+    
+    // Ajuster selon le programme actif
+    if ($active_program) {
+        error_log("Programme actif trouvé : " . $active_program['type']);
+        switch ($active_program['type']) {
+            case 'musculation':
+                // Augmenter les protéines pour la musculation
+                $base_ratios['protein'] += 0.05;
+                $base_ratios['carbs'] -= 0.05;
+                error_log("Ajustement pour la musculation : " . print_r($base_ratios, true));
+                break;
+            case 'endurance':
+                // Augmenter les glucides pour l'endurance
+                $base_ratios['carbs'] += 0.05;
+                $base_ratios['fat'] -= 0.05;
+                error_log("Ajustement pour l'endurance : " . print_r($base_ratios, true));
+                break;
+            case 'equilibre':
+                error_log("Programme équilibré, pas d'ajustement nécessaire");
+                break;
+        }
+    } else {
+        error_log("Pas de programme actif, ajustement selon le niveau d'activité");
+        // Ajuster selon le niveau d'activité
+        switch ($activity_level) {
+            case 'sedentaire':
+                // Réduire les glucides pour les sédentaires
+                $base_ratios['carbs'] -= 0.05;
+                $base_ratios['protein'] += 0.05;
+                error_log("Ajustement pour niveau sédentaire : " . print_r($base_ratios, true));
+                break;
+            case 'modere':
+                error_log("Niveau modéré, pas d'ajustement nécessaire");
+                break;
+            case 'actif':
+                // Augmenter légèrement les glucides
+                $base_ratios['carbs'] += 0.05;
+                $base_ratios['fat'] -= 0.05;
+                error_log("Ajustement pour niveau actif : " . print_r($base_ratios, true));
+                break;
+            case 'tres_actif':
+                // Augmenter davantage les glucides
+                $base_ratios['carbs'] += 0.10;
+                $base_ratios['fat'] -= 0.10;
+                error_log("Ajustement pour niveau très actif : " . print_r($base_ratios, true));
+                break;
+        }
+    }
+    
+    // Normaliser les ratios pour qu'ils totalisent 1
+    $total = array_sum($base_ratios);
+    $base_ratios['protein'] /= $total;
+    $base_ratios['carbs'] /= $total;
+    $base_ratios['fat'] /= $total;
+    
+    error_log("Ratios finaux normalisés : " . print_r($base_ratios, true));
+    error_log("=== Fin du calcul des ratios de macronutriments ===");
+    
+    return $base_ratios;
+}
