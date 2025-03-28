@@ -1112,18 +1112,43 @@ try {
 
                                             <div class="mb-3">
                                                 <label for="calorie_adjustment" class="form-label">Ajustement calorique (%)</label>
-                                <div class="alert alert-info">
-                                    <h6 class="alert-heading">Comment obtenir une clé API ChatGPT</h6>
-                                    <ol class="mb-0">
-                                        <li>Créez un compte sur <a href="https://platform.openai.com/" target="_blank">OpenAI Platform</a></li>
-                                        <li>Accédez à la section "API Keys" dans votre compte</li>
-                                        <li>Cliquez sur "Create new secret key"</li>
-                                        <li>Copiez la clé générée et collez-la ci-dessus</li>
-                                    </ol>
+                                                <input type="number" class="form-control" id="calorie_adjustment" name="calorie_adjustment" 
+                                                       value="<?php echo htmlspecialchars($program['calorie_adjustment'] ?? 0); ?>" required>
+                                                <div class="form-text">Pourcentage d'ajustement des calories par rapport aux besoins de base (ex: -20 pour une réduction de 20%)</div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Répartition des macronutriments</label>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <label for="protein_ratio" class="form-label">Protéines (%)</label>
+                                                        <input type="number" class="form-control" id="protein_ratio" name="protein_ratio" 
+                                                               value="<?php echo htmlspecialchars(($program['protein_ratio'] ?? 0.3) * 100); ?>" required>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label for="carbs_ratio" class="form-label">Glucides (%)</label>
+                                                        <input type="number" class="form-control" id="carbs_ratio" name="carbs_ratio" 
+                                                               value="<?php echo htmlspecialchars(($program['carbs_ratio'] ?? 0.4) * 100); ?>" required>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label for="fat_ratio" class="form-label">Lipides (%)</label>
+                                                        <input type="number" class="form-control" id="fat_ratio" name="fat_ratio" 
+                                                               value="<?php echo htmlspecialchars(($program['fat_ratio'] ?? 0.3) * 100); ?>" required>
+                                                    </div>
+                                                </div>
+                                                <div id="macros-warning" class="text-danger mt-2"></div>
+                                            </div>
+
+                                            <div class="d-flex justify-content-between">
+                                                <a href="admin.php?section=programs" class="btn btn-secondary">Annuler</a>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <?php echo $action === 'edit' ? 'Mettre à jour' : 'Créer'; ?> le programme
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
-                                
-                                <button type="submit" class="btn btn-primary">Enregistrer la clé API</button>
-                            </form>
+                            </div>
                         </div>
                     </div>
                     
