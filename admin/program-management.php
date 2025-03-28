@@ -7,11 +7,15 @@ error_log("__DIR__ dans program-management.php: " . __DIR__);
 error_log("Chemin d'inclusion actuel: " . getcwd());
 error_log("Chemin d'inclusion PHP: " . get_include_path());
 
-// Inclure les fichiers nécessaires
-$db_path = '../config/database.php';
-$functions_path = '../includes/functions.php';
-$admin_functions_path = '../includes/admin_functions.php';
+// Définir le chemin de base du site
+$base_path = dirname(__DIR__);
 
+// Inclure les fichiers nécessaires
+$db_path = $base_path . '/config/database.php';
+$functions_path = $base_path . '/includes/functions.php';
+$admin_functions_path = $base_path . '/includes/admin_functions.php';
+
+error_log("Chemin de base: " . $base_path);
 error_log("Tentative d'inclusion de database.php: " . $db_path);
 error_log("Tentative d'inclusion de functions.php: " . $functions_path);
 error_log("Tentative d'inclusion de admin_functions.php: " . $admin_functions_path);
