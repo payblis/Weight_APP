@@ -80,6 +80,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if ($current_weight === null) {
                 $errors[] = "Veuillez d'abord enregistrer votre poids avant de définir un objectif.";
             } else {
+                // Récupérer le profil utilisateur
+                $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
+                $profile = fetchOne($sql, [$user_id]);
+                
+                if (!$profile) {
+                    $errors[] = "Profil utilisateur non trouvé.";
+                } else {
+                    // Calculer le BMR de base
+                    $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+                    error_log("BMR calculé : " . $bmr);
+                    
+                    // Calculer le TDEE (calories de base)
+                    $tdee = calculateTDEE($bmr, $profile['activity_level']);
+                    error_log("TDEE calculé : " . $tdee);
+                    
+                    // Calculer les calories nécessaires pour l'objectif
                 // Calculer le BMR de base
                 $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
                 error_log("BMR calculé : " . $bmr);

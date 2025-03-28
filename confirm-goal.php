@@ -25,37 +25,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Calculer les calories finales
         $daily_calories = $pending_goal['tdee'] + $pending_goal['daily_adjustment'];
         
-        // Mettre à jour les objectifs de l'utilisateur
-        $sql = "UPDATE user_profiles SET 
-                daily_calories = ?,
-                protein_ratio = 0.3,
-                carbs_ratio = 0.4,
-                fat_ratio = 0.3,
-                updated_at = NOW()
-                WHERE user_id = ?";
-        update($sql, [$daily_calories, $user_id]);
-        
-        // Créer l'objectif
-        $sql = "INSERT INTO goals (user_id, target_weight, target_date, notes, status, created_at) 
-                VALUES (?, ?, ?, ?, 'en_cours', NOW())";
-        insert($sql, [
-            $user_id,
-            $pending_goal['target_weight'],
-            $pending_goal['target_date'],
-            $pending_goal['notes']
-        ]);
-        
-        // Nettoyer la session
-        unset($_SESSION['pending_goal']);
-        
-        // Rediriger vers la page des objectifs
-        redirect('goals.php?success=1');
+        // Vérifier que l'apport calorique reste positif
+        if ($daily_calories <= 0) {
+            $error = "L'apport calorique quotidien doit rester positif pour maintenir une bonne santé. Veuillez ajuster votre objectif.";
+        } else {
+            // Mettre à jour les objectifs de l'utilisateur
+            $sql = "UPDATE user_profiles SET 
+                    daily_calories = ?,
+                    protein_ratio = 0.3,
+                    carbs_ratio = 0.4,
+                    fat_ratio = 0.3,
+                    updated_at = NOW()
+                    WHERE user_id = ?";
+            update($sql, [$daily_calories, $user_id]);
+            
+            // Créer l'objectif
+            $sql = "INSERT INTO goals (user_id, target_weight, target_date, notes, status, created_at) 
+                    VALUES (?, ?, ?, ?, 'en_cours', NOW())";
+            insert($sql, [
+                $user_id,
+                $pending_goal['target_weight'],
+                $pending_goal['target_date']->format('Y-m-d'),
+                $pending_goal['notes']
+            ]);
+            
+            // Nettoyer la session
+            unset($_SESSION['pending_goal']);
+            
+            // Rediriger vers la page des objectifs
+            redirect('goals.php?success=1');
+        }
     } else {
         // Si l'utilisateur annule, retourner à la page des objectifs
         unset($_SESSION['pending_goal']);
         redirect('goals.php');
     }
 }
+
+// Récupérer les informations de l'utilisateur pour la navigation
+$sql = "SELECT * FROM users WHERE id = ?";
+$user = fetchOne($sql, [$user_id]);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -78,6 +87,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <h5 class="mb-0">Confirmation de l'objectif</h5>
                     </div>
                     <div class="card-body">
+                        <?php if (isset($error)): ?>
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <?php echo $error; ?>
+                            </div>
+                        <?php endif; ?>
+                        
                         <div class="alert alert-warning">
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             <strong>Attention !</strong> L'ajustement calorique nécessaire pour atteindre votre objectif est important :
@@ -88,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <h6>Détails de l'objectif :</h6>
                             <ul class="list-unstyled">
                                 <li><strong>Poids cible :</strong> <?php echo number_format($pending_goal['target_weight'], 1); ?> kg</li>
-                                <li><strong>Date cible :</strong> <?php echo date('d/m/Y', strtotime($pending_goal['target_date'])); ?></li>
+                                <li><strong>Date cible :</strong> <?php echo $pending_goal['target_date']->format('d/m/Y'); ?></li>
                                 <li><strong>Calories de base (TDEE) :</strong> <?php echo number_format($pending_goal['tdee'], 0); ?> calories</li>
                                 <li><strong>Calories finales :</strong> <?php echo number_format($pending_goal['tdee'] + $pending_goal['daily_adjustment'], 0); ?> calories</li>
                             </ul>
