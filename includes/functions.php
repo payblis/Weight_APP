@@ -654,7 +654,11 @@ function recalculateCalories($user_id) {
     error_log("TDEE initial calculé : " . $tdee);
     
     // Récupérer le programme actif
-    $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'actif' ORDER BY created_at DESC LIMIT 1";
+    $sql = "SELECT up.*, p.* 
+            FROM user_programs up 
+            JOIN programs p ON up.program_id = p.id 
+            WHERE up.user_id = ? AND up.status = 'actif' 
+            ORDER BY up.created_at DESC LIMIT 1";
     error_log("Requête pour récupérer le programme actif : " . $sql);
     $active_program = fetchOne($sql, [$user_id]);
     error_log("Programme actif trouvé : " . ($active_program ? "Oui" : "Non"));
@@ -675,7 +679,11 @@ function recalculateCalories($user_id) {
     } else {
         error_log("Aucun programme actif trouvé, vérification de la requête SQL");
         // Vérifier si le programme existe avec un statut différent
-        $sql = "SELECT * FROM user_programs WHERE user_id = ? ORDER BY created_at DESC LIMIT 1";
+        $sql = "SELECT up.*, p.* 
+                FROM user_programs up 
+                JOIN programs p ON up.program_id = p.id 
+                WHERE up.user_id = ? 
+                ORDER BY up.created_at DESC LIMIT 1";
         $last_program = fetchOne($sql, [$user_id]);
         if ($last_program) {
             error_log("Dernier programme trouvé : " . print_r($last_program, true));
