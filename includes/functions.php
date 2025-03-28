@@ -332,7 +332,7 @@ function getMotivationalMessage($percentage) {
  * @param float $base_calories Calories de base brûlées par heure
  * @param int $duration Durée en minutes
  * @param float $weight Poids en kg
- * @param string $intensity Intensité ('faible', 'modérée', 'élevée')
+ * @param string $intensity Intensité ('faible', 'moderee', 'elevee')
  * @return int Calories brûlées
  */
 function calculateCaloriesBurned($base_calories, $duration, $weight, $intensity) {
@@ -340,7 +340,7 @@ function calculateCaloriesBurned($base_calories, $duration, $weight, $intensity)
     $intensity_factor = 1;
     if ($intensity === 'faible') {
         $intensity_factor = 0.8;
-    } elseif ($intensity === 'élevée') {
+    } elseif ($intensity === 'elevee') {
         $intensity_factor = 1.2;
     }
     
