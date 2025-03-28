@@ -3,8 +3,18 @@
 -- Désactiver temporairement les vérifications de clés étrangères
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- Table des paramètres
+CREATE TABLE IF NOT EXISTS settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    setting_name VARCHAR(50) NOT NULL UNIQUE,
+    setting_value TEXT,
+    is_public BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Table des rôles
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
@@ -13,7 +23,7 @@ CREATE TABLE roles (
 );
 
 -- Table des utilisateurs
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     first_name VARCHAR(50) NULL,
@@ -39,7 +49,7 @@ CREATE TABLE users (
 );
 
 -- Table des programmes nutritionnels
-CREATE TABLE nutrition_programs (
+CREATE TABLE IF NOT EXISTS nutrition_programs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
@@ -56,7 +66,7 @@ CREATE TABLE nutrition_programs (
 );
 
 -- Table des profils utilisateurs
-CREATE TABLE user_profiles (
+CREATE TABLE IF NOT EXISTS user_profiles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     gender ENUM('homme', 'femme', 'autre') NOT NULL,
@@ -356,16 +366,6 @@ CREATE TABLE ai_suggestions (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Table des paramètres de l'application
-CREATE TABLE app_settings (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    setting_key VARCHAR(50) NOT NULL UNIQUE,
-    setting_value TEXT,
-    notes TEXT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
 -- Table des programmes
 CREATE TABLE programs (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -383,11 +383,11 @@ INSERT INTO roles (name, description) VALUES
 ('admin', 'Administrateur avec accès complet'),
 ('user', 'Utilisateur standard');
 
-INSERT INTO app_settings (setting_key, setting_value) VALUES 
-('chatgpt_api_key', ''),
-('site_name', 'Weight Tracker'),
-('site_description', 'Application de suivi de poids et de nutrition'),
-('maintenance_mode', '0');
+INSERT INTO settings (setting_name, setting_value, is_public) VALUES 
+('chatgpt_api_key', '', 0),
+('site_name', 'Weight Tracker', 1),
+('site_description', 'Application de suivi de poids et de nutrition', 1),
+('maintenance_mode', '0', 1);
 
 INSERT INTO nutrition_programs (name, description, calorie_adjustment, protein_ratio, carbs_ratio, fat_ratio) VALUES 
 ('Perte de poids', 'Programme pour perdre du poids de manière saine et durable', -500, 35, 35, 30),
