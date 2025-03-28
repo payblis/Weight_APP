@@ -53,11 +53,12 @@ $sql = "SELECT * FROM weight_logs WHERE user_id = ? AND log_date BETWEEN ? AND ?
 $weight_logs = fetchAll($sql, [$user_id, $start_date, $end_date]);
 
 // Récupérer les entrées alimentaires pour la période
-$sql = "SELECT fl.*, f.name as food_name, f.calories, f.protein, f.carbs, f.fat 
-        FROM food_logs fl 
-        LEFT JOIN foods f ON fl.food_id = f.id 
-        WHERE fl.user_id = ? AND fl.log_date BETWEEN ? AND ? 
-        ORDER BY fl.log_date, fl.meal_type";
+$sql = "SELECT m.*, COUNT(fl.id) as food_count 
+        FROM meals m 
+        LEFT JOIN food_logs fl ON m.id = fl.meal_id 
+        WHERE m.user_id = ? AND m.log_date BETWEEN ? AND ? 
+        GROUP BY m.id 
+        ORDER BY m.log_date";
 $food_logs = fetchAll($sql, [$user_id, $start_date, $end_date]);
 
 // Récupérer les entrées d'exercices pour la période
@@ -119,27 +120,10 @@ foreach ($food_logs as $log) {
         ];
     }
     
-    if (isset($log['calories'])) {
-        $calories = $log['calories'] * ($log['quantity'] / 100);
-        $protein = $log['protein'] * ($log['quantity'] / 100);
-        $carbs = $log['carbs'] * ($log['quantity'] / 100);
-        $fat = $log['fat'] * ($log['quantity'] / 100);
-    } elseif (isset($log['custom_calories'])) {
-        $calories = $log['custom_calories'];
-        $protein = $log['custom_protein'] ?? 0;
-        $carbs = $log['custom_carbs'] ?? 0;
-        $fat = $log['custom_fat'] ?? 0;
-    } else {
-        $calories = 0;
-        $protein = 0;
-        $carbs = 0;
-        $fat = 0;
-    }
-    
-    $daily_calories[$log_date]['calories'] += $calories;
-    $daily_calories[$log_date]['protein'] += $protein;
-    $daily_calories[$log_date]['carbs'] += $carbs;
-    $daily_calories[$log_date]['fat'] += $fat;
+    $daily_calories[$log_date]['calories'] += $log['total_calories'];
+    $daily_calories[$log_date]['protein'] += $log['total_protein'];
+    $daily_calories[$log_date]['carbs'] += $log['total_carbs'];
+    $daily_calories[$log_date]['fat'] += $log['total_fat'];
 }
 
 $food_stats['days_tracked'] = count($daily_calories);
