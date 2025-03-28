@@ -1127,6 +1127,45 @@ try {
                         </div>
                     </div>
                     
+                <?php elseif ($section === 'api_settings'): ?>
+                    <!-- API Settings -->
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Paramètres API</h1>
+                    </div>
+                    
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <h6 class="m-0 font-weight-bold">Configuration de l'API ChatGPT</h6>
+                        </div>
+                        <div class="card-body">
+                            <form action="admin.php?section=api_settings" method="POST">
+                                <input type="hidden" name="action" value="update_api_key">
+                                
+                                <div class="mb-3">
+                                    <label for="api_key" class="form-label">Clé API ChatGPT</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="api_key" name="api_key" value="<?php echo htmlspecialchars($chatgpt_api_key); ?>" required>
+                                        <button type="button" class="btn btn-outline-secondary" id="toggleApiKey">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <h6 class="alert-heading">Comment obtenir une clé API ChatGPT</h6>
+                                    <ol class="mb-0">
+                                        <li>Créez un compte sur <a href="https://platform.openai.com/" target="_blank">OpenAI Platform</a></li>
+                                        <li>Accédez à la section "API Keys" dans votre compte</li>
+                                        <li>Cliquez sur "Create new secret key"</li>
+                                        <li>Copiez la clé générée et collez-la ci-dessus</li>
+                                    </ol>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">Enregistrer la clé API</button>
+                            </form>
+                        </div>
+                    </div>
+                    
                 <?php elseif ($section === 'reports'): ?>
                     <!-- Reports -->
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
