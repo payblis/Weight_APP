@@ -655,13 +655,13 @@ function recalculateCalories($user_id) {
     
     // Récupérer le programme actif
     $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1";
+    error_log("Requête pour récupérer le programme actif : " . $sql);
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$user_id]);
     $active_program = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    // Système de priorité : Programme > Objectif > TDEE
+    error_log("Programme actif trouvé : " . ($active_program ? "Oui" : "Non"));
     if ($active_program) {
-        error_log("Programme actif trouvé, priorité sur l'objectif");
+        error_log("Détails du programme actif : " . print_r($active_program, true));
         // Appliquer l'ajustement calorique du programme sur le TDEE
         $calorie_adjustment = $active_program['calorie_adjustment'] / 100;
         $caloric_goal = $tdee * (1 + $calorie_adjustment);

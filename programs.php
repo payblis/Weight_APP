@@ -137,12 +137,12 @@ if ($action === 'delete' && isset($_GET['id'])) {
 // Récupérer le programme actif de l'utilisateur
 $sql = "SELECT p.* FROM user_programs up 
         JOIN programs p ON up.program_id = p.id 
-        WHERE up.user_id = ? AND up.status = 'actif'";
+        WHERE up.user_id = ? AND up.status = 'active'";
 $active_program = fetchOne($sql, [$user_id]);
 
 // Récupérer la liste des programmes disponibles
 $sql = "SELECT p.*, 
-        (SELECT COUNT(*) FROM user_programs up WHERE up.program_id = p.id AND up.status = 'actif') as active_users
+        (SELECT COUNT(*) FROM user_programs up WHERE up.program_id = p.id AND up.status = 'active') as active_users
         FROM programs p 
         ORDER BY p.created_at DESC";
 $programs = fetchAll($sql, []);
