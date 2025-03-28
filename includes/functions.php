@@ -663,38 +663,35 @@ function recalculateCalories($user_id) {
         error_log("Programme actif trouvé : " . $active_program['type']);
         // Appliquer l'ajustement calorique du programme sur le TDEE
         $calorie_adjustment = $active_program['calorie_adjustment'] / 100;
-        $tdee = $tdee * (1 + $calorie_adjustment);
-        error_log("TDEE après ajustement du programme : " . $tdee);
-    }
-    
-    // Récupérer l'objectif actif
-    $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$user_id]);
-    $current_goal = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($current_goal) {
-        error_log("Objectif actif trouvé : " . $current_goal['type']);
-        // Calculer l'objectif calorique en fonction du type d'objectif
-        $caloric_goal = calculateCalorieGoal($tdee, $current_goal['goal_type'], $current_goal['intensity'], $profile['weight'], $current_goal['target_weight'], $current_goal['target_date']);
-        error_log("Objectif calorique calculé : " . $caloric_goal);
-        
-        // Calculer l'ajustement quotidien nécessaire pour atteindre l'objectif
-        $weight_difference = $current_goal['target_weight'] - $profile['weight'];
-        $days_to_target = (strtotime($current_goal['target_date']) - time()) / (24 * 60 * 60);
-        $daily_adjustment = ($weight_difference * 7700) / $days_to_target;
-        
-        // Ajuster l'objectif calorique en fonction du déficit/surplus nécessaire
-        $caloric_goal += $daily_adjustment;
-        error_log("Objectif calorique final après ajustement : " . $caloric_goal);
-        
-        // Avertir si l'ajustement est important
-        if (abs($daily_adjustment) > 500) {
-            error_log("ATTENTION : Ajustement calorique important de " . $daily_adjustment . " calories par jour");
-        }
+        $caloric_goal = $tdee * (1 + $calorie_adjustment);
+        error_log("Calories après ajustement du programme : " . $caloric_goal);
     } else {
-        error_log("Pas d'objectif actif, utilisation du TDEE comme objectif");
-        $caloric_goal = $tdee;
+        // Récupérer l'objectif actif
+        $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id]);
+        $current_goal = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($current_goal) {
+            error_log("Objectif actif trouvé : " . $current_goal['type']);
+            
+            // Calculer l'ajustement quotidien nécessaire pour atteindre l'objectif
+            $weight_difference = $current_goal['target_weight'] - $profile['weight'];
+            $days_to_target = (strtotime($current_goal['target_date']) - time()) / (24 * 60 * 60);
+            $daily_adjustment = ($weight_difference * 7700) / $days_to_target;
+            
+            // Ajuster le TDEE avec l'ajustement quotidien
+            $caloric_goal = $tdee + $daily_adjustment;
+            error_log("Calories après ajustement de l'objectif : " . $caloric_goal);
+            
+            // Avertir si l'ajustement est important
+            if (abs($daily_adjustment) > 500) {
+                error_log("ATTENTION : Ajustement calorique important de " . $daily_adjustment . " calories par jour");
+            }
+        } else {
+            error_log("Pas d'objectif actif, utilisation du TDEE comme objectif");
+            $caloric_goal = $tdee;
+        }
     }
     
     // Calculer les ratios de macronutriments
