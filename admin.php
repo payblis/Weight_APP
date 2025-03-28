@@ -411,6 +411,22 @@ try {
 // Récupérer les programmes
 $programs = [];
 try {
+    // Vérifier et mettre à jour la structure de la table si nécessaire
+    $sql = "SHOW COLUMNS FROM programs LIKE 'type'";
+    $result = fetchOne($sql, []);
+    
+    if (!$result) {
+        // Ajouter les colonnes manquantes
+        $sql = "ALTER TABLE programs 
+                ADD COLUMN type ENUM('complet', 'nutrition', 'exercice') DEFAULT 'complet' AFTER description,
+                ADD COLUMN calorie_adjustment FLOAT DEFAULT 0 AFTER type,
+                ADD COLUMN protein_ratio FLOAT DEFAULT 0.3 AFTER calorie_adjustment,
+                ADD COLUMN carbs_ratio FLOAT DEFAULT 0.4 AFTER protein_ratio,
+                ADD COLUMN fat_ratio FLOAT DEFAULT 0.3 AFTER carbs_ratio";
+        execute($sql);
+    }
+    
+    // Récupérer les programmes
     $sql = "SELECT p.*, 
             (SELECT COUNT(*) FROM user_programs up WHERE up.program_id = p.id AND up.status = 'actif') as user_count,
             DATE_FORMAT(p.created_at, '%d/%m/%Y') as formatted_date
