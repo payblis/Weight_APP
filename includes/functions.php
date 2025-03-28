@@ -641,7 +641,7 @@ function recalculateCalories($user_id) {
     }
     
     // Calculer le BMR
-    $bmr = calculateBMR($current_weight, $profile['height'], $profile['age'], $profile['gender']);
+    $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
     error_log("BMR calculé : " . $bmr);
     
     // Vérifier que le BMR est positif
