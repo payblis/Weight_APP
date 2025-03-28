@@ -37,32 +37,52 @@ if (!$result) {
 
 // Gérer l'activation/désactivation des programmes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    error_log("=== Début de la gestion de l'action POST ===");
-    error_log("Action : " . $_POST['action']);
-    error_log("Program ID : " . $_POST['program_id']);
+    error_log("=== DÉBUT DU DÉBOGAGE DÉTAILLÉ ===");
+    error_log("Session ID : " . session_id());
+    error_log("User ID from session : " . $_SESSION['user_id']);
+    error_log("POST data : " . print_r($_POST, true));
+    error_log("GET data : " . print_r($_GET, true));
     
     $program_id = (int)$_POST['program_id'];
     $user_id = $_SESSION['user_id'];
+    
+    error_log("Program ID converti : " . $program_id);
+    error_log("User ID utilisé : " . $user_id);
     
     try {
         $pdo->beginTransaction();
         
         if ($_POST['action'] === 'activate') {
-            error_log("Tentative d'activation du programme");
+            error_log("=== DÉBOGAGE ACTIVATION ===");
+            error_log("Tentative d'activation du programme ID : " . $program_id);
+            
+            // Vérifier les programmes existants
+            $sql = "SELECT * FROM user_programs WHERE user_id = ?";
+            $existing_programs = fetchAll($sql, [$user_id]);
+            error_log("Programmes existants : " . print_r($existing_programs, true));
             
             // Désactiver tous les autres programmes
             $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ? AND id != (SELECT id FROM user_programs WHERE user_id = ? AND program_id = ? ORDER BY created_at DESC LIMIT 1)";
+            error_log("SQL de désactivation : " . $sql);
+            error_log("Paramètres : user_id=" . $user_id . ", program_id=" . $program_id);
             $stmt = $pdo->prepare($sql);
             $result = $stmt->execute([$user_id, $user_id, $program_id]);
-            error_log("Programmes précédents désactivés : " . ($result ? "Succès" : "Échec"));
+            error_log("Résultat de la désactivation : " . ($result ? "Succès" : "Échec"));
             
             // Activer le nouveau programme
             $sql = "INSERT INTO user_programs (user_id, program_id, status) VALUES (?, ?, 'actif')";
+            error_log("SQL d'insertion : " . $sql);
+            error_log("Paramètres : user_id=" . $user_id . ", program_id=" . $program_id);
             $stmt = $pdo->prepare($sql);
             $result = $stmt->execute([$user_id, $program_id]);
-            error_log("Résultat de l'insertion du nouveau programme : " . ($result ? "Succès" : "Échec"));
+            error_log("Résultat de l'insertion : " . ($result ? "Succès" : "Échec"));
             
             if ($result) {
+                // Vérifier le programme créé
+                $sql = "SELECT * FROM user_programs WHERE user_id = ? AND program_id = ? ORDER BY created_at DESC LIMIT 1";
+                $new_program = fetchOne($sql, [$user_id, $program_id]);
+                error_log("Nouveau programme créé : " . print_r($new_program, true));
+                
                 error_log("Programme activé avec succès, appel de recalculateCalories");
                 // Récupérer les valeurs du programme
                 $sql = "SELECT * FROM programs WHERE id = ?";
@@ -110,15 +130,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $_SESSION['error'] = "Erreur lors de l'activation du programme.";
             }
         } elseif ($_POST['action'] === 'deactivate') {
-            error_log("Tentative de désactivation du programme");
+            error_log("=== DÉBOGAGE DÉSACTIVATION ===");
+            error_log("Tentative de désactivation du programme ID : " . $program_id);
+            
+            // Vérifier le programme avant désactivation
+            $sql = "SELECT * FROM user_programs WHERE user_id = ? AND program_id = ?";
+            $program_to_deactivate = fetchOne($sql, [$user_id, $program_id]);
+            error_log("Programme à désactiver : " . print_r($program_to_deactivate, true));
             
             // Désactiver le programme
             $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ? AND program_id = ?";
+            error_log("SQL de désactivation : " . $sql);
+            error_log("Paramètres : user_id=" . $user_id . ", program_id=" . $program_id);
             $stmt = $pdo->prepare($sql);
             $result = $stmt->execute([$user_id, $program_id]);
             error_log("Résultat de la désactivation : " . ($result ? "Succès" : "Échec"));
             
             if ($result) {
+                // Vérifier le programme après désactivation
+                $sql = "SELECT * FROM user_programs WHERE user_id = ? AND program_id = ?";
+                $program_after_deactivation = fetchOne($sql, [$user_id, $program_id]);
+                error_log("Programme après désactivation : " . print_r($program_after_deactivation, true));
+                
                 error_log("Programme désactivé avec succès, appel de recalculateCalories");
                 // Recalculer les calories et les ratios
                 if (recalculateCalories($user_id)) {
