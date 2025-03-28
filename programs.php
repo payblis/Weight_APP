@@ -220,7 +220,7 @@ $programs = fetchAll($sql, []);
                     <div class="mt-3">
                         <h6>Contenu du programme</h6>
                         <div class="program-content">
-                            <?php echo nl2br(htmlspecialchars($active_program['content'])); ?>
+                            <?php echo isset($active_program['content']) ? nl2br(htmlspecialchars($active_program['content'])) : 'Aucun contenu disponible.'; ?>
                         </div>
                     </div>
                     
