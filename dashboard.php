@@ -49,80 +49,26 @@ $carbs_goal = 0;
 $fat_goal = 0;
 
 if ($profile && $latest_weight) {
-    // Calculer le BMR (métabolisme de base) avec la formule de Mifflin-St Jeor
-    $age = isset($profile['birth_date']) ? (date('Y') - date('Y', strtotime($profile['birth_date']))) : 30;
+    // Utiliser les calories stockées dans le profil
+    $calorie_goal = $profile['daily_calories'] ?? 0;
     
-    if ($profile['gender'] === 'homme') {
-        $bmr = 10 * $latest_weight['weight'] + 6.25 * $profile['height'] - 5 * $age + 5;
-    } else {
-        $bmr = 10 * $latest_weight['weight'] + 6.25 * $profile['height'] - 5 * $age - 161;
-    }
-    
-    // Calculer le TDEE (dépense énergétique totale quotidienne)
-    $activity_factors = [
-        'sedentaire' => 1.2,
-        'leger' => 1.375,
-        'modere' => 1.55,
-        'actif' => 1.725,
-        'tres_actif' => 1.9
-    ];
-    
-    $activity_factor = $activity_factors[$profile['activity_level']] ?? 1.2;
-    $tdee = $bmr * $activity_factor;
-    
-    // Calculer l'objectif calorique en fonction du programme ou de l'objectif de poids
+    // Calculer les objectifs de macronutriments
     if ($active_program) {
-        // Utiliser les valeurs du programme
-        $calorie_goal = $active_program['daily_calories'];
-        
-        // Calculer les objectifs de macronutriments en fonction des ratios du programme
-        $protein_ratio = $active_program['protein_ratio'] / 100;
-        $carbs_ratio = $active_program['carbs_ratio'] / 100;
-        $fat_ratio = $active_program['fat_ratio'] / 100;
-        
-        $protein_goal = ($calorie_goal * $protein_ratio) / 4; // 4 calories par gramme de protéine
-        $carbs_goal = ($calorie_goal * $carbs_ratio) / 4; // 4 calories par gramme de glucide
-        $fat_goal = ($calorie_goal * $fat_ratio) / 9; // 9 calories par gramme de lipide
-    } elseif ($current_goal) {
-        // Calculer en fonction de l'objectif de poids
-        if ($current_goal['target_weight'] < $latest_weight['weight']) {
-            // Objectif de perte de poids (déficit de 500 calories)
-            $calorie_goal = $tdee - 500;
-        } elseif ($current_goal['target_weight'] > $latest_weight['weight']) {
-            // Objectif de prise de poids (surplus de 500 calories)
-            $calorie_goal = $tdee + 500;
-        } else {
-            // Objectif de maintien
-            $calorie_goal = $tdee;
-        }
-        
-        // Répartition standard des macronutriments pour la perte de poids
-        if ($current_goal['target_weight'] < $latest_weight['weight']) {
-            $protein_goal = $latest_weight['weight'] * 2.2; // 2.2g de protéines par kg de poids corporel
-            $fat_goal = ($calorie_goal * 0.25) / 9; // 25% des calories proviennent des lipides
-            $carbs_goal = ($calorie_goal - ($protein_goal * 4) - ($fat_goal * 9)) / 4;
-        }
-        // Répartition standard des macronutriments pour la prise de poids
-        elseif ($current_goal['target_weight'] > $latest_weight['weight']) {
-            $protein_goal = $latest_weight['weight'] * 1.8; // 1.8g de protéines par kg de poids corporel
-            $fat_goal = ($calorie_goal * 0.3) / 9; // 30% des calories proviennent des lipides
-            $carbs_goal = ($calorie_goal - ($protein_goal * 4) - ($fat_goal * 9)) / 4;
-        }
-        // Répartition standard des macronutriments pour le maintien
-        else {
-            $protein_goal = $latest_weight['weight'] * 1.6; // 1.6g de protéines par kg de poids corporel
-            $fat_goal = ($calorie_goal * 0.3) / 9; // 30% des calories proviennent des lipides
-            $carbs_goal = ($calorie_goal - ($protein_goal * 4) - ($fat_goal * 9)) / 4;
-        }
+        // Utiliser les ratios du programme
+        $protein_ratio = $active_program['protein_ratio'];
+        $carbs_ratio = $active_program['carbs_ratio'];
+        $fat_ratio = $active_program['fat_ratio'];
     } else {
-        // Pas d'objectif défini, utiliser le TDEE comme objectif
-        $calorie_goal = $tdee;
-        
-        // Répartition standard des macronutriments
-        $protein_goal = $latest_weight['weight'] * 1.6; // 1.6g de protéines par kg de poids corporel
-        $fat_goal = ($calorie_goal * 0.3) / 9; // 30% des calories proviennent des lipides
-        $carbs_goal = ($calorie_goal - ($protein_goal * 4) - ($fat_goal * 9)) / 4;
+        // Utiliser les ratios par défaut du profil
+        $protein_ratio = $profile['protein_ratio'] ?? 0.3;
+        $carbs_ratio = $profile['carbs_ratio'] ?? 0.4;
+        $fat_ratio = $profile['fat_ratio'] ?? 0.3;
     }
+    
+    // Calculer les objectifs de macronutriments en grammes
+    $protein_goal = ($calorie_goal * $protein_ratio) / 4; // 4 calories par gramme de protéine
+    $carbs_goal = ($calorie_goal * $carbs_ratio) / 4; // 4 calories par gramme de glucide
+    $fat_goal = ($calorie_goal * $fat_ratio) / 9; // 9 calories par gramme de lipide
 }
 
 // Récupérer les données caloriques pour aujourd'hui
