@@ -80,6 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if ($current_weight === null) {
                 $errors[] = "Veuillez d'abord enregistrer votre poids avant de définir un objectif.";
             } else {
+                // Recalculer les calories
+                recalculateCalories($user_id);
+                
                 // Récupérer le profil utilisateur
                 $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
                 $profile = fetchOne($sql, [$user_id]);
@@ -202,44 +205,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'cancel' && isset($_GET['id'])
             if ($current_weight === null) {
                 $errors[] = "Veuillez d'abord enregistrer votre poids avant de réinitialiser les calories.";
             } else {
-                // Calculer le BMR de base
-                $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
-                error_log("BMR calculé : " . $bmr);
-                
-                // Calculer le TDEE (calories de base)
-                $tdee = calculateTDEE($bmr, $profile['activity_level']);
-                error_log("TDEE calculé : " . $tdee);
-                
-                // Vérifier si un programme est actif
-                $sql = "SELECT p.*, up.status 
-                        FROM user_programs up 
-                        JOIN programs p ON up.program_id = p.id 
-                        WHERE up.user_id = ? AND up.status = 'actif'";
-                $active_program = fetchOne($sql, [$user_id]);
-                
-                if ($active_program) {
-                    error_log("Programme actif : " . $active_program['name']);
-                    error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
-                    
-                    // Calculer l'ajustement du programme
-                    $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
-                    error_log("Ajustement du programme calculé : " . $program_adjustment);
-                    
-                    // Ajouter l'ajustement du programme aux calories de base
-                    $tdee += $program_adjustment;
-                    error_log("TDEE après ajustement programme : " . $tdee);
-                }
-                
-                // Mettre à jour les calories dans le profil
-                $sql = "UPDATE user_profiles SET 
-                        daily_calories = ?,
-                        protein_ratio = 0.3,
-                        carbs_ratio = 0.4,
-                        fat_ratio = 0.3,
-                        updated_at = NOW()
-                        WHERE user_id = ?";
-                update($sql, [$tdee, $user_id]);
-                error_log("Calories mises à jour après annulation de l'objectif : " . $tdee);
+                // Recalculer les calories
+                recalculateCalories($user_id);
             }
             
             $success_message = "L'objectif a été annulé avec succès !";
@@ -357,6 +324,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $result = insert($sql, [$user_id, $program_id]);
             
             if ($result) {
+                // Recalculer les calories
+                recalculateCalories($user_id);
+                
                 $success_message = "Vous avez rejoint le programme " . htmlspecialchars($program['name']) . " avec succès !";
                 
                 // Récupérer le programme actif mis à jour
@@ -386,6 +356,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'leave_program' && isset($_GET
         $result = update($sql, [$user_program_id]);
         
         if ($result) {
+            // Recalculer les calories
+            recalculateCalories($user_id);
+            
             $success_message = "Vous avez quitté le programme avec succès !";
             $active_program = null;
         } else {
