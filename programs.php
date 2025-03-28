@@ -113,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             error_log("Tentative de désactivation du programme");
             
             // Désactiver le programme
-            $sql = "UPDATE user_programs SET status = 'inactive' WHERE user_id = ? AND program_id = ?";
+            $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ? AND program_id = ?";
             $stmt = $pdo->prepare($sql);
             $result = $stmt->execute([$user_id, $program_id]);
             error_log("Résultat de la désactivation : " . ($result ? "Succès" : "Échec"));
