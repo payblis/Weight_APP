@@ -121,6 +121,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                     
                     if ($result) {
+                        // Debug: Afficher les informations de l'aliment ajouté
+                        error_log("Aliment ajouté avec succès: " . print_r([
+                            'food_id' => $food_id,
+                            'custom_food_name' => $custom_food_name,
+                            'quantity' => $quantity,
+                            'custom_calories' => $custom_calories,
+                            'custom_protein' => $custom_protein,
+                            'custom_carbs' => $custom_carbs,
+                            'custom_fat' => $custom_fat
+                        ], true));
+                        
                         // Mettre à jour les totaux du repas
                         updateMealTotals($meal_id);
                         $success_message = "Aliment ajouté au repas avec succès";
@@ -242,11 +253,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Ajouter chaque aliment au nouveau repas
                         foreach ($foods as $food) {
+                            // Debug: Afficher les informations de chaque aliment ajouté
+                            error_log("Ajout d'un aliment du repas prédéfini: " . print_r($food, true));
+                            
                             $sql = "INSERT INTO food_logs (user_id, food_id, custom_food_name, quantity, custom_calories, custom_protein, custom_carbs, custom_fat, log_date, meal_id, is_part_of_meal, created_at) 
                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
                             insert($sql, [
                                 $user_id, 
-                                $food['food_id'] ?? 0,  // Utiliser 0 si food_id n'existe pas
+                                $food['food_id'] ?? 0,
                                 $food['custom_food_name'] ?? '', 
                                 $food['quantity'], 
                                 $food['custom_calories'], 
@@ -257,6 +271,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $new_meal_id
                             ]);
                         }
+                        
+                        // Debug: Afficher l'ID du nouveau repas
+                        error_log("Mise à jour des totaux pour le nouveau repas ID: " . $new_meal_id);
                         
                         // Mettre à jour les totaux du nouveau repas
                         updateMealTotals($new_meal_id);
@@ -296,6 +313,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $result = update($sql, [$food_log_id]);
                     
                     if ($result) {
+                        // Debug: Afficher l'ID de l'aliment supprimé
+                        error_log("Aliment supprimé avec succès. ID: " . $food_log_id);
+                        
                         // Mettre à jour les totaux du repas
                         updateMealTotals($meal_id);
                         $success_message = "Aliment supprimé du repas avec succès";
@@ -480,6 +500,17 @@ function calculateNutrients($food) {
 function updateMealTotals($meal_id) {
     global $db;
     
+    // Debug: Afficher l'ID du repas
+    error_log("Mise à jour des totaux pour le repas ID: " . $meal_id);
+    
+    // Debug: Vérifier les aliments du repas avant la mise à jour
+    $sql = "SELECT fl.*, f.name as food_name, f.calories as food_calories, f.protein as food_protein, f.carbs as food_carbs, f.fat as food_fat
+            FROM food_logs fl 
+            LEFT JOIN foods f ON fl.food_id = f.id 
+            WHERE fl.meal_id = ?";
+    $foods = fetchAll($sql, [$meal_id]);
+    error_log("Aliments dans le repas avant mise à jour: " . print_r($foods, true));
+    
     $sql = "UPDATE meals m 
             SET total_calories = (
                 SELECT COALESCE(SUM(CASE 
@@ -519,7 +550,14 @@ function updateMealTotals($meal_id) {
             )
             WHERE m.id = ?";
             
-    return update($sql, [$meal_id]);
+    $result = update($sql, [$meal_id]);
+    
+    // Debug: Vérifier les totaux après la mise à jour
+    $sql = "SELECT total_calories, total_protein, total_carbs, total_fat FROM meals WHERE id = ?";
+    $totals = fetchOne($sql, [$meal_id]);
+    error_log("Totaux après mise à jour: " . print_r($totals, true));
+    
+    return $result;
 }
 ?>
 <!DOCTYPE html>
