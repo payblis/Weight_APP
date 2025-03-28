@@ -655,6 +655,7 @@ function recalculateCalories($user_id) {
     
     // Récupérer le programme actif
     $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'actif' ORDER BY created_at DESC LIMIT 1";
+    error_log("Requête pour récupérer le programme actif : " . $sql);
     $active_program = fetchOne($sql, [$user_id]);
     error_log("Programme actif trouvé : " . ($active_program ? "Oui" : "Non"));
     if ($active_program) {
@@ -666,12 +667,19 @@ function recalculateCalories($user_id) {
         
         // Utiliser les ratios de macronutriments du programme
         $macro_ratios = [
-            'protein' => $active_program['protein_ratio'] / 100,
-            'carbs' => $active_program['carbs_ratio'] / 100,
-            'fat' => $active_program['fat_ratio'] / 100
+            'protein' => $active_program['protein_ratio'],
+            'carbs' => $active_program['carbs_ratio'],
+            'fat' => $active_program['fat_ratio']
         ];
         error_log("Ratios de macronutriments du programme : " . print_r($macro_ratios, true));
     } else {
+        error_log("Aucun programme actif trouvé, vérification de la requête SQL");
+        // Vérifier si le programme existe avec un statut différent
+        $sql = "SELECT * FROM user_programs WHERE user_id = ? ORDER BY created_at DESC LIMIT 1";
+        $last_program = fetchOne($sql, [$user_id]);
+        if ($last_program) {
+            error_log("Dernier programme trouvé : " . print_r($last_program, true));
+        }
         // Récupérer l'objectif actif
         $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
         $stmt = $pdo->prepare($sql);
