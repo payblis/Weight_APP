@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             error_log("Résultat de la désactivation : " . ($result ? "Succès" : "Échec"));
             
             // Activer le nouveau programme
-            $sql = "INSERT INTO user_programs (user_id, program_id, status) VALUES (?, ?, 'actif')";
+            $sql = "INSERT INTO user_programs (user_id, program_id, status, created_at, updated_at) VALUES (?, ?, 'actif', NOW(), NOW())";
             error_log("SQL d'insertion : " . $sql);
             error_log("Paramètres : user_id=" . $user_id . ", program_id=" . $program_id);
             $stmt = $pdo->prepare($sql);
