@@ -828,52 +828,41 @@ function calculateMacroRatios($current_weight, $target_weight, $active_program, 
     error_log("Poids cible : " . $target_weight);
     error_log("Niveau d'activité : " . $activity_level);
     
-    // Déterminer si c'est une perte ou prise de poids
-    $is_weight_loss = $target_weight < $current_weight;
-    error_log("Type d'objectif : " . ($is_weight_loss ? "Perte de poids" : "Prise de poids"));
-    
-    // Base ratios selon le type d'objectif
-    if ($is_weight_loss) {
-        // Perte de poids : plus de protéines pour préserver la masse musculaire
-        $base_ratios = [
-            'protein' => 0.40,  // 40% protéines
-            'carbs' => 0.30,    // 30% glucides
-            'fat' => 0.30       // 30% lipides
-        ];
-        error_log("Ratios de base pour la perte de poids : " . print_r($base_ratios, true));
-    } else {
-        // Prise de poids : plus de glucides pour l'énergie
-        $base_ratios = [
-            'protein' => 0.30,  // 30% protéines
-            'carbs' => 0.50,    // 50% glucides
-            'fat' => 0.20       // 20% lipides
-        ];
-        error_log("Ratios de base pour la prise de poids : " . print_r($base_ratios, true));
-    }
-    
-    // Ajuster selon le programme actif
+    // Si un programme actif existe, utiliser ses ratios
     if ($active_program) {
-        error_log("Programme actif trouvé : " . $active_program['type']);
-        switch ($active_program['type']) {
-            case 'musculation':
-                // Augmenter les protéines pour la musculation
-                $base_ratios['protein'] += 0.05;
-                $base_ratios['carbs'] -= 0.05;
-                error_log("Ajustement pour la musculation : " . print_r($base_ratios, true));
-                break;
-            case 'endurance':
-                // Augmenter les glucides pour l'endurance
-                $base_ratios['carbs'] += 0.05;
-                $base_ratios['fat'] -= 0.05;
-                error_log("Ajustement pour l'endurance : " . print_r($base_ratios, true));
-                break;
-            case 'equilibre':
-                error_log("Programme équilibré, pas d'ajustement nécessaire");
-                break;
-        }
+        error_log("Programme actif trouvé, utilisation des ratios du programme");
+        $base_ratios = [
+            'protein' => $active_program['protein_ratio'] / 100,  // Convertir le pourcentage en décimal
+            'carbs' => $active_program['carbs_ratio'] / 100,
+            'fat' => $active_program['fat_ratio'] / 100
+        ];
+        error_log("Ratios du programme : " . print_r($base_ratios, true));
     } else {
-        error_log("Pas de programme actif, ajustement selon le niveau d'activité");
+        // Déterminer si c'est une perte ou prise de poids
+        $is_weight_loss = $target_weight < $current_weight;
+        error_log("Type d'objectif : " . ($is_weight_loss ? "Perte de poids" : "Prise de poids"));
+        
+        // Base ratios selon le type d'objectif
+        if ($is_weight_loss) {
+            // Perte de poids : plus de protéines pour préserver la masse musculaire
+            $base_ratios = [
+                'protein' => 0.40,  // 40% protéines
+                'carbs' => 0.30,    // 30% glucides
+                'fat' => 0.30       // 30% lipides
+            ];
+            error_log("Ratios de base pour la perte de poids : " . print_r($base_ratios, true));
+        } else {
+            // Prise de poids : plus de glucides pour l'énergie
+            $base_ratios = [
+                'protein' => 0.30,  // 30% protéines
+                'carbs' => 0.50,    // 50% glucides
+                'fat' => 0.20       // 20% lipides
+            ];
+            error_log("Ratios de base pour la prise de poids : " . print_r($base_ratios, true));
+        }
+        
         // Ajuster selon le niveau d'activité
+        error_log("Ajustement selon le niveau d'activité");
         switch ($activity_level) {
             case 'sedentaire':
                 // Réduire les glucides pour les sédentaires
