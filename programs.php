@@ -161,12 +161,12 @@ if ($action === 'delete' && isset($_GET['id'])) {
 // Récupérer le programme actif de l'utilisateur
 $sql = "SELECT p.* FROM user_programs up 
         JOIN programs p ON up.program_id = p.id 
-        WHERE up.user_id = ? AND up.status = 'active'";
+        WHERE up.user_id = ? AND up.status = 'actif'";
 $active_program = fetchOne($sql, [$user_id]);
 
 // Récupérer la liste des programmes disponibles
 $sql = "SELECT p.*, 
-        (SELECT COUNT(*) FROM user_programs up WHERE up.program_id = p.id AND up.status = 'active') as active_users
+        (SELECT COUNT(*) FROM user_programs up WHERE up.program_id = p.id AND up.status = 'actif') as active_users
         FROM programs p 
         ORDER BY p.created_at DESC";
 $programs = fetchAll($sql, []);
@@ -197,9 +197,21 @@ $programs = fetchAll($sql, []);
             </div>
         <?php endif; ?>
 
-        <?php if (!empty($success_message)): ?>
+        <?php if (isset($_SESSION['success'])): ?>
             <div class="alert alert-success">
-                <?php echo $success_message; ?>
+                <?php 
+                echo $_SESSION['success'];
+                unset($_SESSION['success']);
+                ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger">
+                <?php 
+                echo $_SESSION['error'];
+                unset($_SESSION['error']);
+                ?>
             </div>
         <?php endif; ?>
 
