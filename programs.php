@@ -37,19 +37,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             error_log("Tentative d'activation du programme");
             
             // Désactiver tous les programmes actifs de l'utilisateur
-            $sql = "UPDATE user_programs SET status = 'inactive' WHERE user_id = ?";
+            $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$user_id]);
             error_log("Programmes précédents désactivés");
             
             // Activer le nouveau programme
-            $sql = "INSERT INTO user_programs (user_id, program_id, status, created_at) VALUES (?, ?, 'active', NOW())";
+            $sql = "INSERT INTO user_programs (user_id, program_id, status, created_at) VALUES (?, ?, 'actif', NOW())";
             $stmt = $pdo->prepare($sql);
             $result = $stmt->execute([$user_id, $program_id]);
             error_log("Résultat de l'insertion du nouveau programme : " . ($result ? "Succès" : "Échec"));
             
             if ($result) {
                 error_log("Programme activé avec succès, appel de recalculateCalories");
+                // Récupérer les valeurs du programme
+                $sql = "SELECT * FROM programs WHERE id = ?";
+                $program = fetchOne($sql, [$program_id]);
+                
+                if ($program) {
+                    // Mettre à jour le profil utilisateur avec les valeurs du programme
+                    $sql = "UPDATE user_profiles SET 
+                            daily_calories = ?,
+                            protein_ratio = ?,
+                            carbs_ratio = ?,
+                            fat_ratio = ?
+                            WHERE user_id = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $update_result = $stmt->execute([
+                        $program['daily_calories'],
+                        $program['protein_ratio'],
+                        $program['carbs_ratio'],
+                        $program['fat_ratio'],
+                        $user_id
+                    ]);
+                    error_log("Mise à jour du profil utilisateur : " . ($update_result ? "Succès" : "Échec"));
+                }
+                
                 // Recalculer les calories et les ratios
                 if (recalculateCalories($user_id)) {
                     error_log("Recalcul des calories réussi");
