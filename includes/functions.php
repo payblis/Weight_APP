@@ -552,6 +552,66 @@ function ensureProfileWeight($user_id) {
 }
 
 /**
+ * Recalcule les calories en fonction du profil utilisateur et des objectifs
+ * @param int $user_id L'ID de l'utilisateur
+ * @return bool True si le calcul a réussi, false sinon
+ */
+function recalculateCalories($user_id) {
+    error_log("=== Début du recalcul des calories ===");
+    
+    // Récupérer le profil de l'utilisateur
+    $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
+    $profile = fetchOne($sql, [$user_id]);
+    
+    if (!$profile) {
+        error_log("Profil utilisateur non trouvé pour le recalcul des calories");
+        return false;
+    }
+    
+    // Vérifier et mettre à jour le poids si nécessaire
+    $current_weight = ensureProfileWeight($user_id);
+    if ($current_weight === null) {
+        error_log("Impossible de récupérer le poids actuel pour le recalcul des calories");
+        return false;
+    }
+    
+    // Calculer le BMR
+    $bmr = calculateBMR($current_weight, $profile['height'], $profile['age'], $profile['gender']);
+    error_log("BMR calculé : " . $bmr);
+    
+    // Calculer le TDEE
+    $tdee = calculateTDEE($bmr, $profile['activity_level']);
+    error_log("TDEE calculé : " . $tdee);
+    
+    // Récupérer l'objectif actuel
+    $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1";
+    $goal = fetchOne($sql, [$user_id]);
+    
+    if ($goal) {
+        // Calculer l'objectif calorique en fonction de l'objectif
+        $calorie_goal = calculateCalorieGoal($tdee, $goal['goal_type'], $goal['intensity']);
+        error_log("Objectif calorique calculé : " . $calorie_goal);
+        
+        // Mettre à jour les calories dans le profil
+        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
+        if (update($sql, [$calorie_goal, $user_id])) {
+            error_log("Calories mises à jour avec succès : " . $calorie_goal);
+            return true;
+        }
+    } else {
+        // Si pas d'objectif actif, utiliser le TDEE comme objectif
+        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
+        if (update($sql, [$tdee, $user_id])) {
+            error_log("Calories mises à jour avec le TDEE : " . $tdee);
+            return true;
+        }
+    }
+    
+    error_log("Échec de la mise à jour des calories");
+    return false;
+}
+
+/**
  * Exécute une requête SQL sans retourner de résultats
  * @param string $sql La requête SQL à exécuter
  * @param array $params Les paramètres de la requête
