@@ -100,17 +100,32 @@ function getBMICategory($bmi) {
  * 
  * @param float $weight Poids en kg
  * @param float $height Taille en cm
- * @param int $age Âge en années
+ * @param mixed $age Âge en années ou date de naissance (Y-m-d)
  * @param string $gender Genre ('homme' ou 'femme')
  * @return float BMR en calories
  */
 function calculateBMR($weight, $height, $age, $gender) {
     // Vérifier que toutes les valeurs sont valides
     if (!is_numeric($weight) || $weight <= 0 || !is_numeric($height) || $height <= 0 || 
-        !is_numeric($age) || $age <= 0 || !in_array($gender, ['homme', 'femme'])) {
+        !in_array($gender, ['homme', 'femme'])) {
         error_log("Valeurs invalides pour le calcul du BMR - Poids: $weight, Taille: $height, Âge: $age, Genre: $gender");
         return 0;
     }
+    
+    // Calculer l'âge si une date est fournie
+    if (is_string($age) && strpos($age, '-') !== false) {
+        $birth_date = new DateTime($age);
+        $today = new DateTime();
+        $age = $birth_date->diff($today)->y;
+    }
+    
+    // Vérifier que l'âge est valide
+    if (!is_numeric($age) || $age <= 0 || $age > 120) {
+        error_log("Âge invalide pour le calcul du BMR : " . $age);
+        return 0;
+    }
+    
+    error_log("Calcul du BMR avec - Poids: $weight, Taille: $height, Âge: $age, Genre: $gender");
     
     // Formule de Mifflin-St Jeor
     if ($gender === 'homme') {
@@ -654,10 +669,12 @@ function recalculateCalories($user_id) {
         $calorie_goal = calculateCalorieGoal($tdee, $goal['goal_type'], $goal['intensity'], $current_weight, $goal['target_weight'], $goal['target_date']);
         error_log("Objectif calorique calculé : " . $calorie_goal);
         
-        // S'assurer que les calories restent positives
-        if ($calorie_goal <= 0) {
-            error_log("Objectif calorique négatif ou nul : " . $calorie_goal);
-            return false;
+        // Calculer l'ajustement quotidien
+        $daily_adjustment = $calorie_goal - $tdee;
+        
+        // Avertir si l'ajustement est important (plus de 500 calories)
+        if (abs($daily_adjustment) > 500) {
+            error_log("ATTENTION : Ajustement calorique important détecté : " . $daily_adjustment);
         }
         
         // Mettre à jour les calories dans le profil
