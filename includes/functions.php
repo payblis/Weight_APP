@@ -661,7 +661,7 @@ function recalculateCalories($user_id) {
     }
     
     // Récupérer l'objectif actuel
-    $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1";
+    $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
     $goal = fetchOne($sql, [$user_id]);
     
     if ($goal) {
@@ -685,6 +685,7 @@ function recalculateCalories($user_id) {
         }
     } else {
         // Si pas d'objectif actif, utiliser le TDEE comme objectif
+        error_log("Pas d'objectif actif, utilisation du TDEE comme objectif : " . $tdee);
         $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
         if (update($sql, [$tdee, $user_id])) {
             error_log("Calories mises à jour avec le TDEE : " . $tdee);
