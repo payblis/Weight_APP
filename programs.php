@@ -69,6 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $program = fetchOne($sql, [$program_id]);
                 
                 if ($program) {
+                    error_log("Valeurs du programme récupérées : " . print_r($program, true));
+                    
                     // Mettre à jour le profil utilisateur avec les valeurs du programme
                     $sql = "UPDATE user_profiles SET 
                             daily_calories = ?,
@@ -84,7 +86,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $program['fat_ratio'],
                         $user_id
                     ]);
-                    error_log("Mise à jour du profil utilisateur : " . ($update_result ? "Succès" : "Échec"));
+                    error_log("Mise à jour du profil utilisateur avec les valeurs : daily_calories=" . $program['daily_calories'] . 
+                             ", protein_ratio=" . $program['protein_ratio'] . 
+                             ", carbs_ratio=" . $program['carbs_ratio'] . 
+                             ", fat_ratio=" . $program['fat_ratio']);
+                    error_log("Résultat de la mise à jour : " . ($update_result ? "Succès" : "Échec"));
+                } else {
+                    error_log("Programme non trouvé avec l'ID : " . $program_id);
                 }
                 
                 // Recalculer les calories et les ratios
