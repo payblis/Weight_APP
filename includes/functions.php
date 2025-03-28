@@ -592,6 +592,12 @@ function recalculateCalories($user_id) {
         $calorie_goal = calculateCalorieGoal($tdee, $goal['goal_type'], $goal['intensity']);
         error_log("Objectif calorique calculé : " . $calorie_goal);
         
+        // S'assurer que les calories restent positives
+        if ($calorie_goal <= 0) {
+            error_log("Objectif calorique négatif ou nul : " . $calorie_goal);
+            return false;
+        }
+        
         // Mettre à jour les calories dans le profil
         $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
         if (update($sql, [$calorie_goal, $user_id])) {
@@ -600,6 +606,11 @@ function recalculateCalories($user_id) {
         }
     } else {
         // Si pas d'objectif actif, utiliser le TDEE comme objectif
+        if ($tdee <= 0) {
+            error_log("TDEE négatif ou nul : " . $tdee);
+            return false;
+        }
+        
         $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
         if (update($sql, [$tdee, $user_id])) {
             error_log("Calories mises à jour avec le TDEE : " . $tdee);
