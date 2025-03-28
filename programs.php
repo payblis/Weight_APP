@@ -50,10 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($_POST['action'] === 'activate') {
             error_log("Tentative d'activation du programme");
             
-            // Désactiver tous les programmes précédents
-            $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ?";
+            // Désactiver tous les autres programmes
+            $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ? AND id != (SELECT id FROM user_programs WHERE user_id = ? AND program_id = ? ORDER BY created_at DESC LIMIT 1)";
             $stmt = $pdo->prepare($sql);
-            $result = $stmt->execute([$user_id]);
+            $result = $stmt->execute([$user_id, $user_id, $program_id]);
             error_log("Programmes précédents désactivés : " . ($result ? "Succès" : "Échec"));
             
             // Activer le nouveau programme
