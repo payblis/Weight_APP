@@ -82,10 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $insertedId = $pdo->lastInsertId();
                 error_log("ID du programme inséré : " . $insertedId);
                 
-                // Vérifier le programme créé avec son ID exact
-                $sql = "SELECT * FROM user_programs WHERE id = ?";
-                $new_program = fetchOne($sql, [$insertedId]);
-                error_log("Nouveau programme créé : " . print_r($new_program, true));
+                // Vérification immédiate après insertion
+                $check = fetchOne("SELECT * FROM user_programs WHERE id = ?", [$insertedId]);
+                error_log("Vérification directe post-insert : " . print_r($check, true));
                 
                 // Désactiver tous les autres programmes en excluant l'ID exact
                 $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ? AND id != ?";
@@ -94,6 +93,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $stmt = $pdo->prepare($sql);
                 $result = $stmt->execute([$user_id, $insertedId]);
                 error_log("Résultat de la désactivation : " . ($result ? "Succès" : "Échec"));
+                
+                // Vérification finale
+                $final_check = fetchOne("SELECT * FROM user_programs WHERE id = ?", [$insertedId]);
+                error_log("Vérification finale : " . print_r($final_check, true));
                 
                 // Récupérer les valeurs du programme
                 $sql = "SELECT * FROM programs WHERE id = ?";
