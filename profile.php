@@ -72,7 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     error_log("Différence de poids : " . $weight_diff . " kg");
                     
                     // Calculer le nombre de jours jusqu'à l'objectif
-                    $days_to_goal = (strtotime($current_goal['target_date']) - time()) / (60 * 60 * 24);
+                    $target_date = new DateTime($current_goal['target_date']);
+                    $today = new DateTime();
+                    $days_to_goal = $today->diff($target_date)->days;
                     error_log("Jours jusqu'à l'objectif : " . $days_to_goal);
                     
                     // Calculer les calories totales nécessaires (1 kg = 7700 calories)
