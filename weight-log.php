@@ -56,6 +56,35 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
             $result = update($sql, [$weight, $notes, $existing_entry['id']]);
             
             if ($result) {
+                // Recalculer les calories de base
+                $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
+                $profile = fetchOne($sql, [$user_id]);
+                
+                if ($profile) {
+                    // Calculer le BMR de base avec le nouveau poids
+                    $bmr = calculateBMR($weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+                    
+                    // Calculer le TDEE (calories de base)
+                    $tdee = calculateTDEE($bmr, $profile['activity_level']);
+                    
+                    // Vérifier si l'utilisateur a un programme actif
+                    $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'actif'";
+                    $active_program = fetchOne($sql, [$user_id]);
+                    
+                    if ($active_program) {
+                        // Si un programme est actif, mettre à jour directement les calories
+                        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
+                        update($sql, [$tdee, $user_id]);
+                    } else {
+                        // Si pas de programme actif, demander confirmation
+                        $_SESSION['pending_calories_update'] = [
+                            'tdee' => $tdee,
+                            'weight' => $weight
+                        ];
+                        $success_message = "Votre poids a été mis à jour avec succès ! Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau poids ?";
+                    }
+                }
+                
                 $success_message = "Votre poids a été mis à jour avec succès !";
             } else {
                 $errors[] = "Une erreur s'est produite lors de la mise à jour du poids. Veuillez réessayer.";
@@ -66,6 +95,37 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
             $result = insert($sql, [$user_id, $weight, $log_date, $notes]);
             
             if ($result) {
+                // Recalculer les calories de base
+                $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
+                $profile = fetchOne($sql, [$user_id]);
+                
+                if ($profile) {
+                    // Calculer le BMR de base avec le nouveau poids
+                    $bmr = calculateBMR($weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+                    
+                    // Calculer le TDEE (calories de base)
+                    $tdee = calculateTDEE($bmr, $profile['activity_level']);
+                    
+                    // Vérifier si l'utilisateur a un programme actif
+                    $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'actif'";
+                    $active_program = fetchOne($sql, [$user_id]);
+                    
+                    if ($active_program) {
+                        // Si un programme est actif, mettre à jour directement les calories
+                        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
+                        update($sql, [$tdee, $user_id]);
+                    } else {
+                        // Si pas de programme actif, demander confirmation
+                        $_SESSION['pending_calories_update'] = [
+                            'tdee' => $tdee,
+                            'weight' => $weight
+                        ];
+                        $success_message = "Votre poids a été enregistré avec succès ! Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau poids ?";
+                        $weight = '';
+                        $notes = '';
+                    }
+                }
+                
                 $success_message = "Votre poids a été enregistré avec succès !";
                 $weight = '';
                 $notes = '';
@@ -74,6 +134,22 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
             }
         }
     }
+}
+
+// Ajouter le traitement de la confirmation de mise à jour des calories
+if (isset($_POST['action']) && $_POST['action'] === 'update_calories' && isset($_SESSION['pending_calories_update'])) {
+    $pending_update = $_SESSION['pending_calories_update'];
+    
+    if ($_POST['confirm'] === 'yes') {
+        // Mettre à jour les calories
+        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
+        update($sql, [$pending_update['tdee'], $user_id]);
+        $success_message = "Vos besoins caloriques ont été mis à jour avec succès !";
+    }
+    
+    // Nettoyer la session
+    unset($_SESSION['pending_calories_update']);
+    redirect('weight-log.php');
 }
 
 // Récupérer le profil de l'utilisateur
@@ -320,6 +396,19 @@ if ($latest_weight) {
         <?php if (!empty($success_message)): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <?php echo $success_message; ?>
+                <?php if (isset($_SESSION['pending_calories_update'])): ?>
+                    <form action="weight-log.php" method="POST" class="mt-2">
+                        <input type="hidden" name="action" value="update_calories">
+                        <div class="d-flex gap-2">
+                            <button type="submit" name="confirm" value="yes" class="btn btn-success btn-sm">
+                                <i class="fas fa-check me-1"></i>Oui, mettre à jour
+                            </button>
+                            <button type="submit" name="confirm" value="no" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-times me-1"></i>Non, garder les actuels
+                            </button>
+                        </div>
+                    </form>
+                <?php endif; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>

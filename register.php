@@ -111,14 +111,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // L'insertion a réussi, vérifier si la table user_profiles existe
                     if (tableExists('user_profiles')) {
                         try {
+                            // Calculer le BMR de base
+                            $bmr = calculateBMR($weight, $height, $birth_date, $gender);
+                            
+                            // Calculer le TDEE (calories de base)
+                            $tdee = calculateTDEE($bmr, $activity_level);
+                            
                             // Créer un profil pour l'utilisateur avec les données fournies
                             $sql = "INSERT INTO user_profiles (user_id) VALUES (?)";
                             $profile_id = insert($sql, [$user_id]);
                             
                             // Mettre à jour les autres informations
                             if ($profile_id > 0) {
-                                $update_sql = "UPDATE user_profiles SET gender = ?, birth_date = ?, height = ?, activity_level = ? WHERE user_id = ?";
-                                update($update_sql, [$gender, $birth_date, $height, $activity_level, $user_id]);
+                                $update_sql = "UPDATE user_profiles SET 
+                                                gender = ?, 
+                                                birth_date = ?, 
+                                                height = ?, 
+                                                activity_level = ?,
+                                                daily_calories = ?,
+                                                protein_ratio = 0.3,
+                                                carbs_ratio = 0.4,
+                                                fat_ratio = 0.3
+                                                WHERE user_id = ?";
+                                update($update_sql, [$gender, $birth_date, $height, $activity_level, $tdee, $user_id]);
+                                
                                 // Ajouter le poids de départ dans la table weight_logs
                                 if (tableExists('weight_logs')) {
                                     $sql = "INSERT INTO weight_logs (user_id, weight, log_date, notes, created_at) 

@@ -60,51 +60,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Si aucune erreur, mettre à jour le profil
     if (empty($errors)) {
         try {
-            if ($profile) {
-                // Mise à jour du profil existant
-                $sql = "UPDATE user_profiles SET gender = ?, birth_date = ?, height = ?, activity_level = ?, updated_at = NOW() WHERE user_id = ?";
-                $params = [$gender, $birth_date, $height, $activity_level, $user_id];
+            // Récupérer le dernier poids enregistré
+            $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
+            $latest_weight = fetchOne($sql, [$user_id]);
+            
+            if ($latest_weight) {
+                // Calculer le BMR de base avec le dernier poids
+                $bmr = calculateBMR($latest_weight['weight'], $height, $birth_date, $gender);
                 
-                $result = update($sql, $params);
+                // Calculer le TDEE (calories de base)
+                $tdee = calculateTDEE($bmr, $activity_level);
                 
-                if ($result) {
-                    $success_message = "Votre profil a été mis à jour avec succès !";
+                // Vérifier si l'utilisateur a un programme actif
+                $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'actif'";
+                $active_program = fetchOne($sql, [$user_id]);
+                
+                if ($active_program) {
+                    // Si un programme est actif, mettre à jour directement les calories
+                    $sql = "UPDATE user_profiles SET 
+                            gender = ?, 
+                            birth_date = ?, 
+                            height = ?, 
+                            activity_level = ?,
+                            daily_calories = ?,
+                            updated_at = NOW()
+                            WHERE user_id = ?";
+                    update($sql, [$gender, $birth_date, $height, $activity_level, $tdee, $user_id]);
                     
-                    // Mettre à jour les variables locales pour afficher les nouvelles valeurs
-                    $profile['gender'] = $gender;
-                    $profile['birth_date'] = $birth_date;
-                    $profile['height'] = $height;
-                    $profile['activity_level'] = $activity_level;
+                    $success_message = "Votre profil a été mis à jour avec succès !";
                 } else {
-                    $errors[] = "Une erreur s'est produite lors de la mise à jour du profil. Veuillez réessayer.";
+                    // Si pas de programme actif, demander confirmation
+                    $_SESSION['pending_calories_update'] = [
+                        'tdee' => $tdee,
+                        'profile_data' => [
+                            'gender' => $gender,
+                            'birth_date' => $birth_date,
+                            'height' => $height,
+                            'activity_level' => $activity_level
+                        ]
+                    ];
+                    $success_message = "Votre profil a été mis à jour avec succès ! Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau niveau d'activité ?";
                 }
             } else {
-                // Création d'un nouveau profil
-                $sql = "INSERT INTO user_profiles (user_id, gender, birth_date, height, activity_level, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
-                $params = [$user_id, $gender, $birth_date, $height, $activity_level];
-                
-                $result = insert($sql, $params);
-                
-                if ($result) {
-                    $success_message = "Votre profil a été créé avec succès !";
-                    
-                    // Créer un tableau de profil pour éviter de recharger la page
-                    $profile = [
-                        'user_id' => $user_id,
-                        'gender' => $gender,
-                        'birth_date' => $birth_date,
-                        'height' => $height,
-                        'activity_level' => $activity_level
-                    ];
-                } else {
-                    $errors[] = "Une erreur s'est produite lors de la création du profil. Veuillez réessayer.";
-                }
+                $errors[] = "Aucun poids enregistré trouvé. Veuillez d'abord enregistrer votre poids.";
             }
         } catch (Exception $e) {
             $errors[] = "Une erreur s'est produite: " . $e->getMessage();
             error_log("Erreur dans profile.php: " . $e->getMessage());
         }
     }
+}
+
+// Ajouter le traitement de la confirmation de mise à jour des calories
+if (isset($_POST['action']) && $_POST['action'] === 'update_calories' && isset($_SESSION['pending_calories_update'])) {
+    $pending_update = $_SESSION['pending_calories_update'];
+    
+    if ($_POST['confirm'] === 'yes') {
+        // Mettre à jour le profil avec les nouvelles calories
+        $profile_data = $pending_update['profile_data'];
+        $sql = "UPDATE user_profiles SET 
+                gender = ?, 
+                birth_date = ?, 
+                height = ?, 
+                activity_level = ?,
+                daily_calories = ?,
+                updated_at = NOW()
+                WHERE user_id = ?";
+        update($sql, [
+            $profile_data['gender'],
+            $profile_data['birth_date'],
+            $profile_data['height'],
+            $profile_data['activity_level'],
+            $pending_update['tdee'],
+            $user_id
+        ]);
+        $success_message = "Vos besoins caloriques ont été mis à jour avec succès !";
+    }
+    
+    // Nettoyer la session
+    unset($_SESSION['pending_calories_update']);
+    redirect('profile.php');
 }
 
 // Récupérer le dernier poids enregistré
@@ -199,6 +234,19 @@ if ($latest_weight && $profile && $age > 0) {
         <?php if (!empty($success_message)): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <?php echo $success_message; ?>
+                <?php if (isset($_SESSION['pending_calories_update'])): ?>
+                    <form action="profile.php" method="POST" class="mt-2">
+                        <input type="hidden" name="action" value="update_calories">
+                        <div class="d-flex gap-2">
+                            <button type="submit" name="confirm" value="yes" class="btn btn-success btn-sm">
+                                <i class="fas fa-check me-1"></i>Oui, mettre à jour
+                            </button>
+                            <button type="submit" name="confirm" value="no" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-times me-1"></i>Non, garder les actuels
+                            </button>
+                        </div>
+                    </form>
+                <?php endif; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>
