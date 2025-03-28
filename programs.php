@@ -19,6 +19,7 @@ $user = fetchOne($sql, [$user_id]);
 // Initialiser les variables
 $success_message = '';
 $errors = [];
+$action = isset($_GET['action']) ? $_GET['action'] : '';
 
 // Gérer l'activation/désactivation des programmes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
