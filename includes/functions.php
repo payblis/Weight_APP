@@ -467,7 +467,7 @@ function generateExerciseRecommendations($goal_type) {
     } else { // maintien
         $recommendations['general'] = "Pour maintenir votre poids et votre forme physique, adoptez une approche équilibrée combinant différents types d'exercices.";
         $recommendations['recommended_exercises'] = [
-            'Cardio: 150 minutes par semaine d'intensité modérée',
+            'Cardio: 150 minutes par semaine intensité modérée',
             'Renforcement: 2-3 séances par semaine',
             'Flexibilité et équilibre: yoga, pilates, étirements'
         ];
