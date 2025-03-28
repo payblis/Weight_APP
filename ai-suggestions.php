@@ -378,6 +378,84 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        .suggestion-wrapper {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        
+        .meal-section {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .meal-section:last-child {
+            border-bottom: none;
+        }
+        
+        .meal-section h6 {
+            font-weight: 600;
+            color: #0d6efd;
+            margin-bottom: 1rem;
+        }
+        
+        .meal-item {
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        
+        .meal-item:before {
+            content: "•";
+            color: #0d6efd;
+            position: absolute;
+            left: 0;
+        }
+        
+        .nutrition-info {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            background-color: #f8f9fa;
+            border-radius: 0.25rem;
+        }
+        
+        .nutrition-info strong {
+            color: #0d6efd;
+        }
+        
+        .accordion-button:not(.collapsed) {
+            background-color: #e7f1ff;
+            color: #0d6efd;
+        }
+        
+        .accordion-button:focus {
+            box-shadow: none;
+            border-color: rgba(0,0,0,.125);
+        }
+        
+        .badge {
+            font-size: 0.8em;
+            padding: 0.5em 0.8em;
+        }
+        
+        #loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
 </head>
 <body>
     <?php include 'navigation.php'; ?>
@@ -551,14 +629,25 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                                                 <div class="mb-3 suggestion-content">
                                                     <?php 
                                                     $content = nl2br(htmlspecialchars($suggestion['content']));
-                                                    $content = str_replace('PETIT-DÉJEUNER', '<h6 class="text-primary mt-3">PETIT-DÉJEUNER</h6>', $content);
-                                                    $content = str_replace('DÉJEUNER', '<h6 class="text-primary mt-3">DÉJEUNER</h6>', $content);
-                                                    $content = str_replace('DÎNER', '<h6 class="text-primary mt-3">DÎNER</h6>', $content);
-                                                    $content = str_replace('COLLATION', '<h6 class="text-primary mt-3">COLLATION</h6>', $content);
-                                                    echo $content;
+                                                    // Ajouter des classes CSS pour améliorer la lisibilité
+                                                    $content = str_replace('PETIT-DÉJEUNER', '<div class="meal-section"><h6 class="text-primary mb-3">PETIT-DÉJEUNER</h6>', $content);
+                                                    $content = str_replace('DÉJEUNER', '</div><div class="meal-section"><h6 class="text-primary mb-3">DÉJEUNER</h6>', $content);
+                                                    $content = str_replace('DÎNER', '</div><div class="meal-section"><h6 class="text-primary mb-3">DÎNER</h6>', $content);
+                                                    $content = str_replace('COLLATION', '</div><div class="meal-section"><h6 class="text-primary mb-3">COLLATION</h6>', $content);
+                                                    $content .= '</div>';
+                                                    
+                                                    // Ajouter des classes pour les listes et les éléments
+                                                    $content = str_replace('- ', '<li class="meal-item">', $content);
+                                                    $content = str_replace("\n", '</li>', $content);
+                                                    $content = str_replace('Calories totales :', '<div class="nutrition-info"><strong>Calories totales :</strong>', $content);
+                                                    $content = str_replace('Protéines :', '</div><div class="nutrition-info"><strong>Protéines :</strong>', $content);
+                                                    $content = str_replace('Glucides :', '</div><div class="nutrition-info"><strong>Glucides :</strong>', $content);
+                                                    $content = str_replace('Lipides :', '</div><div class="nutrition-info"><strong>Lipides :</strong>', $content);
+                                                    
+                                                    echo '<div class="suggestion-wrapper">' . $content . '</div>';
                                                     ?>
                                                 </div>
-                                                <div class="d-flex justify-content-end">
+                                                <div class="d-flex justify-content-end mt-3">
                                                     <?php if (!$suggestion['is_applied']): ?>
                                                         <a href="ai-suggestions.php?type=<?php echo urlencode($suggestion_type); ?>&action=apply&id=<?php echo $suggestion['id']; ?>" class="btn btn-sm btn-success me-2">
                                                             <i class="fas fa-check me-1"></i>Marquer comme appliqué
