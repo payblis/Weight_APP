@@ -39,83 +39,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if ($latest_weight) {
                 // Calculer l'âge à partir de la date de naissance
-                $birth_date_obj = new DateTime($profile['birth_date']);
-                $today = new DateTime();
-                $age = $birth_date_obj->diff($today)->y;
+                error_log("=== Début du calcul des calories ===");
+                error_log("Date de naissance : " . $profile['birth_date']);
                 
-                // Calculer le BMR de base
-                $bmr = calculateBMR($latest_weight['weight'], $profile['height'], $age, $profile['gender']);
-                
-                // Calculer le TDEE (calories de base)
-                $tdee = calculateTDEE($bmr, $profile['activity_level']);
-                
-                // Vérifier si l'utilisateur a un programme actif
-                $sql = "SELECT p.* FROM user_programs up 
-                        JOIN programs p ON up.program_id = p.id 
-                        WHERE up.user_id = ? AND up.status = 'actif'";
-                $active_program = fetchOne($sql, [$user_id]);
-                
-                // Vérifier si l'utilisateur a un objectif actif
-                $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-                $current_goal = fetchOne($sql, [$user_id]);
-                
-                $final_calories = $tdee;
-                
-                // Calculer les calories nécessaires pour l'objectif
-                if ($current_goal) {
-                    error_log("=== Début du calcul des calories pour l'objectif ===");
-                    error_log("Poids actuel : " . $profile['weight']);
-                    error_log("Poids cible : " . $current_goal['target_weight']);
-                    
-                    // Calculer la différence de poids
-                    $weight_diff = $current_goal['target_weight'] - $profile['weight'];
-                    error_log("Différence de poids : " . $weight_diff . " kg");
-                    
-                    // Calculer le nombre de jours jusqu'à l'objectif
-                    $target_date = new DateTime($current_goal['target_date']);
+                try {
+                    $birth_date_obj = new DateTime($profile['birth_date']);
                     $today = new DateTime();
-                    $days_to_goal = $today->diff($target_date)->days;
-                    error_log("Jours jusqu'à l'objectif : " . $days_to_goal);
+                    $age = $birth_date_obj->diff($today)->y;
+                    error_log("Âge calculé : " . $age);
                     
-                    // Calculer les calories totales nécessaires (1 kg = 7700 calories)
-                    $total_calories_needed = $weight_diff * 7700;
-                    error_log("Calories totales nécessaires : " . $total_calories_needed);
+                    // Calculer le BMR de base
+                    $bmr = calculateBMR($latest_weight['weight'], $profile['height'], $age, $profile['gender']);
+                    error_log("BMR calculé : " . $bmr);
                     
-                    // Calculer l'ajustement quotidien nécessaire
-                    $daily_adjustment = $total_calories_needed / $days_to_goal;
-                    error_log("Ajustement quotidien pour l'objectif : " . $daily_adjustment);
+                    // Calculer le TDEE (calories de base)
+                    $tdee = calculateTDEE($bmr, $profile['activity_level']);
+                    error_log("TDEE calculé : " . $tdee);
                     
-                    // Vérifier si un programme est actif
-                    $sql = "SELECT p.*, up.status 
-                            FROM user_programs up 
+                    // Vérifier si l'utilisateur a un programme actif
+                    $sql = "SELECT p.* FROM user_programs up 
                             JOIN programs p ON up.program_id = p.id 
                             WHERE up.user_id = ? AND up.status = 'actif'";
                     $active_program = fetchOne($sql, [$user_id]);
                     
-                    if ($active_program) {
-                        error_log("Programme actif : " . $active_program['name']);
-                        error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
+                    // Vérifier si l'utilisateur a un objectif actif
+                    $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+                    $current_goal = fetchOne($sql, [$user_id]);
+                    
+                    $final_calories = $tdee;
+                    
+                    // Calculer les calories nécessaires pour l'objectif
+                    if ($current_goal) {
+                        error_log("=== Début du calcul des calories pour l'objectif ===");
+                        error_log("Poids actuel : " . $profile['weight']);
+                        error_log("Poids cible : " . $current_goal['target_weight']);
                         
-                        // Calculer l'ajustement du programme
-                        $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
-                        error_log("Ajustement du programme calculé : " . $program_adjustment);
+                        // Calculer la différence de poids
+                        $weight_diff = $current_goal['target_weight'] - $profile['weight'];
+                        error_log("Différence de poids : " . $weight_diff . " kg");
                         
-                        // Ajouter l'ajustement du programme aux calories de base
-                        $tdee += $program_adjustment;
-                        error_log("TDEE après ajustement programme : " . $tdee);
+                        // Calculer le nombre de jours jusqu'à l'objectif
+                        $target_date = new DateTime($current_goal['target_date']);
+                        $today = new DateTime();
+                        $days_to_goal = $today->diff($target_date)->days;
+                        error_log("Jours jusqu'à l'objectif : " . $days_to_goal);
+                        
+                        // Calculer les calories totales nécessaires (1 kg = 7700 calories)
+                        $total_calories_needed = $weight_diff * 7700;
+                        error_log("Calories totales nécessaires : " . $total_calories_needed);
+                        
+                        // Calculer l'ajustement quotidien nécessaire
+                        $daily_adjustment = $total_calories_needed / $days_to_goal;
+                        error_log("Ajustement quotidien pour l'objectif : " . $daily_adjustment);
+                        
+                        if ($active_program) {
+                            error_log("Programme actif : " . $active_program['name']);
+                            error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
+                            
+                            // Calculer l'ajustement du programme
+                            $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                            error_log("Ajustement du programme calculé : " . $program_adjustment);
+                            
+                            // Ajouter l'ajustement du programme aux calories de base
+                            $tdee += $program_adjustment;
+                            error_log("TDEE après ajustement programme : " . $tdee);
+                        }
+                        
+                        // Ajouter l'ajustement quotidien pour l'objectif
+                        $final_calories = $tdee + $daily_adjustment;
+                        error_log("Calories finales : " . $final_calories);
+                        error_log("=== Fin du calcul des calories pour l'objectif ===");
                     }
                     
-                    // Ajouter l'ajustement quotidien pour l'objectif
-                    $daily_calories = $tdee + $daily_adjustment;
-                    error_log("Calories finales : " . $daily_calories);
-                    error_log("=== Fin du calcul des calories pour l'objectif ===");
+                    // Mettre à jour les calories dans le profil
+                    $sql = "UPDATE user_profiles SET daily_calories = ?, updated_at = NOW() WHERE user_id = ?";
+                    update($sql, [$final_calories, $user_id]);
+                    error_log("Calories mises à jour dans le profil : " . $final_calories);
+                    error_log("=== Fin du calcul des calories ===");
+                    
+                    $success_message = "Vos besoins caloriques ont été recalculés avec succès !";
+                } catch (Exception $e) {
+                    $errors[] = "Une erreur s'est produite lors du recalcul des calories : " . $e->getMessage();
+                    error_log("Erreur dans profile.php (recalculate_calories): " . $e->getMessage());
+                    error_log("Trace : " . $e->getTraceAsString());
                 }
-                
-                // Mettre à jour les calories dans le profil
-                $sql = "UPDATE user_profiles SET daily_calories = ?, updated_at = NOW() WHERE user_id = ?";
-                update($sql, [$final_calories, $user_id]);
-                
-                $success_message = "Vos besoins caloriques ont été recalculés avec succès !";
             } else {
                 $errors[] = "Aucun poids enregistré trouvé. Veuillez d'abord enregistrer votre poids.";
             }
