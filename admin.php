@@ -1096,6 +1096,18 @@ try {
                                             </div>
                                         <?php endif; ?>
 
+                                        <!-- Debug information -->
+                                        <div class="alert alert-info">
+                                            <h6 class="alert-heading">Debug Information</h6>
+                                            <pre class="mb-0">
+                                                Action: <?php echo $action; ?>
+                                                Program ID: <?php echo $program_id; ?>
+                                                Program Data: <?php print_r($program); ?>
+                                                POST Data: <?php print_r($_POST); ?>
+                                                Errors: <?php print_r($errors); ?>
+                                            </pre>
+                                        </div>
+
                                         <form method="POST" novalidate>
                                             <div class="mb-3">
                                                 <label for="name" class="form-label">Nom du programme</label>
@@ -1145,6 +1157,18 @@ try {
                                                 <div id="macros-warning" class="text-danger mt-2"></div>
                                             </div>
 
+                                            <!-- ChatGPT Integration -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Génération avec ChatGPT</label>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control" id="chatgpt_prompt" placeholder="Décrivez le type de programme que vous souhaitez créer...">
+                                                    <button type="button" class="btn btn-outline-primary" id="generateWithChatGPT">
+                                                        <i class="fas fa-magic"></i> Générer
+                                                    </button>
+                                                </div>
+                                                <div id="chatgpt-response" class="mt-2"></div>
+                                            </div>
+
                                             <div class="d-flex justify-content-between">
                                                 <a href="admin.php?section=programs" class="btn btn-secondary">Annuler</a>
                                                 <button type="submit" class="btn btn-primary">
@@ -1157,6 +1181,84 @@ try {
                             </div>
                         </div>
                     </div>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Validation des macronutriments
+                            const proteinInput = document.getElementById('protein_ratio');
+                            const carbsInput = document.getElementById('carbs_ratio');
+                            const fatInput = document.getElementById('fat_ratio');
+                            const macrosWarning = document.getElementById('macros-warning');
+                            
+                            function validateMacros() {
+                                const protein = parseFloat(proteinInput.value) || 0;
+                                const carbs = parseFloat(carbsInput.value) || 0;
+                                const fat = parseFloat(fatInput.value) || 0;
+                                const total = protein + carbs + fat;
+                                
+                                if (total !== 100) {
+                                    macrosWarning.textContent = `La somme des pourcentages doit être égale à 100%. Actuellement: ${total}%`;
+                                } else {
+                                    macrosWarning.textContent = '';
+                                }
+                            }
+                            
+                            proteinInput.addEventListener('input', validateMacros);
+                            carbsInput.addEventListener('input', validateMacros);
+                            fatInput.addEventListener('input', validateMacros);
+                            
+                            // Initial validation
+                            validateMacros();
+
+                            // ChatGPT Integration
+                            const generateButton = document.getElementById('generateWithChatGPT');
+                            const promptInput = document.getElementById('chatgpt_prompt');
+                            const responseDiv = document.getElementById('chatgpt-response');
+
+                            generateButton.addEventListener('click', async function() {
+                                const prompt = promptInput.value;
+                                if (!prompt) {
+                                    responseDiv.innerHTML = '<div class="alert alert-warning">Veuillez entrer une description pour le programme.</div>';
+                                    return;
+                                }
+
+                                generateButton.disabled = true;
+                                responseDiv.innerHTML = '<div class="alert alert-info">Génération en cours...</div>';
+
+                                try {
+                                    const response = await fetch('includes/generate_program.php', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({ prompt })
+                                    });
+
+                                    const data = await response.json();
+                                    
+                                    if (data.success) {
+                                        // Remplir le formulaire avec les données générées
+                                        document.getElementById('name').value = data.program.name;
+                                        document.getElementById('description').value = data.program.description;
+                                        document.getElementById('type').value = data.program.type;
+                                        document.getElementById('calorie_adjustment').value = data.program.calorie_adjustment;
+                                        document.getElementById('protein_ratio').value = data.program.protein_ratio * 100;
+                                        document.getElementById('carbs_ratio').value = data.program.carbs_ratio * 100;
+                                        document.getElementById('fat_ratio').value = data.program.fat_ratio * 100;
+                                        
+                                        responseDiv.innerHTML = '<div class="alert alert-success">Programme généré avec succès !</div>';
+                                        validateMacros();
+                                    } else {
+                                        responseDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${data.error}</div>`;
+                                    }
+                                } catch (error) {
+                                    responseDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${error.message}</div>`;
+                                } finally {
+                                    generateButton.disabled = false;
+                                }
+                            });
+                        });
+                    </script>
                     
                 <?php elseif ($section === 'api_settings'): ?>
                     <!-- API Settings -->
@@ -1305,65 +1407,30 @@ try {
             }
             
             // Validate macronutrient percentages
-            const proteinInput = document.getElementById('protein_pct');
-            const carbsInput = document.getElementById('carbs_pct');
-            const fatInput = document.getElementById('fat_pct');
+            const proteinInput = document.getElementById('protein_ratio');
+            const carbsInput = document.getElementById('carbs_ratio');
+            const fatInput = document.getElementById('fat_ratio');
             const macrosWarning = document.getElementById('macros-warning');
             
-            if (proteinInput && carbsInput && fatInput && macrosWarning) {
-                function validateMacros() {
-                    const protein = parseInt(proteinInput.value) || 0;
-                    const carbs = parseInt(carbsInput.value) || 0;
-                    const fat = parseInt(fatInput.value) || 0;
-                    const total = protein + carbs + fat;
-                    
-                    if (total !== 100) {
-                        macrosWarning.textContent = `La somme des pourcentages doit être égale à 100%. Actuellement: ${total}%`;
-                    } else {
-                        macrosWarning.textContent = '';
-                    }
+            function validateMacros() {
+                const protein = parseFloat(proteinInput.value) || 0;
+                const carbs = parseFloat(carbsInput.value) || 0;
+                const fat = parseFloat(fatInput.value) || 0;
+                const total = protein + carbs + fat;
+                
+                if (total !== 100) {
+                    macrosWarning.textContent = `La somme des pourcentages doit être égale à 100%. Actuellement: ${total}%`;
+                } else {
+                    macrosWarning.textContent = '';
                 }
-                
-                proteinInput.addEventListener('input', validateMacros);
-                carbsInput.addEventListener('input', validateMacros);
-                fatInput.addEventListener('input', validateMacros);
-                
-                // Initial validation
-                validateMacros();
             }
             
-            // Update food nutrients based on selection
-            const foodSelect = document.getElementById('food_id');
-            const quantityInput = document.getElementById('quantity');
-            const caloriesInput = document.getElementById('custom_calories');
-            const proteinNutrientInput = document.getElementById('custom_protein');
-            const carbsNutrientInput = document.getElementById('custom_carbs');
-            const fatNutrientInput = document.getElementById('custom_fat');
+            proteinInput.addEventListener('input', validateMacros);
+            carbsInput.addEventListener('input', validateMacros);
+            fatInput.addEventListener('input', validateMacros);
             
-            if (foodSelect && quantityInput && caloriesInput) {
-                function updateNutrients() {
-                    const selectedOption = foodSelect.options[foodSelect.selectedIndex];
-                    const quantity = parseFloat(quantityInput.value) || 0;
-                    
-                    if (selectedOption && selectedOption.value) {
-                        const calories = parseFloat(selectedOption.dataset.calories) || 0;
-                        const protein = parseFloat(selectedOption.dataset.protein) || 0;
-                        const carbs = parseFloat(selectedOption.dataset.carbs) || 0;
-                        const fat = parseFloat(selectedOption.dataset.fat) || 0;
-                        
-                        caloriesInput.value = Math.round((calories * quantity) / 100);
-                        proteinNutrientInput.value = ((protein * quantity) / 100).toFixed(1);
-                        carbsNutrientInput.value = ((carbs * quantity) / 100).toFixed(1);
-                        fatNutrientInput.value = ((fat * quantity) / 100).toFixed(1);
-                    }
-                }
-                
-                foodSelect.addEventListener('change', updateNutrients);
-                quantityInput.addEventListener('input', updateNutrients);
-                
-                // Initial update
-                updateNutrients();
-            }
+            // Initial validation
+            validateMacros();
         });
     </script>
 </body>
