@@ -30,83 +30,169 @@ $errors = [];
 
 // Traitement du formulaire de mise à jour du profil
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Récupérer et nettoyer les données du formulaire
-    $gender = sanitizeInput($_POST['gender'] ?? '');
-    $birth_date = sanitizeInput($_POST['birth_date'] ?? '');
-    $height = sanitizeInput($_POST['height'] ?? '');
-    $activity_level = sanitizeInput($_POST['activity_level'] ?? '');
-    
-    // Validation des données
-    if (empty($gender)) {
-        $errors[] = "Le genre est requis";
-    }
-    
-    if (empty($birth_date)) {
-        $errors[] = "La date de naissance est requise";
-    } elseif (!validateDate($birth_date)) {
-        $errors[] = "La date de naissance n'est pas valide";
-    }
-    
-    if (empty($height)) {
-        $errors[] = "La taille est requise";
-    } elseif (!is_numeric($height) || $height <= 0) {
-        $errors[] = "La taille doit être un nombre positif";
-    }
-    
-    if (empty($activity_level)) {
-        $errors[] = "Le niveau d'activité est requis";
-    }
-    
-    // Si aucune erreur, mettre à jour le profil
-    if (empty($errors)) {
+    // Si c'est une action de recalcul des calories, ne pas valider le formulaire
+    if (isset($_POST['action']) && $_POST['action'] === 'recalculate_calories') {
         try {
             // Récupérer le dernier poids enregistré
             $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
             $latest_weight = fetchOne($sql, [$user_id]);
             
             if ($latest_weight) {
-                // Calculer le BMR de base avec le dernier poids
-                $bmr = calculateBMR($latest_weight['weight'], $height, $birth_date, $gender);
+                // Calculer l'âge à partir de la date de naissance
+                $birth_date_obj = new DateTime($profile['birth_date']);
+                $today = new DateTime();
+                $age = $birth_date_obj->diff($today)->y;
+                
+                // Calculer le BMR de base
+                $bmr = calculateBMR($latest_weight['weight'], $profile['height'], $age, $profile['gender']);
                 
                 // Calculer le TDEE (calories de base)
-                $tdee = calculateTDEE($bmr, $activity_level);
+                $tdee = calculateTDEE($bmr, $profile['activity_level']);
                 
                 // Vérifier si l'utilisateur a un programme actif
-                $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'actif'";
+                $sql = "SELECT p.* FROM user_programs up 
+                        JOIN programs p ON up.program_id = p.id 
+                        WHERE up.user_id = ? AND up.status = 'actif'";
                 $active_program = fetchOne($sql, [$user_id]);
                 
-                if ($active_program) {
-                    // Si un programme est actif, mettre à jour directement les calories
-                    $sql = "UPDATE user_profiles SET 
-                            gender = ?, 
-                            birth_date = ?, 
-                            height = ?, 
-                            activity_level = ?,
-                            daily_calories = ?,
-                            updated_at = NOW()
-                            WHERE user_id = ?";
-                    update($sql, [$gender, $birth_date, $height, $activity_level, $tdee, $user_id]);
+                // Vérifier si l'utilisateur a un objectif actif
+                $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+                $current_goal = fetchOne($sql, [$user_id]);
+                
+                $final_calories = $tdee;
+                
+                // Calculer l'ajustement calorique en fonction du programme et de l'objectif
+                if ($active_program && $current_goal) {
+                    // Calculer la différence de poids à perdre/gagner
+                    $weight_difference = $current_goal['target_weight'] - $latest_weight['weight'];
                     
-                    $success_message = "Votre profil a été mis à jour avec succès !";
-                } else {
-                    // Si pas de programme actif, demander confirmation
-                    $_SESSION['pending_calories_update'] = [
-                        'tdee' => $tdee,
-                        'profile_data' => [
-                            'gender' => $gender,
-                            'birth_date' => $birth_date,
-                            'height' => $height,
-                            'activity_level' => $activity_level
-                        ]
-                    ];
-                    $success_message = "Votre profil a été mis à jour avec succès ! Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau niveau d'activité ?";
+                    // Calculer le nombre de jours jusqu'à la date cible
+                    $target_date = new DateTime($current_goal['target_date']);
+                    $today = new DateTime();
+                    $days_until_target = $today->diff($target_date)->days;
+                    
+                    if ($days_until_target > 0) {
+                        // Calculer le déficit/surplus calorique quotidien nécessaire
+                        // 1 kg de graisse = 7700 calories
+                        $total_calories_needed = $weight_difference * 7700;
+                        $daily_calories_adjustment = $total_calories_needed / $days_until_target;
+                        
+                        // Appliquer l'ajustement du programme
+                        $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                        
+                        // Combiner les ajustements
+                        $final_calories = $tdee + $program_adjustment + $daily_calories_adjustment;
+                    } else {
+                        // Si la date cible est dépassée, utiliser uniquement l'ajustement du programme
+                        $final_calories = $tdee * (1 + ($active_program['calorie_adjustment'] / 100));
+                    }
                 }
+                // Si seulement un programme est actif
+                elseif ($active_program) {
+                    $final_calories = $tdee * (1 + ($active_program['calorie_adjustment'] / 100));
+                }
+                // Si seulement un objectif est actif
+                elseif ($current_goal) {
+                    if ($current_goal['target_weight'] < $latest_weight['weight']) {
+                        // Objectif de perte de poids (déficit de 500 calories)
+                        $final_calories = $tdee - 500;
+                    } elseif ($current_goal['target_weight'] > $latest_weight['weight']) {
+                        // Objectif de prise de poids (surplus de 500 calories)
+                        $final_calories = $tdee + 500;
+                    }
+                }
+                
+                // Mettre à jour les calories dans le profil
+                $sql = "UPDATE user_profiles SET daily_calories = ?, updated_at = NOW() WHERE user_id = ?";
+                update($sql, [$final_calories, $user_id]);
+                
+                $success_message = "Vos besoins caloriques ont été recalculés avec succès !";
             } else {
                 $errors[] = "Aucun poids enregistré trouvé. Veuillez d'abord enregistrer votre poids.";
             }
         } catch (Exception $e) {
-            $errors[] = "Une erreur s'est produite: " . $e->getMessage();
-            error_log("Erreur dans profile.php: " . $e->getMessage());
+            $errors[] = "Une erreur s'est produite lors du recalcul des calories : " . $e->getMessage();
+            error_log("Erreur dans profile.php (recalculate_calories): " . $e->getMessage());
+        }
+    } else {
+        // Récupérer et nettoyer les données du formulaire
+        $gender = sanitizeInput($_POST['gender'] ?? '');
+        $birth_date = sanitizeInput($_POST['birth_date'] ?? '');
+        $height = sanitizeInput($_POST['height'] ?? '');
+        $activity_level = sanitizeInput($_POST['activity_level'] ?? '');
+        
+        // Validation des données
+        if (empty($gender)) {
+            $errors[] = "Le genre est requis";
+        }
+        
+        if (empty($birth_date)) {
+            $errors[] = "La date de naissance est requise";
+        } elseif (!validateDate($birth_date)) {
+            $errors[] = "La date de naissance n'est pas valide";
+        }
+        
+        if (empty($height)) {
+            $errors[] = "La taille est requise";
+        } elseif (!is_numeric($height) || $height <= 0) {
+            $errors[] = "La taille doit être un nombre positif";
+        }
+        
+        if (empty($activity_level)) {
+            $errors[] = "Le niveau d'activité est requis";
+        }
+        
+        // Si aucune erreur, mettre à jour le profil
+        if (empty($errors)) {
+            try {
+                // Récupérer le dernier poids enregistré
+                $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
+                $latest_weight = fetchOne($sql, [$user_id]);
+                
+                if ($latest_weight) {
+                    // Calculer le BMR de base avec le dernier poids
+                    $bmr = calculateBMR($latest_weight['weight'], $height, $birth_date, $gender);
+                    
+                    // Calculer le TDEE (calories de base)
+                    $tdee = calculateTDEE($bmr, $activity_level);
+                    
+                    // Vérifier si l'utilisateur a un programme actif
+                    $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'actif'";
+                    $active_program = fetchOne($sql, [$user_id]);
+                    
+                    if ($active_program) {
+                        // Si un programme est actif, mettre à jour directement les calories
+                        $sql = "UPDATE user_profiles SET 
+                                gender = ?, 
+                                birth_date = ?, 
+                                height = ?, 
+                                activity_level = ?,
+                                daily_calories = ?,
+                                updated_at = NOW()
+                                WHERE user_id = ?";
+                        update($sql, [$gender, $birth_date, $height, $activity_level, $tdee, $user_id]);
+                        
+                        $success_message = "Votre profil a été mis à jour avec succès !";
+                    } else {
+                        // Si pas de programme actif, demander confirmation
+                        $_SESSION['pending_calories_update'] = [
+                            'tdee' => $tdee,
+                            'profile_data' => [
+                                'gender' => $gender,
+                                'birth_date' => $birth_date,
+                                'height' => $height,
+                                'activity_level' => $activity_level
+                            ]
+                        ];
+                        $success_message = "Votre profil a été mis à jour avec succès ! Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau niveau d'activité ?";
+                    }
+                } else {
+                    $errors[] = "Aucun poids enregistré trouvé. Veuillez d'abord enregistrer votre poids.";
+                }
+            } catch (Exception $e) {
+                $errors[] = "Une erreur s'est produite: " . $e->getMessage();
+                error_log("Erreur dans profile.php: " . $e->getMessage());
+            }
         }
     }
 }
@@ -140,66 +226,6 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_calories' && isset($
     // Nettoyer la session
     unset($_SESSION['pending_calories_update']);
     redirect('profile.php');
-}
-
-// Ajouter le traitement de l'action de recalcul des calories
-if (isset($_POST['action']) && $_POST['action'] === 'recalculate_calories') {
-    try {
-        // Récupérer le dernier poids enregistré
-        $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
-        $latest_weight = fetchOne($sql, [$user_id]);
-        
-        if ($latest_weight) {
-            // Calculer l'âge à partir de la date de naissance
-            $birth_date_obj = new DateTime($profile['birth_date']);
-            $today = new DateTime();
-            $age = $birth_date_obj->diff($today)->y;
-            
-            // Calculer le BMR de base
-            $bmr = calculateBMR($latest_weight['weight'], $profile['height'], $age, $profile['gender']);
-            
-            // Calculer le TDEE (calories de base)
-            $tdee = calculateTDEE($bmr, $profile['activity_level']);
-            
-            // Vérifier si l'utilisateur a un programme actif
-            $sql = "SELECT p.* FROM user_programs up 
-                    JOIN programs p ON up.program_id = p.id 
-                    WHERE up.user_id = ? AND up.status = 'actif'";
-            $active_program = fetchOne($sql, [$user_id]);
-            
-            // Vérifier si l'utilisateur a un objectif actif
-            $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-            $current_goal = fetchOne($sql, [$user_id]);
-            
-            $final_calories = $tdee;
-            
-            // Ajuster les calories selon le programme actif
-            if ($active_program) {
-                $final_calories = $tdee * (1 + ($active_program['calorie_adjustment'] / 100));
-            }
-            // Sinon, ajuster selon l'objectif
-            elseif ($current_goal) {
-                if ($current_goal['target_weight'] < $latest_weight['weight']) {
-                    // Objectif de perte de poids (déficit de 500 calories)
-                    $final_calories = $tdee - 500;
-                } elseif ($current_goal['target_weight'] > $latest_weight['weight']) {
-                    // Objectif de prise de poids (surplus de 500 calories)
-                    $final_calories = $tdee + 500;
-                }
-            }
-            
-            // Mettre à jour les calories dans le profil
-            $sql = "UPDATE user_profiles SET daily_calories = ?, updated_at = NOW() WHERE user_id = ?";
-            update($sql, [$final_calories, $user_id]);
-            
-            $success_message = "Vos besoins caloriques ont été recalculés avec succès !";
-        } else {
-            $errors[] = "Aucun poids enregistré trouvé. Veuillez d'abord enregistrer votre poids.";
-        }
-    } catch (Exception $e) {
-        $errors[] = "Une erreur s'est produite lors du recalcul des calories : " . $e->getMessage();
-        error_log("Erreur dans profile.php (recalculate_calories): " . $e->getMessage());
-    }
 }
 
 // Récupérer le dernier poids enregistré

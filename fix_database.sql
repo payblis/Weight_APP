@@ -3,18 +3,8 @@
 -- Désactiver temporairement les vérifications de clés étrangères
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Table des paramètres
-CREATE TABLE IF NOT EXISTS settings (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    setting_name VARCHAR(50) NOT NULL UNIQUE,
-    setting_value TEXT,
-    is_public BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
 -- Table des rôles
-CREATE TABLE IF NOT EXISTS roles (
+CREATE TABLE roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
@@ -23,7 +13,7 @@ CREATE TABLE IF NOT EXISTS roles (
 );
 
 -- Table des utilisateurs
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     first_name VARCHAR(50) NULL,
@@ -49,7 +39,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Table des programmes nutritionnels
-CREATE TABLE IF NOT EXISTS nutrition_programs (
+CREATE TABLE nutrition_programs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
@@ -66,15 +56,24 @@ CREATE TABLE IF NOT EXISTS nutrition_programs (
 );
 
 -- Table des profils utilisateurs
-CREATE TABLE IF NOT EXISTS user_profiles (
+CREATE TABLE user_profiles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     gender ENUM('homme', 'femme', 'autre') NOT NULL,
     birth_date DATE NOT NULL,
     height INT NOT NULL,
     activity_level ENUM('sedentaire', 'leger', 'modere', 'actif', 'tres_actif') NOT NULL DEFAULT 'modere',
+    daily_calories INT,
+    protein_ratio FLOAT DEFAULT 0.3,
+    carbs_ratio FLOAT DEFAULT 0.4,
+    fat_ratio FLOAT DEFAULT 0.3,
     preferred_bmr_formula VARCHAR(50) DEFAULT 'mifflin_st_jeor',
     nutrition_program_id INT NULL,
+    email_notifications TINYINT(1) NOT NULL DEFAULT 1,
+    weight_reminders TINYINT(1) NOT NULL DEFAULT 1,
+    food_reminders TINYINT(1) NOT NULL DEFAULT 1,
+    exercise_reminders TINYINT(1) NOT NULL DEFAULT 1,
+    goal_updates TINYINT(1) NOT NULL DEFAULT 1,
     notes TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -366,31 +365,23 @@ CREATE TABLE ai_suggestions (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Table des programmes
-CREATE TABLE IF NOT EXISTS programs (
+-- Table des paramètres de l'application
+CREATE TABLE app_settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    type ENUM('complet', 'nutrition', 'exercice') NOT NULL DEFAULT 'complet',
-    content TEXT NOT NULL,
-    calorie_adjustment DECIMAL(5,2) NOT NULL DEFAULT 0,
-    protein_ratio DECIMAL(3,2) NOT NULL DEFAULT 0.3,
-    carbs_ratio DECIMAL(3,2) NOT NULL DEFAULT 0.4,
-    fat_ratio DECIMAL(3,2) NOT NULL DEFAULT 0.3,
+    setting_key VARCHAR(50) NOT NULL UNIQUE,
+    setting_value TEXT,
+    notes TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Table des programmes utilisateurs
-CREATE TABLE IF NOT EXISTS user_programs (
+-- Table des programmes
+CREATE TABLE programs (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    program_id INT NOT NULL,
-    status ENUM('actif', 'inactif') NOT NULL DEFAULT 'actif',
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Réactiver les vérifications de clés étrangères
@@ -398,22 +389,33 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- Insertion des données par défaut
 INSERT INTO roles (name, description) VALUES 
-('admin', 'Administrateur avec tous les droits'),
+('admin', 'Administrateur avec accès complet'),
 ('user', 'Utilisateur standard');
 
--- Insérer les paramètres par défaut uniquement s'ils n'existent pas déjà
-INSERT IGNORE INTO settings (setting_name, setting_value, is_public) VALUES 
-('chatgpt_api_key', '', FALSE),
-('site_name', 'Weight Tracker', TRUE),
-('site_description', 'Application de suivi de poids et de nutrition', TRUE),
-('maintenance_mode', '0', TRUE);
+INSERT INTO app_settings (setting_key, setting_value) VALUES 
+('chatgpt_api_key', ''),
+('site_name', 'Weight Tracker'),
+('site_description', 'Application de suivi de poids et de nutrition'),
+('maintenance_mode', '0');
+
+INSERT INTO nutrition_programs (name, description, calorie_adjustment, protein_ratio, carbs_ratio, fat_ratio) VALUES 
+('Perte de poids', 'Programme pour perdre du poids de manière saine et durable', -500, 35, 35, 30),
+('Maintien du poids', 'Programme pour maintenir son poids actuel', 0, 30, 40, 30),
+('Prise de masse', 'Programme pour prendre du poids et de la masse musculaire', 500, 30, 45, 25),
+('Cétogène', 'Programme à faible teneur en glucides et riche en graisses', -300, 25, 5, 70),
+('Végétarien', 'Programme équilibré sans viande', 0, 25, 50, 25);
+
+INSERT INTO programs (name, description) VALUES
+('Programme Standard', 'Programme de perte de poids standard avec un déficit calorique modéré'),
+('Programme Intensif', 'Programme de perte de poids intensif avec un déficit calorique important'),
+('Programme Maintien', 'Programme de maintien du poids avec un équilibre calorique');
 
 -- Création d'un compte administrateur par défaut
-INSERT IGNORE INTO users (username, email, password, first_name, last_name, role_id, created_at) 
+INSERT INTO users (username, email, password, first_name, last_name, role_id, created_at) 
 VALUES ('admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'User', 1, NOW());
 
 -- Création d'un profil pour l'administrateur
-INSERT IGNORE INTO user_profiles (user_id, gender, birth_date, height, activity_level) 
+INSERT INTO user_profiles (user_id, gender, birth_date, height, activity_level) 
 VALUES (1, 'homme', '1990-01-01', 175, 'modere');
 
 -- Ajout des index pour améliorer les performances
