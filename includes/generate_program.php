@@ -34,27 +34,147 @@ try {
     exit;
 }
 
-// Préparer le prompt pour ChatGPT
-$system_prompt = "Tu es un expert en nutrition et en fitness. Crée un programme personnalisé basé sur la description fournie. 
-Le programme doit inclure :
-- Un nom approprié
-- Une description détaillée
-- Un type (complet, nutrition, ou exercice)
-- Un ajustement calorique en pourcentage (-20 à +20)
-- Une répartition des macronutriments (protéines, glucides, lipides) en pourcentage
+// Fonction pour appeler l'API ChatGPT
+function callChatGPTAPI($prompt, $api_key) {
+    $url = 'https://api.openai.com/v1/chat/completions';
+    
+    $data = [
+        'model' => 'gpt-3.5-turbo',
+        'messages' => [
+            [
+                'role' => 'system',
+                'content' => 'Tu es un expert en nutrition et en fitness qui fournit des conseils personnalisés et détaillés.'
+            ],
+            [
+                'role' => 'user',
+                'content' => $prompt
+            ]
+        ],
+        'temperature' => 0.7,
+        'max_tokens' => 1000
+    ];
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $api_key
+    ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Timeout après 30 secondes
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Désactiver la vérification SSL pour le débogage
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
+    curl_close($ch);
+    
+    if ($curl_error) {
+        error_log("Erreur cURL: " . $curl_error);
+        return false;
+    }
+    
+    if ($http_code !== 200) {
+        error_log("Erreur API ChatGPT (HTTP $http_code): " . $response);
+        return false;
+    }
+    
+    $response_data = json_decode($response, true);
+    
+    if (!isset($response_data['choices'][0]['message']['content'])) {
+        error_log("Réponse invalide de l'API ChatGPT: " . $response);
+        return false;
+    }
+    
+    return $response_data['choices'][0]['message']['content'];
+}
 
-IMPORTANT: Réponds UNIQUEMENT avec un objet JSON valide contenant ces informations, sans texte supplémentaire. Le format doit être exactement comme ceci:
-{
-    \"name\": \"Nom du programme\",
-    \"description\": \"Description détaillée\",
-    \"type\": \"complet\",
-    \"calorie_adjustment\": -10,
-    \"protein_ratio\": 0.3,
-    \"carbs_ratio\": 0.4,
-    \"fat_ratio\": 0.3
-}";
+// Fonction pour générer un programme avec ChatGPT
+function generateProgramWithChatGPT($program_name, $program_description, $program_type, $api_key) {
+    if (empty($api_key)) {
+        return [
+            'success' => false,
+            'error' => "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur."
+        ];
+    }
+    
+    // Construire le prompt pour ChatGPT
+    $prompt = "En tant qu'expert en nutrition et fitness, génère un programme détaillé avec les informations suivantes :\n\n";
+    $prompt .= "Nom du programme : " . $program_name . "\n";
+    $prompt .= "Description : " . $program_description . "\n";
+    $prompt .= "Type de programme : " . $program_type . "\n\n";
+    
+    $prompt .= "Génère un programme complet avec :\n";
+    $prompt .= "1. Objectifs du programme\n";
+    $prompt .= "2. Recommandations nutritionnelles\n";
+    $prompt .= "3. Programme d'exercices\n";
+    $prompt .= "4. Conseils et astuces\n\n";
+    
+    $prompt .= "Format de réponse souhaité :\n";
+    $prompt .= "OBJECTIFS\n";
+    $prompt .= "- Liste des objectifs\n\n";
+    $prompt .= "NUTRITION\n";
+    $prompt .= "- Recommandations alimentaires\n";
+    $prompt .= "- Exemples de repas\n";
+    $prompt .= "- Conseils nutritionnels\n\n";
+    $prompt .= "EXERCICES\n";
+    $prompt .= "- Programme d'entraînement\n";
+    $prompt .= "- Séries et répétitions\n";
+    $prompt .= "- Temps de repos\n\n";
+    $prompt .= "CONSEILS\n";
+    $prompt .= "- Astuces pour le succès\n";
+    $prompt .= "- Points d'attention\n";
+    $prompt .= "- Progression recommandée";
+    
+    // Appeler l'API ChatGPT
+    $response = callChatGPTAPI($prompt, $api_key);
+    
+    if ($response === false) {
+        return [
+            'success' => false,
+            'error' => "Une erreur s'est produite lors de la génération du programme. Veuillez réessayer plus tard."
+        ];
+    }
+    
+    return [
+        'success' => true,
+        'content' => $response
+    ];
+}
 
-$user_prompt = "Crée un programme basé sur cette description : " . $prompt;
+// Traitement de la demande de génération de programme
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $program_name = sanitizeInput($_POST['program_name'] ?? '');
+    $program_description = sanitizeInput($_POST['program_description'] ?? '');
+    $program_type = sanitizeInput($_POST['program_type'] ?? 'complet');
+    
+    if (empty($program_name) || empty($program_description)) {
+        $errors[] = "Le nom et la description du programme sont requis.";
+    } else {
+        try {
+            // Générer le contenu du programme avec ChatGPT
+            $program_content = generateProgramWithChatGPT($program_name, $program_description, $program_type, $api_key);
+            
+            if (!$program_content['success']) {
+                $errors[] = $program_content['error'];
+            } else {
+                // Insérer le programme dans la base de données
+                $sql = "INSERT INTO programs (name, description, type, content, created_at) VALUES (?, ?, ?, ?, NOW())";
+                $result = insert($sql, [$program_name, $program_description, $program_type, $program_content['content']]);
+                
+                if ($result) {
+                    $success_message = "Le programme a été généré avec succès !";
+                } else {
+                    $errors[] = "Une erreur s'est produite lors de l'enregistrement du programme. Veuillez réessayer.";
+                }
+            }
+        } catch (Exception $e) {
+            $errors[] = "Une erreur s'est produite: " . $e->getMessage();
+            error_log("Erreur dans generate_program.php: " . $e->getMessage());
+        }
+    }
+}
 
 // Log des prompts
 error_log("=== DÉBUT DE LA GÉNÉRATION DE PROGRAMME ===");
