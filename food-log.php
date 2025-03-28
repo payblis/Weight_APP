@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($errors)) {
             try {
                 // Insérer le repas
-                $sql = "INSERT INTO meals (user_id, name, meal_type, log_date, notes, created_at) 
+                $sql = "INSERT INTO meals (user_id, meal_name, meal_type, log_date, notes, created_at) 
                         VALUES (?, ?, ?, ?, ?, NOW())";
                 $meal_id = insert($sql, [$user_id, $meal_name, $meal_type, $log_date, $notes]);
                 
