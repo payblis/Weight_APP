@@ -659,12 +659,6 @@ function recalculateCalories($user_id) {
     $stmt->execute([$user_id]);
     $active_program = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // Récupérer l'objectif actif
-    $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$user_id]);
-    $current_goal = $stmt->fetch(PDO::FETCH_ASSOC);
-    
     // Système de priorité : Programme > Objectif > TDEE
     if ($active_program) {
         error_log("Programme actif trouvé, priorité sur l'objectif");
@@ -680,38 +674,46 @@ function recalculateCalories($user_id) {
             'fat' => $active_program['fat_ratio'] / 100
         ];
         error_log("Ratios de macronutriments du programme : " . print_r($macro_ratios, true));
-    } elseif ($current_goal) {
-        error_log("Objectif actif trouvé, calcul des calories et ratios");
-        // Calculer l'ajustement quotidien nécessaire pour atteindre l'objectif
-        $weight_difference = $current_goal['target_weight'] - $profile['weight'];
-        $days_to_target = (strtotime($current_goal['target_date']) - time()) / (24 * 60 * 60);
-        $daily_adjustment = ($weight_difference * 7700) / $days_to_target;
-        
-        // Ajuster le TDEE avec l'ajustement quotidien
-        $caloric_goal = $tdee + $daily_adjustment;
-        error_log("Calories après ajustement de l'objectif : " . $caloric_goal);
-        
-        // Calculer les ratios de macronutriments selon l'objectif
-        $macro_ratios = calculateMacroRatios($profile['weight'], 
-            $current_goal['target_weight'],
-            null, // Pas de programme actif
-            $profile['activity_level']);
-        
-        // Avertir si l'ajustement est important
-        if (abs($daily_adjustment) > 500) {
-            error_log("ATTENTION : Ajustement calorique important de " . $daily_adjustment . " calories par jour");
-        }
     } else {
-        error_log("Ni programme ni objectif actif, utilisation du TDEE et ratios par défaut");
-        $caloric_goal = $tdee;
+        // Récupérer l'objectif actif
+        $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id]);
+        $current_goal = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // Ratios par défaut (40% protéines, 30% glucides, 30% lipides)
-        $macro_ratios = [
-            'protein' => 0.40,
-            'carbs' => 0.30,
-            'fat' => 0.30
-        ];
-        error_log("Ratios de macronutriments par défaut : " . print_r($macro_ratios, true));
+        if ($current_goal) {
+            error_log("Objectif actif trouvé, calcul des calories et ratios");
+            // Calculer l'ajustement quotidien nécessaire pour atteindre l'objectif
+            $weight_difference = $current_goal['target_weight'] - $profile['weight'];
+            $days_to_target = (strtotime($current_goal['target_date']) - time()) / (24 * 60 * 60);
+            $daily_adjustment = ($weight_difference * 7700) / $days_to_target;
+            
+            // Ajuster le TDEE avec l'ajustement quotidien
+            $caloric_goal = $tdee + $daily_adjustment;
+            error_log("Calories après ajustement de l'objectif : " . $caloric_goal);
+            
+            // Calculer les ratios de macronutriments selon l'objectif
+            $macro_ratios = calculateMacroRatios($profile['weight'], 
+                $current_goal['target_weight'],
+                null, // Pas de programme actif
+                $profile['activity_level']);
+            
+            // Avertir si l'ajustement est important
+            if (abs($daily_adjustment) > 500) {
+                error_log("ATTENTION : Ajustement calorique important de " . $daily_adjustment . " calories par jour");
+            }
+        } else {
+            error_log("Ni programme ni objectif actif, utilisation du TDEE et ratios par défaut");
+            $caloric_goal = $tdee;
+            
+            // Ratios par défaut (40% protéines, 30% glucides, 30% lipides)
+            $macro_ratios = [
+                'protein' => 0.40,
+                'carbs' => 0.30,
+                'fat' => 0.30
+            ];
+            error_log("Ratios de macronutriments par défaut : " . print_r($macro_ratios, true));
+        }
     }
     
     // Mettre à jour le profil avec les nouvelles valeurs
