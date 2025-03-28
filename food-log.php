@@ -121,6 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                     
                     if ($result) {
+                        // Mettre à jour les totaux du repas
+                        updateMealTotals($meal_id);
                         $success_message = "Aliment ajouté au repas avec succès";
                     } else {
                         $errors[] = "Une erreur s'est produite lors de l'ajout de l'aliment";
@@ -256,6 +258,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ]);
                         }
                         
+                        // Mettre à jour les totaux du nouveau repas
+                        updateMealTotals($new_meal_id);
+                        
                         $success_message = "Repas ajouté avec succès à partir du modèle prédéfini";
                         redirect("food-log.php");
                     } else {
@@ -291,6 +296,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $result = update($sql, [$food_log_id]);
                     
                     if ($result) {
+                        // Mettre à jour les totaux du repas
+                        updateMealTotals($meal_id);
                         $success_message = "Aliment supprimé du repas avec succès";
                     } else {
                         $errors[] = "Une erreur s'est produite lors de la suppression de l'aliment";
@@ -467,6 +474,52 @@ function calculateNutrients($food) {
         'carbs' => round($carbs, 1),
         'fat' => round($fat, 1)
     ];
+}
+
+// Fonction pour mettre à jour les totaux d'un repas
+function updateMealTotals($meal_id) {
+    global $db;
+    
+    $sql = "UPDATE meals m 
+            SET total_calories = (
+                SELECT COALESCE(SUM(CASE 
+                    WHEN fl.food_id IS NOT NULL THEN 
+                        (SELECT f.calories * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
+                    ELSE fl.custom_calories
+                END), 0)
+                FROM food_logs fl 
+                WHERE fl.meal_id = m.id
+            ),
+            total_protein = (
+                SELECT COALESCE(SUM(CASE 
+                    WHEN fl.food_id IS NOT NULL THEN 
+                        (SELECT f.protein * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
+                    ELSE fl.custom_protein
+                END), 0)
+                FROM food_logs fl 
+                WHERE fl.meal_id = m.id
+            ),
+            total_carbs = (
+                SELECT COALESCE(SUM(CASE 
+                    WHEN fl.food_id IS NOT NULL THEN 
+                        (SELECT f.carbs * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
+                    ELSE fl.custom_carbs
+                END), 0)
+                FROM food_logs fl 
+                WHERE fl.meal_id = m.id
+            ),
+            total_fat = (
+                SELECT COALESCE(SUM(CASE 
+                    WHEN fl.food_id IS NOT NULL THEN 
+                        (SELECT f.fat * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
+                    ELSE fl.custom_fat
+                END), 0)
+                FROM food_logs fl 
+                WHERE fl.meal_id = m.id
+            )
+            WHERE m.id = ?";
+            
+    return update($sql, [$meal_id]);
 }
 ?>
 <!DOCTYPE html>

@@ -31,22 +31,18 @@ if (!validateDate($start_date) || !validateDate($end_date)) {
 
 // Récupérer les données caloriques pour la période sélectionnée
 $sql = "SELECT 
-            log_date,
-            SUM(CASE 
-                WHEN fl.food_id IS NOT NULL THEN 
-                    (SELECT f.calories * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                ELSE fl.custom_calories
-            END) as calories_in,
-            (SELECT SUM(el.calories_burned) FROM exercise_logs el WHERE el.user_id = ? AND el.log_date = fl.log_date) as calories_out
+            m.log_date,
+            SUM(m.total_calories) as calories_in,
+            (SELECT SUM(el.calories_burned) FROM exercise_logs el WHERE el.user_id = ? AND el.log_date = m.log_date) as calories_out
         FROM 
-            food_logs fl
+            meals m
         WHERE 
-            fl.user_id = ? AND 
-            fl.log_date BETWEEN ? AND ?
+            m.user_id = ? AND 
+            m.log_date BETWEEN ? AND ?
         GROUP BY 
-            fl.log_date
+            m.log_date
         ORDER BY 
-            fl.log_date";
+            m.log_date";
 
 $calorie_data = fetchAll($sql, [$user_id, $user_id, $start_date, $end_date]);
 
@@ -186,40 +182,24 @@ $bmi_history = fetchAll($sql, [$user_id]);
 
 // Récupérer l'historique calorique détaillé
 $sql = "SELECT 
-            fl.log_date, 
-            DATE_FORMAT(fl.log_date, '%d/%m/%Y') as formatted_date,
-            SUM(CASE 
-                WHEN fl.food_id IS NOT NULL THEN 
-                    (SELECT f.calories * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-                ELSE fl.custom_calories
-            END) as calories_in,
-            (SELECT SUM(el.calories_burned) FROM exercise_logs el WHERE el.user_id = ? AND el.log_date = fl.log_date) as calories_out,
-            (SELECT SUM(CASE 
-                WHEN fl2.food_id IS NOT NULL THEN 
-                    (SELECT f.protein * (fl2.quantity / 100) FROM foods f WHERE f.id = fl2.food_id)
-                ELSE fl2.custom_protein
-            END) FROM food_logs fl2 WHERE fl2.user_id = ? AND fl2.log_date = fl.log_date) as protein,
-            (SELECT SUM(CASE 
-                WHEN fl3.food_id IS NOT NULL THEN 
-                    (SELECT f.carbs * (fl3.quantity / 100) FROM foods f WHERE f.id = fl3.food_id)
-                ELSE fl3.custom_carbs
-            END) FROM food_logs fl3 WHERE fl3.user_id = ? AND fl3.log_date = fl.log_date) as carbs,
-            (SELECT SUM(CASE 
-                WHEN fl4.food_id IS NOT NULL THEN 
-                    (SELECT f.fat * (fl4.quantity / 100) FROM foods f WHERE f.id = fl4.food_id)
-                ELSE fl4.custom_fat
-            END) FROM food_logs fl4 WHERE fl4.user_id = ? AND fl4.log_date = fl.log_date) as fat
+            m.log_date, 
+            DATE_FORMAT(m.log_date, '%d/%m/%Y') as formatted_date,
+            SUM(m.total_calories) as calories_in,
+            (SELECT SUM(el.calories_burned) FROM exercise_logs el WHERE el.user_id = ? AND el.log_date = m.log_date) as calories_out,
+            SUM(m.total_protein) as protein,
+            SUM(m.total_carbs) as carbs,
+            SUM(m.total_fat) as fat
         FROM 
-            food_logs fl
+            meals m
         WHERE 
-            fl.user_id = ? 
+            m.user_id = ? 
         GROUP BY 
-            fl.log_date
+            m.log_date
         ORDER BY 
-            fl.log_date DESC
+            m.log_date DESC
         LIMIT 30";
 
-$calorie_history = fetchAll($sql, [$user_id, $user_id, $user_id, $user_id, $user_id]);
+$calorie_history = fetchAll($sql, [$user_id, $user_id]);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
