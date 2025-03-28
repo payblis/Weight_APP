@@ -464,15 +464,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'leave_program' && isset($_GET
                                 
                                 <div class="alert alert-success">
                                     <div class="row">
-                                        <div class="col-md-4 text-center">
-                                            <h5 class="mb-0"><?php echo number_format($active_program['daily_calories']); ?></h5>
-                                            <p class="small mb-0">calories/jour</p>
-                                        </div>
-                                        <div class="col-md-4 text-center">
+                                        <div class="col-md-6 text-center">
                                             <h5 class="mb-0"><?php echo number_format($active_program['protein_ratio'], 1); ?>%</h5>
                                             <p class="small mb-0">protéines</p>
                                         </div>
-                                        <div class="col-md-4 text-center">
+                                        <div class="col-md-6 text-center">
                                             <h5 class="mb-0"><?php echo number_format($active_program['carbs_ratio'], 1); ?>%</h5>
                                             <p class="small mb-0">glucides</p>
                                         </div>
