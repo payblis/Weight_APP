@@ -511,23 +511,6 @@ function truncateText($text, $length = 100, $suffix = '...') {
 }
 
 /**
- * Exécute une requête SQL sans retourner de résultats
- * @param string $sql La requête SQL à exécuter
- * @param array $params Les paramètres de la requête
- * @return bool True si la requête a réussi, false sinon
- */
-function execute($sql, $params = []) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare($sql);
-        return $stmt->execute($params);
-    } catch (PDOException $e) {
-        error_log("Erreur SQL: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
  * Vérifie et met à jour le poids dans user_profiles si nécessaire
  * @param int $user_id L'ID de l'utilisateur
  * @return float|null Le poids actuel (stocké ou récupéré)
@@ -566,4 +549,21 @@ function ensureProfileWeight($user_id) {
     
     error_log("Poids déjà défini dans user_profiles : " . $profile['weight']);
     return $profile['weight'];
+}
+
+/**
+ * Exécute une requête SQL sans retourner de résultats
+ * @param string $sql La requête SQL à exécuter
+ * @param array $params Les paramètres de la requête
+ * @return bool True si la requête a réussi, false sinon
+ */
+function execute($sql, $params = []) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute($params);
+    } catch (PDOException $e) {
+        error_log("Erreur SQL: " . $e->getMessage());
+        return false;
+    }
 }
