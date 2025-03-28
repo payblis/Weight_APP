@@ -372,12 +372,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Récupérer les repas de l'utilisateur
 $date_filter = isset($_GET['date']) ? sanitizeInput($_GET['date']) : date('Y-m-d');
 $sql = "SELECT m.*, 
-        (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count,
-        (SELECT SUM(CASE 
-            WHEN fl.food_id IS NOT NULL THEN 
-                (SELECT f.calories * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-            ELSE fl.custom_calories
-        END) FROM food_logs fl WHERE fl.meal_id = m.id) as total_calories
+        (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count
         FROM meals m 
         WHERE m.user_id = ? AND m.log_date = ? 
         ORDER BY FIELD(m.meal_type, 'petit_dejeuner', 'dejeuner', 'diner', 'collation', 'autre')";
@@ -442,12 +437,7 @@ if ($action === 'view_predefined_meal' && $predefined_meal_id > 0) {
 // Récupérer l'historique des repas
 $sql = "SELECT m.*, 
         DATE_FORMAT(m.log_date, '%d/%m/%Y') as formatted_date,
-        (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count,
-        (SELECT SUM(CASE 
-            WHEN fl.food_id IS NOT NULL THEN 
-                (SELECT f.calories * (fl.quantity / 100) FROM foods f WHERE f.id = fl.food_id)
-            ELSE fl.custom_calories
-        END) FROM food_logs fl WHERE fl.meal_id = m.id) as total_calories
+        (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count
         FROM meals m 
         WHERE m.user_id = ? 
         ORDER BY m.log_date DESC, FIELD(m.meal_type, 'petit_dejeuner', 'dejeuner', 'diner', 'collation', 'autre')
