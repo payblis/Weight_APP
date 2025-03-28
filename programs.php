@@ -56,20 +56,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             error_log("=== DÉBOGAGE ACTIVATION ===");
             error_log("Tentative d'activation du programme ID : " . $program_id);
             
-            // Vérifier les programmes existants
-            $sql = "SELECT * FROM user_programs WHERE user_id = ?";
-            $existing_programs = fetchAll($sql, [$user_id]);
-            error_log("Programmes existants : " . print_r($existing_programs, true));
-            
-            // Désactiver tous les autres programmes
-            $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ? AND id != (SELECT id FROM user_programs WHERE user_id = ? AND program_id = ? ORDER BY created_at DESC LIMIT 1)";
-            error_log("SQL de désactivation : " . $sql);
-            error_log("Paramètres : user_id=" . $user_id . ", program_id=" . $program_id);
+            // 1. Désactiver TOUS les programmes existants pour l'user
+            $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ?";
+            error_log("SQL de désactivation initiale : " . $sql);
+            error_log("Paramètres : user_id=" . $user_id);
             $stmt = $pdo->prepare($sql);
-            $result = $stmt->execute([$user_id, $user_id, $program_id]);
-            error_log("Résultat de la désactivation : " . ($result ? "Succès" : "Échec"));
+            $result = $stmt->execute([$user_id]);
+            error_log("Résultat de la désactivation initiale : " . ($result ? "Succès" : "Échec"));
             
-            // Activer le nouveau programme
+            // 2. Insérer le NOUVEAU programme actif
             $sql = "INSERT INTO user_programs (user_id, program_id, status, created_at, updated_at) VALUES (?, ?, 'actif', NOW(), NOW())";
             error_log("SQL d'insertion : " . $sql);
             error_log("Paramètres : user_id=" . $user_id . ", program_id=" . $program_id);
@@ -80,23 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($result) {
                 // Récupérer l'ID du programme inséré
                 $insertedId = $pdo->lastInsertId();
-                error_log("ID du programme inséré : " . $insertedId);
+                error_log("Programme inséré avec ID : " . $insertedId);
                 
-                // Vérification immédiate après insertion
+                // 3. Vérification
                 $check = fetchOne("SELECT * FROM user_programs WHERE id = ?", [$insertedId]);
-                error_log("Vérification directe post-insert : " . print_r($check, true));
-                
-                // Désactiver tous les autres programmes en excluant l'ID exact
-                $sql = "UPDATE user_programs SET status = 'inactif' WHERE user_id = ? AND id != ?";
-                error_log("SQL de désactivation : " . $sql);
-                error_log("Paramètres : user_id=" . $user_id . ", insertedId=" . $insertedId);
-                $stmt = $pdo->prepare($sql);
-                $result = $stmt->execute([$user_id, $insertedId]);
-                error_log("Résultat de la désactivation : " . ($result ? "Succès" : "Échec"));
-                
-                // Vérification finale
-                $final_check = fetchOne("SELECT * FROM user_programs WHERE id = ?", [$insertedId]);
-                error_log("Vérification finale : " . print_r($final_check, true));
+                error_log("Post-insert (vérification) : " . print_r($check, true));
                 
                 // Récupérer les valeurs du programme
                 $sql = "SELECT * FROM programs WHERE id = ?";
@@ -126,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                              ", fat_ratio=" . $program['fat_ratio']);
                     error_log("Résultat de la mise à jour : " . ($update_result ? "Succès" : "Échec"));
                     
-                    // Maintenant que le programme est actif, on peut recalculer les calories
+                    // 4. Recalcul calories
                     error_log("Programme activé avec succès, appel de recalculateCalories");
                     if (recalculateCalories($user_id)) {
                         error_log("Recalcul des calories réussi");
