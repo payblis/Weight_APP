@@ -132,12 +132,32 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
     $prompt = "En tant que nutritionniste expert, génère un plan de repas personnalisé avec les informations suivantes :\n\n";
     $prompt .= "Profil : " . ($profile['gender'] === 'homme' ? 'Homme' : 'Femme') . ", " . 
                (date('Y') - date('Y', strtotime($profile['birth_date']))) . " ans\n";
+    $prompt .= "Niveau d'activité : " . ucfirst($profile['activity_level']) . "\n";
     $prompt .= "Poids actuel : " . ($latest_weight ? $latest_weight['weight'] . " kg" : "Non renseigné") . "\n";
     $prompt .= "Objectif : " . ($current_goal ? $current_goal['target_weight'] . " kg" : "Non défini") . "\n";
     $prompt .= "Programme : " . ($active_program ? $active_program['name'] : "Aucun") . "\n";
-    $prompt .= "Aliments préférés : " . implode(", ", array_slice($favorite_foods, 0, 5)) . "\n";
-    $prompt .= "Aliments à éviter : " . implode(", ", array_slice($blacklisted_foods, 0, 5)) . "\n\n";
-    $prompt .= "Génère un plan de repas équilibré avec petit-déjeuner, déjeuner, dîner et collations. Inclus les calories et macronutriments pour chaque repas.";
+    
+    if (!empty($favorite_foods)) {
+        $prompt .= "Aliments préférés : " . implode(", ", array_slice($favorite_foods, 0, 5)) . "\n";
+    }
+    
+    if (!empty($blacklisted_foods)) {
+        $prompt .= "Aliments à éviter : " . implode(", ", array_slice($blacklisted_foods, 0, 5)) . "\n";
+    }
+    
+    $prompt .= "\nGénère un plan de repas équilibré avec :\n";
+    $prompt .= "1. Petit-déjeuner (avec calories et macronutriments)\n";
+    $prompt .= "2. Déjeuner (avec calories et macronutriments)\n";
+    $prompt .= "3. Dîner (avec calories et macronutriments)\n";
+    $prompt .= "4. Collations (2-3 par jour, avec calories et macronutriments)\n\n";
+    $prompt .= "Format de réponse souhaité :\n";
+    $prompt .= "PETIT-DÉJEUNER\n";
+    $prompt .= "- Liste des aliments avec quantités\n";
+    $prompt .= "- Calories totales : X kcal\n";
+    $prompt .= "- Protéines : Xg\n";
+    $prompt .= "- Glucides : Xg\n";
+    $prompt .= "- Lipides : Xg\n\n";
+    $prompt .= "[Répéter le même format pour chaque repas]";
     
     // Appeler l'API ChatGPT
     $response = callChatGPTAPI($prompt, $api_key);
@@ -377,7 +397,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                                 La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.
                             </div>
                         <?php else: ?>
-                            <form method="post" action="ai-suggestions.php">
+                            <form method="POST" action="ai-suggestions.php?type=<?php echo htmlspecialchars($suggestion_type); ?>">
                                 <input type="hidden" name="suggestion_type" value="<?php echo htmlspecialchars($suggestion_type); ?>">
                                 
                                 <p>

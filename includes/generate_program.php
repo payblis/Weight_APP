@@ -86,6 +86,7 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer ' . $api_key
 ]);
 curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Timeout après 30 secondes
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Désactiver la vérification SSL pour le débogage
 
 // Log des options cURL
 error_log("Options cURL configurées:");
@@ -133,8 +134,8 @@ if (empty($response)) {
     exit;
 }
 
+// Vérifier si la réponse est un JSON valide
 $result = json_decode($response, true);
-
 if (json_last_error() !== JSON_ERROR_NONE) {
     error_log("=== ERREUR DE DÉCODAGE JSON ===");
     error_log("Message d'erreur: " . json_last_error_msg());
@@ -145,11 +146,20 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     exit;
 }
 
-if (!isset($result['choices'][0]['message']['content'])) {
+// Vérifier la structure de la réponse
+if (!isset($result['choices']) || !is_array($result['choices']) || empty($result['choices'])) {
     error_log("=== ERREUR DE STRUCTURE DE RÉPONSE ===");
     error_log("Structure reçue: " . print_r($result, true));
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Structure de réponse invalide de l\'API ChatGPT']);
+    exit;
+}
+
+if (!isset($result['choices'][0]['message']['content'])) {
+    error_log("=== ERREUR DE CONTENU DE RÉPONSE ===");
+    error_log("Structure reçue: " . print_r($result, true));
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Contenu de réponse manquant dans l\'API ChatGPT']);
     exit;
 }
 
