@@ -158,40 +158,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
 }
 
 // Récupérer la clé API ChatGPT
-$sql = "SELECT value FROM settings WHERE user_id = ? AND setting_name = 'chatgpt_api_key'";
-$api_key_setting = fetchOne($sql, [$user_id]);
-$api_key = $api_key_setting ? $api_key_setting['value'] : '';
-
-// Traitement de la mise à jour de la clé API
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_api_key') {
-    $new_api_key = sanitizeInput($_POST['api_key'] ?? '');
-    
-    if (empty($new_api_key)) {
-        $errors[] = "La clé API ne peut pas être vide";
-    } else {
-        try {
-            if ($api_key_setting) {
-                // Mettre à jour la clé existante
-                $sql = "UPDATE settings SET value = ?, updated_at = NOW() WHERE user_id = ? AND setting_name = 'chatgpt_api_key'";
-                $result = update($sql, [$new_api_key, $user_id]);
-            } else {
-                // Ajouter une nouvelle clé
-                $sql = "INSERT INTO settings (user_id, setting_name, value, created_at) VALUES (?, 'chatgpt_api_key', ?, NOW())";
-                $result = insert($sql, [$user_id, $new_api_key]);
-            }
-            
-            if ($result) {
-                $success_message = "Votre clé API a été mise à jour avec succès !";
-                $api_key = $new_api_key;
-            } else {
-                $errors[] = "Une erreur s'est produite lors de la mise à jour de la clé API. Veuillez réessayer.";
-            }
-        } catch (Exception $e) {
-            $errors[] = "Une erreur s'est produite: " . $e->getMessage();
-            error_log("Erreur dans preferences.php: " . $e->getMessage());
-        }
-    }
-}
+$sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+$api_key_setting = fetchOne($sql, []);
+$api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -304,28 +273,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <h5 class="mb-0">Configuration de l'API ChatGPT</h5>
                     </div>
                     <div class="card-body">
-                        <p>
-                            Pour utiliser les fonctionnalités d'IA pour l'importation d'aliments et les suggestions de repas, 
-                            vous devez configurer votre clé API ChatGPT.
-                        </p>
+                        <?php if (empty($api_key)): ?>
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser les fonctionnalités d'IA.
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-1"></i>
+                                L'API ChatGPT est correctement configurée. Vous pouvez utiliser toutes les fonctionnalités d'IA.
+                            </div>
+                        <?php endif; ?>
                         
-                        <form method="post" action="preferences.php">
-                            <input type="hidden" name="action" value="update_api_key">
-                            
-                            <div class="mb-3">
-                                <label for="api_key" class="form-label">Clé API ChatGPT</label>
-                                <input type="text" class="form-control" id="api_key" name="api_key" value="<?php echo htmlspecialchars($api_key); ?>" required>
-                                <div class="form-text">
-                                    Vous pouvez obtenir une clé API sur <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>
-                                </div>
-                            </div>
-                            
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-info">
-                                    <i class="fas fa-save me-1"></i>Enregistrer la clé API
-                                </button>
-                            </div>
-                        </form>
+                        <p>
+                            Les fonctionnalités d'IA (importation d'aliments, suggestions de repas, etc.) nécessitent une clé API ChatGPT.
+                            Cette clé est gérée par l'administrateur de l'application.
+                        </p>
                     </div>
                 </div>
             </div>

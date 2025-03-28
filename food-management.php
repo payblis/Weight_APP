@@ -25,17 +25,14 @@ $carbs = '';
 $fat = '';
 $success_message = '';
 $errors = [];
-$api_key = '';
 
-// Récupérer la clé API ChatGPT des paramètres
-$sql = "SELECT value FROM settings WHERE user_id = ? AND setting_name = 'chatgpt_api_key'";
-$api_key_setting = fetchOne($sql, [$user_id]);
-if ($api_key_setting) {
-    $api_key = $api_key_setting['value'];
-}
+// Récupérer la clé API ChatGPT des paramètres globaux
+$sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+$api_key_setting = fetchOne($sql, []);
+$api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
 
 // Traitement de l'ajout manuel d'un aliment
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_food_manual') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_food') {
     // Récupérer et nettoyer les données du formulaire
     $food_name = sanitizeInput($_POST['food_name'] ?? '');
     $category_id = (int)($_POST['category_id'] ?? 1);
@@ -91,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (empty($food_name)) {
         $errors[] = "Le nom de l'aliment est requis pour l'importation via ChatGPT";
     } elseif (empty($api_key)) {
-        $errors[] = "Veuillez configurer votre clé API ChatGPT dans les paramètres";
+        $errors[] = "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
     } else {
         // Appel à l'API ChatGPT
         $nutritional_data = getChatGPTNutritionalData($food_name, $api_key);
@@ -116,34 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $errors[] = "Une erreur s'est produite lors de l'ajout de l'aliment. Veuillez réessayer.";
             }
         } else {
-            $errors[] = "Impossible d'obtenir les données nutritionnelles via ChatGPT. Veuillez vérifier votre clé API ou essayer un autre nom d'aliment.";
-        }
-    }
-}
-
-// Traitement de la mise à jour de la clé API
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_api_key') {
-    $new_api_key = sanitizeInput($_POST['api_key'] ?? '');
-    
-    if (empty($new_api_key)) {
-        $errors[] = "La clé API ne peut pas être vide";
-    } else {
-        // Vérifier si un paramètre existe déjà
-        if ($api_key_setting) {
-            // Mettre à jour le paramètre existant
-            $sql = "UPDATE settings SET value = ?, updated_at = NOW() WHERE user_id = ? AND setting_name = 'chatgpt_api_key'";
-            $result = update($sql, [$new_api_key, $user_id]);
-        } else {
-            // Créer un nouveau paramètre
-            $sql = "INSERT INTO settings (user_id, setting_name, value, created_at) VALUES (?, 'chatgpt_api_key', ?, NOW())";
-            $result = insert($sql, [$user_id, $new_api_key]);
-        }
-        
-        if ($result) {
-            $api_key = $new_api_key;
-            $success_message = "Votre clé API ChatGPT a été mise à jour avec succès !";
-        } else {
-            $errors[] = "Une erreur s'est produite lors de la mise à jour de la clé API. Veuillez réessayer.";
+            $errors[] = "Impossible d'obtenir les données nutritionnelles via ChatGPT. Veuillez réessayer plus tard.";
         }
     }
 }
@@ -302,9 +272,6 @@ function getChatGPTNutritionalData($food_name, $api_key) {
                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importChatGPTModal">
                         <i class="fas fa-robot me-1"></i>Importer via ChatGPT
                     </button>
-                    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#apiKeyModal">
-                        <i class="fas fa-key me-1"></i>Configurer API
-                    </button>
                 </div>
             </div>
         </div>
@@ -411,7 +378,7 @@ function getChatGPTNutritionalData($food_name, $api_key) {
                 </div>
                 <div class="modal-body">
                     <form method="post" action="food-management.php">
-                        <input type="hidden" name="action" value="add_food_manual">
+                        <input type="hidden" name="action" value="add_food">
                         
                         <div class="mb-3">
                             <label for="food_name" class="form-label">Nom de l'aliment</label>
@@ -472,12 +439,7 @@ function getChatGPTNutritionalData($food_name, $api_key) {
                     <?php if (empty($api_key)): ?>
                         <div class="alert alert-warning">
                             <i class="fas fa-exclamation-triangle me-1"></i>
-                            Vous n'avez pas encore configuré votre clé API ChatGPT. Veuillez la configurer avant d'utiliser cette fonctionnalité.
-                        </div>
-                        <div class="d-grid">
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#apiKeyModal" data-bs-dismiss="modal">
-                                <i class="fas fa-key me-1"></i>Configurer ma clé API
-                            </button>
+                            La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.
                         </div>
                     <?php else: ?>
                         <form method="post" action="food-management.php">
@@ -498,37 +460,6 @@ function getChatGPTNutritionalData($food_name, $api_key) {
                             </div>
                         </form>
                     <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de configuration de la clé API -->
-    <div class="modal fade" id="apiKeyModal" tabindex="-1" aria-labelledby="apiKeyModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-secondary text-white">
-                    <h5 class="modal-title" id="apiKeyModalLabel">Configurer la clé API ChatGPT</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form method="post" action="food-management.php">
-                        <input type="hidden" name="action" value="update_api_key">
-                        
-                        <div class="mb-3">
-                            <label for="api_key" class="form-label">Clé API ChatGPT</label>
-                            <input type="text" class="form-control" id="api_key" name="api_key" value="<?php echo htmlspecialchars($api_key); ?>" required>
-                            <div class="form-text">
-                                Entrez votre clé API ChatGPT. Vous pouvez l'obtenir sur <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>.
-                            </div>
-                        </div>
-                        
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i>Enregistrer la clé API
-                            </button>
-                        </div>
-                    </form>
                 </div>
             </div>
         </div>

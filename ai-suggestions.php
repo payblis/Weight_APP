@@ -22,9 +22,9 @@ $success_message = '';
 $errors = [];
 
 // Récupérer la clé API ChatGPT
-$sql = "SELECT value FROM settings WHERE user_id = ? AND setting_name = 'chatgpt_api_key'";
-$api_key_setting = fetchOne($sql, [$user_id]);
-$api_key = $api_key_setting ? $api_key_setting['value'] : '';
+$sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+$api_key_setting = fetchOne($sql, []);
+$api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
 
 // Récupérer le profil de l'utilisateur
 $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
@@ -632,8 +632,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                         <?php if (empty($api_key) && $suggestion_type === 'programme'): ?>
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle me-1"></i>
-                                Vous devez configurer votre clé API ChatGPT pour utiliser cette fonctionnalité.
-                                <a href="preferences.php" class="alert-link">Configurer maintenant</a>
+                                La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.
                             </div>
                         <?php else: ?>
                             <form method="post" action="ai-suggestions.php">
@@ -787,7 +786,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                             Cette fonctionnalité utilise l'API ChatGPT pour une personnalisation avancée.
                         </p>
                         <p>
-                            <strong>Conseil :</strong> Configurez votre clé API dans les préférences pour utiliser cette fonctionnalité.
+                            <strong>Conseil :</strong> La clé API ChatGPT est gérée par l'administrateur de l'application.
+                            Contactez-le si vous souhaitez utiliser les fonctionnalités d'IA.
                         </p>
                     </div>
                 </div>
