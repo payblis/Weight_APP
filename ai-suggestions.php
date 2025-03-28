@@ -56,7 +56,6 @@ $blacklisted_foods = [];
 foreach ($preferences as $pref) {
     if ($pref['preference_type'] === 'favori') {
         if ($pref['food_id']) {
-            // Récupérer le nom de l'aliment depuis la table foods
             $sql = "SELECT name FROM foods WHERE id = ?";
             $food_info = fetchOne($sql, [$pref['food_id']]);
             $favorite_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
@@ -65,7 +64,6 @@ foreach ($preferences as $pref) {
         }
     } elseif ($pref['preference_type'] === 'blacklist') {
         if ($pref['food_id']) {
-            // Récupérer le nom de l'aliment depuis la table foods
             $sql = "SELECT name FROM foods WHERE id = ?";
             $food_info = fetchOne($sql, [$pref['food_id']]);
             $blacklisted_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
@@ -75,386 +73,118 @@ foreach ($preferences as $pref) {
     }
 }
 
+// Fonction pour appeler l'API ChatGPT
+function callChatGPTAPI($prompt, $api_key) {
+    $url = 'https://api.openai.com/v1/chat/completions';
+    
+    $data = [
+        'model' => 'gpt-3.5-turbo',
+        'messages' => [
+            [
+                'role' => 'system',
+                'content' => 'Tu es un expert en nutrition et en fitness qui fournit des conseils personnalisés et détaillés.'
+            ],
+            [
+                'role' => 'user',
+                'content' => $prompt
+            ]
+        ],
+        'temperature' => 0.7,
+        'max_tokens' => 1000
+    ];
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $api_key
+    ]);
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code !== 200) {
+        error_log("Erreur API ChatGPT: " . $response);
+        return false;
+    }
+    
+    $response_data = json_decode($response, true);
+    
+    if (isset($response_data['choices'][0]['message']['content'])) {
+        return $response_data['choices'][0]['message']['content'];
+    }
+    
+    return false;
+}
+
 // Fonction pour générer une suggestion de repas
 function generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods) {
-    $suggestion = "Voici quelques suggestions de repas adaptées à votre profil :\n\n";
+    global $api_key;
     
-    // Déterminer l'objectif calorique
-    $calorie_goal = 2000; // Valeur par défaut
-    
-    if ($active_program) {
-        $calorie_goal = $active_program['daily_calories'];
-    } elseif ($current_goal && $latest_weight) {
-        // Calculer le BMR (métabolisme de base) avec la formule de Mifflin-St Jeor
-        $age = isset($profile['birth_date']) ? (date('Y') - date('Y', strtotime($profile['birth_date']))) : 30;
-        
-        if ($profile['gender'] === 'homme') {
-            $bmr = 10 * $latest_weight['weight'] + 6.25 * $profile['height'] - 5 * $age + 5;
-        } else {
-            $bmr = 10 * $latest_weight['weight'] + 6.25 * $profile['height'] - 5 * $age - 161;
-        }
-        
-        // Calculer le TDEE (dépense énergétique totale quotidienne)
-        $activity_factors = [
-            'sedentaire' => 1.2,
-            'leger' => 1.375,
-            'modere' => 1.55,
-            'actif' => 1.725,
-            'tres_actif' => 1.9
-        ];
-        
-        $activity_factor = $activity_factors[$profile['activity_level']] ?? 1.2;
-        $tdee = $bmr * $activity_factor;
-        
-        // Calculer en fonction de l'objectif de poids
-        if ($current_goal['target_weight'] < $latest_weight['weight']) {
-            // Objectif de perte de poids (déficit de 500 calories)
-            $calorie_goal = $tdee - 500;
-        } elseif ($current_goal['target_weight'] > $latest_weight['weight']) {
-            // Objectif de prise de poids (surplus de 500 calories)
-            $calorie_goal = $tdee + 500;
-        } else {
-            // Objectif de maintien
-            $calorie_goal = $tdee;
-        }
+    if (empty($api_key)) {
+        return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.";
     }
     
-    // Répartir les calories sur les repas
-    $breakfast_calories = round($calorie_goal * 0.25);
-    $lunch_calories = round($calorie_goal * 0.35);
-    $dinner_calories = round($calorie_goal * 0.3);
-    $snack_calories = round($calorie_goal * 0.1);
+    // Construire le prompt pour ChatGPT
+    $prompt = "En tant que nutritionniste expert, génère un plan de repas personnalisé avec les informations suivantes :\n\n";
+    $prompt .= "Profil : " . ($profile['gender'] === 'homme' ? 'Homme' : 'Femme') . ", " . 
+               (date('Y') - date('Y', strtotime($profile['birth_date']))) . " ans\n";
+    $prompt .= "Poids actuel : " . ($latest_weight ? $latest_weight['weight'] . " kg" : "Non renseigné") . "\n";
+    $prompt .= "Objectif : " . ($current_goal ? $current_goal['target_weight'] . " kg" : "Non défini") . "\n";
+    $prompt .= "Programme : " . ($active_program ? $active_program['name'] : "Aucun") . "\n";
+    $prompt .= "Aliments préférés : " . implode(", ", array_slice($favorite_foods, 0, 5)) . "\n";
+    $prompt .= "Aliments à éviter : " . implode(", ", array_slice($blacklisted_foods, 0, 5)) . "\n\n";
+    $prompt .= "Génère un plan de repas équilibré avec petit-déjeuner, déjeuner, dîner et collations. Inclus les calories et macronutriments pour chaque repas.";
     
-    // Générer des suggestions de petit-déjeuner
-    $suggestion .= "PETIT-DÉJEUNER (environ {$breakfast_calories} calories) :\n";
-    $breakfast_options = [
-        "Porridge d'avoine avec fruits frais et noix",
-        "Œufs brouillés avec des légumes et une tranche de pain complet",
-        "Yaourt grec avec granola et baies",
-        "Smoothie protéiné aux fruits et épinards",
-        "Pain complet avec avocat et œuf poché"
-    ];
+    // Appeler l'API ChatGPT
+    $response = callChatGPTAPI($prompt, $api_key);
     
-    // Filtrer les options en fonction des préférences
-    $filtered_breakfast = filterFoodOptions($breakfast_options, $favorite_foods, $blacklisted_foods);
-    
-    // Ajouter 3 options aléatoires
-    $suggestion .= addRandomOptions($filtered_breakfast, 3);
-    
-    // Générer des suggestions de déjeuner
-    $suggestion .= "\nDÉJEUNER (environ {$lunch_calories} calories) :\n";
-    $lunch_options = [
-        "Salade de quinoa avec légumes grillés et poulet",
-        "Wrap au thon et avocat avec crudités",
-        "Buddha bowl avec riz brun, légumineuses et légumes",
-        "Soupe de légumes avec une portion de protéines maigres",
-        "Sandwich complet au poulet grillé et légumes"
-    ];
-    
-    // Filtrer les options en fonction des préférences
-    $filtered_lunch = filterFoodOptions($lunch_options, $favorite_foods, $blacklisted_foods);
-    
-    // Ajouter 3 options aléatoires
-    $suggestion .= addRandomOptions($filtered_lunch, 3);
-    
-    // Générer des suggestions de dîner
-    $suggestion .= "\nDÎNER (environ {$dinner_calories} calories) :\n";
-    $dinner_options = [
-        "Saumon grillé avec légumes rôtis et quinoa",
-        "Poulet aux herbes avec patate douce et légumes verts",
-        "Tofu sauté avec légumes et riz brun",
-        "Ratatouille avec une portion de protéines maigres",
-        "Curry de légumes avec lentilles et riz basmati"
-    ];
-    
-    // Filtrer les options en fonction des préférences
-    $filtered_dinner = filterFoodOptions($dinner_options, $favorite_foods, $blacklisted_foods);
-    
-    // Ajouter 3 options aléatoires
-    $suggestion .= addRandomOptions($filtered_dinner, 3);
-    
-    // Générer des suggestions de collations
-    $suggestion .= "\nCOLLATIONS (environ {$snack_calories} calories) :\n";
-    $snack_options = [
-        "Une pomme avec une cuillère à soupe de beurre d'amande",
-        "Un yaourt grec nature avec des baies",
-        "Une poignée de noix mélangées",
-        "Des bâtonnets de légumes avec du houmous",
-        "Un smoothie aux fruits"
-    ];
-    
-    // Filtrer les options en fonction des préférences
-    $filtered_snack = filterFoodOptions($snack_options, $favorite_foods, $blacklisted_foods);
-    
-    // Ajouter 3 options aléatoires
-    $suggestion .= addRandomOptions($filtered_snack, 3);
-    
-    // Ajouter des conseils personnalisés
-    $suggestion .= "\nCONSEILS PERSONNALISÉS :\n";
-    
-    if ($current_goal && $latest_weight) {
-        if ($current_goal['target_weight'] < $latest_weight['weight']) {
-            $suggestion .= "- Privilégiez les aliments riches en protéines pour maintenir votre masse musculaire pendant la perte de poids.\n";
-            $suggestion .= "- Limitez les aliments transformés et riches en sucres ajoutés.\n";
-            $suggestion .= "- Buvez beaucoup d'eau, surtout avant les repas pour augmenter la satiété.\n";
-        } elseif ($current_goal['target_weight'] > $latest_weight['weight']) {
-            $suggestion .= "- Augmentez progressivement votre apport calorique pour favoriser la prise de poids saine.\n";
-            $suggestion .= "- Consommez des aliments denses en nutriments et en calories.\n";
-            $suggestion .= "- Répartissez votre alimentation en 5-6 repas par jour.\n";
-        } else {
-            $suggestion .= "- Maintenez une alimentation équilibrée avec des portions contrôlées.\n";
-            $suggestion .= "- Variez vos sources de protéines, glucides et lipides.\n";
-            $suggestion .= "- Écoutez votre faim et votre satiété.\n";
-        }
+    if ($response === false) {
+        return "Une erreur s'est produite lors de la génération de la suggestion. Veuillez réessayer plus tard.";
     }
     
-    // Ajouter des conseils basés sur les préférences alimentaires
-    if (!empty($favorite_foods)) {
-        $suggestion .= "- Continuez à intégrer vos aliments préférés comme " . implode(", ", array_slice($favorite_foods, 0, 3)) . " dans votre alimentation.\n";
-    }
-    
-    if (!empty($blacklisted_foods)) {
-        $suggestion .= "- Toutes les suggestions évitent les aliments que vous n'aimez pas comme " . implode(", ", array_slice($blacklisted_foods, 0, 3)) . ".\n";
-    }
-    
-    return $suggestion;
+    return $response;
 }
 
 // Fonction pour générer une suggestion d'exercice
 function generateExerciseSuggestion($profile, $latest_weight, $current_goal, $active_program) {
-    $suggestion = "Voici quelques suggestions d'exercices adaptées à votre profil :\n\n";
+    global $api_key;
     
-    // Déterminer le niveau d'activité
-    $activity_level = $profile ? $profile['activity_level'] : 'modere';
-    
-    // Déterminer l'objectif
-    $goal_type = 'maintien';
-    if ($current_goal && $latest_weight) {
-        if ($current_goal['target_weight'] < $latest_weight['weight']) {
-            $goal_type = 'perte';
-        } elseif ($current_goal['target_weight'] > $latest_weight['weight']) {
-            $goal_type = 'prise';
-        }
+    if (empty($api_key)) {
+        return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.";
     }
     
-    // Adapter les exercices en fonction du niveau d'activité
-    switch ($activity_level) {
-        case 'sedentaire':
-            $suggestion .= "NIVEAU D'ACTIVITÉ : Sédentaire\n";
-            $suggestion .= "Commencez doucement avec ces exercices adaptés :\n\n";
-            
-            $suggestion .= "EXERCICES CARDIO (3-4 fois par semaine) :\n";
-            $suggestion .= "- Marche rapide : 20-30 minutes\n";
-            $suggestion .= "- Natation légère : 20 minutes\n";
-            $suggestion .= "- Vélo stationnaire à faible résistance : 15-20 minutes\n";
-            
-            $suggestion .= "\nEXERCICES DE RENFORCEMENT (2 fois par semaine) :\n";
-            $suggestion .= "- Squats contre un mur : 2 séries de 10 répétitions\n";
-            $suggestion .= "- Pompes modifiées (sur les genoux) : 2 séries de 5-8 répétitions\n";
-            $suggestion .= "- Levées de jambes allongé : 2 séries de 10 répétitions\n";
-            
-            $suggestion .= "\nFLEXIBILITÉ ET MOBILITÉ (tous les jours) :\n";
-            $suggestion .= "- Étirements doux : 5-10 minutes\n";
-            $suggestion .= "- Yoga débutant : 10-15 minutes\n";
-            break;
-            
-        case 'leger':
-            $suggestion .= "NIVEAU D'ACTIVITÉ : Léger\n";
-            $suggestion .= "Voici des exercices pour progresser à votre rythme :\n\n";
-            
-            $suggestion .= "EXERCICES CARDIO (3-5 fois par semaine) :\n";
-            $suggestion .= "- Marche rapide/jogging léger : 30 minutes\n";
-            $suggestion .= "- Vélo : 20-30 minutes\n";
-            $suggestion .= "- Elliptique : 20 minutes\n";
-            
-            $suggestion .= "\nEXERCICES DE RENFORCEMENT (2-3 fois par semaine) :\n";
-            $suggestion .= "- Squats : 3 séries de 12 répétitions\n";
-            $suggestion .= "- Pompes : 3 séries de 8-10 répétitions\n";
-            $suggestion .= "- Planches : 3 séries de 20-30 secondes\n";
-            $suggestion .= "- Fentes : 2 séries de 10 répétitions par jambe\n";
-            
-            $suggestion .= "\nFLEXIBILITÉ ET MOBILITÉ (tous les jours) :\n";
-            $suggestion .= "- Étirements complets : 10 minutes\n";
-            $suggestion .= "- Yoga niveau intermédiaire : 15-20 minutes\n";
-            break;
-            
-        case 'modere':
-        case 'actif':
-            $suggestion .= "NIVEAU D'ACTIVITÉ : " . ($activity_level === 'modere' ? 'Modéré' : 'Actif') . "\n";
-            $suggestion .= "Programme d'entraînement complet pour continuer à progresser :\n\n";
-            
-            $suggestion .= "EXERCICES CARDIO (4-5 fois par semaine) :\n";
-            $suggestion .= "- Course à pied : 30-40 minutes\n";
-            $suggestion .= "- HIIT (entraînement par intervalles) : 20 minutes\n";
-            $suggestion .= "- Natation : 30 minutes\n";
-            $suggestion .= "- Vélo à intensité modérée/élevée : 30-45 minutes\n";
-            
-            $suggestion .= "\nEXERCICES DE RENFORCEMENT (3-4 fois par semaine) :\n";
-            $suggestion .= "- Circuit training : 3 tours de 5 exercices\n";
-            $suggestion .= "- Squats avec poids : 4 séries de 12 répétitions\n";
-            $suggestion .= "- Développé couché : 4 séries de 10 répétitions\n";
-            $suggestion .= "- Tractions : 3 séries de 8-10 répétitions\n";
-            $suggestion .= "- Soulevé de terre : 3 séries de 10 répétitions\n";
-            
-            $suggestion .= "\nFLEXIBILITÉ ET RÉCUPÉRATION :\n";
-            $suggestion .= "- Étirements dynamiques avant l'entraînement : 10 minutes\n";
-            $suggestion .= "- Étirements statiques après l'entraînement : 10-15 minutes\n";
-            $suggestion .= "- Yoga ou Pilates : 1-2 sessions par semaine\n";
-            break;
-            
-        case 'tres_actif':
-            $suggestion .= "NIVEAU D'ACTIVITÉ : Très actif\n";
-            $suggestion .= "Programme avancé pour optimiser vos performances :\n\n";
-            
-            $suggestion .= "EXERCICES CARDIO (5-6 fois par semaine) :\n";
-            $suggestion .= "- Course à pied (intervalles/fartlek) : 40-50 minutes\n";
-            $suggestion .= "- HIIT avancé : 25-30 minutes\n";
-            $suggestion .= "- Entraînement croisé : 45-60 minutes\n";
-            $suggestion .= "- Sports d'endurance (cyclisme, natation) : 45-60 minutes\n";
-            
-            $suggestion .= "\nEXERCICES DE RENFORCEMENT (4-5 fois par semaine) :\n";
-            $suggestion .= "- Programme de musculation split (différentes parties du corps chaque jour)\n";
-            $suggestion .= "- Exercices composés lourds : 4-5 séries de 6-12 répétitions\n";
-            $suggestion .= "- Exercices d'isolation : 3-4 séries de 12-15 répétitions\n";
-            $suggestion .= "- Entraînement en superset ou drop set pour intensifier\n";
-            
-            $suggestion .= "\nRÉCUPÉRATION ET PERFORMANCE :\n";
-            $suggestion .= "- Mobilité et étirements : 15-20 minutes quotidiennes\n";
-            $suggestion .= "- Récupération active : 1-2 jours par semaine\n";
-            $suggestion .= "- Techniques de récupération avancées : bains froids, compression, etc.\n";
-            break;
+    // Construire le prompt pour ChatGPT
+    $prompt = "En tant que coach sportif expert, génère un programme d'exercices personnalisé avec les informations suivantes :\n\n";
+    $prompt .= "Profil : " . ($profile['gender'] === 'homme' ? 'Homme' : 'Femme') . ", " . 
+               (date('Y') - date('Y', strtotime($profile['birth_date']))) . " ans\n";
+    $prompt .= "Niveau d'activité : " . ucfirst($profile['activity_level']) . "\n";
+    $prompt .= "Poids actuel : " . ($latest_weight ? $latest_weight['weight'] . " kg" : "Non renseigné") . "\n";
+    $prompt .= "Objectif : " . ($current_goal ? $current_goal['target_weight'] . " kg" : "Non défini") . "\n";
+    $prompt .= "Programme : " . ($active_program ? $active_program['name'] : "Aucun") . "\n\n";
+    $prompt .= "Génère un programme d'exercices adapté avec cardio, renforcement musculaire et flexibilité. Inclus les séries, répétitions et temps de repos.";
+    
+    // Appeler l'API ChatGPT
+    $response = callChatGPTAPI($prompt, $api_key);
+    
+    if ($response === false) {
+        return "Une erreur s'est produite lors de la génération de la suggestion. Veuillez réessayer plus tard.";
     }
     
-    // Ajouter des conseils spécifiques à l'objectif
-    $suggestion .= "\nCONSEILS SPÉCIFIQUES À VOTRE OBJECTIF (" . strtoupper($goal_type) . " DE POIDS) :\n";
-    
-    switch ($goal_type) {
-        case 'perte':
-            $suggestion .= "- Privilégiez les exercices qui brûlent beaucoup de calories : HIIT, cardio à intensité modérée-élevée\n";
-            $suggestion .= "- Maintenez l'entraînement en force pour préserver votre masse musculaire\n";
-            $suggestion .= "- Visez 300-500 calories brûlées par séance d'entraînement\n";
-            $suggestion .= "- Restez actif même les jours de repos (marche, étirements)\n";
-            break;
-            
-        case 'prise':
-            $suggestion .= "- Concentrez-vous sur l'entraînement en force avec des charges progressivement plus lourdes\n";
-            $suggestion .= "- Limitez le cardio intensif, préférez des sessions courtes d'intensité modérée\n";
-            $suggestion .= "- Reposez-vous suffisamment entre les séances (48h pour les mêmes groupes musculaires)\n";
-            $suggestion .= "- Assurez-vous de consommer suffisamment de calories et de protéines après l'entraînement\n";
-            break;
-            
-        case 'maintien':
-            $suggestion .= "- Équilibrez cardio et musculation pour maintenir votre composition corporelle\n";
-            $suggestion .= "- Variez régulièrement vos exercices pour éviter les plateaux\n";
-            $suggestion .= "- Concentrez-vous sur l'amélioration de vos performances plutôt que sur le poids\n";
-            $suggestion .= "- Intégrez des activités que vous aimez pour maintenir la motivation à long terme\n";
-            break;
-    }
-    
-    // Ajouter des conseils spécifiques au programme si disponible
-    if ($active_program) {
-        $suggestion .= "\nCONSEILS ADAPTÉS À VOTRE PROGRAMME (" . strtoupper($active_program['name']) . ") :\n";
-        
-        // Adapter les conseils en fonction du nom du programme
-        if (stripos($active_program['name'], 'perte') !== false || stripos($active_program['name'], 'minceur') !== false) {
-            $suggestion .= "- Combinez cardio et musculation pour maximiser la perte de graisse\n";
-            $suggestion .= "- Essayez le cardio à jeun le matin pour une meilleure utilisation des graisses\n";
-            $suggestion .= "- Maintenez un déficit calorique modéré pour préserver votre énergie pendant l'entraînement\n";
-        } elseif (stripos($active_program['name'], 'muscle') !== false || stripos($active_program['name'], 'force') !== false) {
-            $suggestion .= "- Concentrez-vous sur les exercices polyarticulaires (squat, soulevé de terre, développé)\n";
-            $suggestion .= "- Assurez-vous de consommer suffisamment de protéines (1.6-2g par kg de poids corporel)\n";
-            $suggestion .= "- Progressez en augmentant régulièrement les charges ou les répétitions\n";
-        } elseif (stripos($active_program['name'], 'endurance') !== false || stripos($active_program['name'], 'cardio') !== false) {
-            $suggestion .= "- Alternez entre entraînements longs à faible intensité et sessions courtes à haute intensité\n";
-            $suggestion .= "- Travaillez votre capacité aérobie avec des séances de 45-60 minutes\n";
-            $suggestion .= "- Intégrez des exercices de renforcement spécifiques aux muscles sollicités dans votre sport\n";
-        }
-    }
-    
-    return $suggestion;
-}
-
-// Fonction pour filtrer les options alimentaires en fonction des préférences
-function filterFoodOptions($options, $favorite_foods, $blacklisted_foods) {
-    $filtered_options = [];
-    
-    foreach ($options as $option) {
-        $is_blacklisted = false;
-        
-        // Vérifier si l'option contient un aliment blacklisté
-        foreach ($blacklisted_foods as $blacklisted) {
-            if (stripos($option, $blacklisted) !== false) {
-                $is_blacklisted = true;
-                break;
-            }
-        }
-        
-        if (!$is_blacklisted) {
-            $filtered_options[] = $option;
-        }
-    }
-    
-    // Si toutes les options sont blacklistées, utiliser les options originales
-    if (empty($filtered_options)) {
-        return $options;
-    }
-    
-    // Trier les options pour mettre en avant celles qui contiennent des aliments favoris
-    usort($filtered_options, function($a, $b) use ($favorite_foods) {
-        $a_score = 0;
-        $b_score = 0;
-        
-        foreach ($favorite_foods as $favorite) {
-            if (stripos($a, $favorite) !== false) {
-                $a_score++;
-            }
-            if (stripos($b, $favorite) !== false) {
-                $b_score++;
-            }
-        }
-        
-        return $b_score - $a_score;
-    });
-    
-    return $filtered_options;
-}
-
-// Fonction pour ajouter des options aléatoires à la suggestion
-function addRandomOptions($options, $count) {
-    $result = '';
-    $selected = [];
-    
-    // Si nous avons moins d'options que demandé, utiliser toutes les options disponibles
-    if (count($options) <= $count) {
-        foreach ($options as $option) {
-            $result .= "- {$option}\n";
-        }
-        return $result;
-    }
-    
-    // Sélectionner des options aléatoires
-    $indices = array_rand($options, $count);
-    if (!is_array($indices)) {
-        $indices = [$indices];
-    }
-    
-    foreach ($indices as $index) {
-        $result .= "- {$options[$index]}\n";
-    }
-    
-    return $result;
+    return $response;
 }
 
 // Traitement de la demande de suggestion
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $suggestion_type = sanitizeInput($_POST['suggestion_type'] ?? 'repas');
     
-    // Vérifier si le type de suggestion est valide
     if (!in_array($suggestion_type, ['repas', 'exercice', 'programme'])) {
         $errors[] = "Type de suggestion invalide";
     } else {
         try {
-            // Générer la suggestion en fonction du type
             $suggestion_content = '';
             
             switch ($suggestion_type) {
@@ -467,21 +197,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                     
                 case 'programme':
-                    // Cette fonctionnalité serait implémentée avec l'API ChatGPT
-                    $suggestion_content = "Programme personnalisé basé sur votre profil et vos objectifs.\n\n";
-                    $suggestion_content .= "Cette fonctionnalité utilise l'API ChatGPT pour générer un programme complet adapté à vos besoins spécifiques.\n\n";
-                    $suggestion_content .= "Pour l'utiliser, veuillez configurer votre clé API dans la page des préférences.";
+                    if (empty($api_key)) {
+                        $errors[] = "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
+                        break;
+                    }
+                    $meal_suggestion = generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods);
+                    $exercise_suggestion = generateExerciseSuggestion($profile, $latest_weight, $current_goal, $active_program);
+                    
+                    if (strpos($meal_suggestion, "La clé API ChatGPT n'est pas configurée") !== false || 
+                        strpos($exercise_suggestion, "La clé API ChatGPT n'est pas configurée") !== false) {
+                        $errors[] = "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
+                        break;
+                    }
+                    
+                    $suggestion_content = "PROGRAMME ALIMENTAIRE :\n\n" . $meal_suggestion . "\n\n" . 
+                                        "PROGRAMME D'EXERCICES :\n\n" . $exercise_suggestion;
                     break;
             }
             
-            // Enregistrer la suggestion dans la base de données
-            $sql = "INSERT INTO ai_suggestions (user_id, suggestion_type, content, created_at) VALUES (?, ?, ?, NOW())";
-            $result = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
-            
-            if ($result) {
-                $success_message = "Votre suggestion a été générée avec succès !";
-            } else {
-                $errors[] = "Une erreur s'est produite lors de l'enregistrement de la suggestion. Veuillez réessayer.";
+            if (!empty($suggestion_content) && empty($errors)) {
+                $sql = "INSERT INTO ai_suggestions (user_id, suggestion_type, content, created_at) VALUES (?, ?, ?, NOW())";
+                $result = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
+                
+                if ($result) {
+                    $success_message = "Votre suggestion a été générée avec succès !";
+                } else {
+                    $errors[] = "Une erreur s'est produite lors de l'enregistrement de la suggestion. Veuillez réessayer.";
+                }
             }
         } catch (Exception $e) {
             $errors[] = "Une erreur s'est produite: " . $e->getMessage();
@@ -629,7 +371,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                         <h5 class="mb-0">Générer une suggestion</h5>
                     </div>
                     <div class="card-body">
-                        <?php if (empty($api_key) && $suggestion_type === 'programme'): ?>
+                        <?php if (empty($api_key)): ?>
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle me-1"></i>
                                 La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.
