@@ -2,10 +2,23 @@
 // Démarrer la session
 session_start();
 
+// Debug: Afficher les informations sur le chemin
+error_log("__DIR__ dans program-management.php: " . __DIR__);
+error_log("Chemin d'inclusion actuel: " . getcwd());
+error_log("Chemin d'inclusion PHP: " . get_include_path());
+
 // Inclure les fichiers nécessaires
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/functions.php';
-require_once __DIR__ . '/../includes/admin_functions.php';
+$db_path = '../config/database.php';
+$functions_path = '../includes/functions.php';
+$admin_functions_path = '../includes/admin_functions.php';
+
+error_log("Tentative d'inclusion de database.php: " . $db_path);
+error_log("Tentative d'inclusion de functions.php: " . $functions_path);
+error_log("Tentative d'inclusion de admin_functions.php: " . $admin_functions_path);
+
+require_once $db_path;
+require_once $functions_path;
+require_once $admin_functions_path;
 
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
