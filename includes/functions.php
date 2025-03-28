@@ -105,6 +105,13 @@ function getBMICategory($bmi) {
  * @return float BMR en calories
  */
 function calculateBMR($weight, $height, $age, $gender) {
+    // Vérifier que toutes les valeurs sont valides
+    if (!is_numeric($weight) || $weight <= 0 || !is_numeric($height) || $height <= 0 || 
+        !is_numeric($age) || $age <= 0 || !in_array($gender, ['homme', 'femme'])) {
+        error_log("Valeurs invalides pour le calcul du BMR - Poids: $weight, Taille: $height, Âge: $age, Genre: $gender");
+        return 0;
+    }
+    
     // Formule de Mifflin-St Jeor
     if ($gender === 'homme') {
         return (10 * $weight) + (6.25 * $height) - (5 * $age) + 5;
@@ -142,19 +149,56 @@ function calculateTDEE($bmr, $activity_level) {
  * @param float $tdee Dépense énergétique totale quotidienne
  * @param string $goal_type Type d'objectif ('perte', 'maintien', 'prise')
  * @param float $intensity Intensité (0.5 = modérée, 1 = standard, 1.5 = agressive)
+ * @param float $current_weight Poids actuel en kg
+ * @param float $target_weight Poids cible en kg
+ * @param string $target_date Date cible au format Y-m-d
  * @return float Objectif calorique
  */
-function calculateCalorieGoal($tdee, $goal_type, $intensity = 1) {
-    if ($goal_type === 'perte') {
-        // Déficit calorique (500 calories = environ 0.5kg par semaine)
-        return $tdee - (500 * $intensity);
-    } elseif ($goal_type === 'prise') {
-        // Surplus calorique
-        return $tdee + (500 * $intensity);
-    } else {
-        // Maintien
+function calculateCalorieGoal($tdee, $goal_type, $intensity = 1, $current_weight = null, $target_weight = null, $target_date = null) {
+    // Si c'est un objectif de maintien, retourner le TDEE
+    if ($goal_type === 'maintien') {
         return $tdee;
     }
+    
+    // Si on n'a pas toutes les informations nécessaires pour calculer l'ajustement
+    if ($current_weight === null || $target_weight === null || $target_date === null) {
+        // Utiliser l'ajustement standard (500 calories)
+        return $goal_type === 'perte' ? $tdee - (500 * $intensity) : $tdee + (500 * $intensity);
+    }
+    
+    // Calculer la différence de poids
+    $weight_diff = $target_weight - $current_weight;
+    
+    // Calculer le nombre de jours jusqu'à l'objectif
+    $target = new DateTime($target_date);
+    $today = new DateTime();
+    $days_until_goal = $today->diff($target)->days;
+    
+    if ($days_until_goal <= 0) {
+        error_log("La date cible est dans le passé ou aujourd'hui");
+        return $tdee;
+    }
+    
+    // Calculer l'ajustement total nécessaire (1 kg = 7700 calories)
+    $total_adjustment = $weight_diff * 7700;
+    
+    // Calculer l'ajustement quotidien
+    $daily_adjustment = $total_adjustment / $days_until_goal;
+    
+    error_log("=== Calcul des calories pour l'objectif ===");
+    error_log("Poids actuel : " . $current_weight);
+    error_log("Poids cible : " . $target_weight);
+    error_log("Différence de poids : " . $weight_diff . " kg");
+    error_log("Jours jusqu'à l'objectif : " . $days_until_goal);
+    error_log("Calories totales nécessaires : " . $total_adjustment);
+    error_log("Ajustement quotidien pour l'objectif : " . $daily_adjustment);
+    
+    // Calculer les calories finales
+    $final_calories = $tdee + $daily_adjustment;
+    error_log("Calories finales : " . $final_calories);
+    error_log("=== Fin du calcul des calories pour l'objectif ===");
+    
+    return $final_calories;
 }
 
 /**
@@ -568,6 +612,12 @@ function recalculateCalories($user_id) {
         return false;
     }
     
+    // Vérifier que toutes les valeurs nécessaires sont présentes
+    if (!isset($profile['height']) || !isset($profile['age']) || !isset($profile['gender']) || !isset($profile['activity_level'])) {
+        error_log("Données du profil incomplètes pour le calcul des calories");
+        return false;
+    }
+    
     // Vérifier et mettre à jour le poids si nécessaire
     $current_weight = ensureProfileWeight($user_id);
     if ($current_weight === null) {
@@ -579,9 +629,21 @@ function recalculateCalories($user_id) {
     $bmr = calculateBMR($current_weight, $profile['height'], $profile['age'], $profile['gender']);
     error_log("BMR calculé : " . $bmr);
     
+    // Vérifier que le BMR est positif
+    if ($bmr <= 0) {
+        error_log("BMR négatif ou nul : " . $bmr);
+        return false;
+    }
+    
     // Calculer le TDEE
     $tdee = calculateTDEE($bmr, $profile['activity_level']);
     error_log("TDEE calculé : " . $tdee);
+    
+    // Vérifier que le TDEE est positif
+    if ($tdee <= 0) {
+        error_log("TDEE négatif ou nul : " . $tdee);
+        return false;
+    }
     
     // Récupérer l'objectif actuel
     $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1";
@@ -589,7 +651,7 @@ function recalculateCalories($user_id) {
     
     if ($goal) {
         // Calculer l'objectif calorique en fonction de l'objectif
-        $calorie_goal = calculateCalorieGoal($tdee, $goal['goal_type'], $goal['intensity']);
+        $calorie_goal = calculateCalorieGoal($tdee, $goal['goal_type'], $goal['intensity'], $current_weight, $goal['target_weight'], $goal['target_date']);
         error_log("Objectif calorique calculé : " . $calorie_goal);
         
         // S'assurer que les calories restent positives
@@ -606,11 +668,6 @@ function recalculateCalories($user_id) {
         }
     } else {
         // Si pas d'objectif actif, utiliser le TDEE comme objectif
-        if ($tdee <= 0) {
-            error_log("TDEE négatif ou nul : " . $tdee);
-            return false;
-        }
-        
         $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
         if (update($sql, [$tdee, $user_id])) {
             error_log("Calories mises à jour avec le TDEE : " . $tdee);
