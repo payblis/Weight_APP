@@ -259,9 +259,9 @@ try {
 // Récupérer la clé API ChatGPT
 $chatgpt_api_key = '';
 try {
-    $sql = "SELECT value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+    $sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
     $result = fetchOne($sql, []);
-    $chatgpt_api_key = $result ? $result['value'] : '';
+    $chatgpt_api_key = $result ? $result['setting_value'] : '';
 } catch (Exception $e) {
     $errors[] = "Erreur lors de la récupération de la clé API: " . $e->getMessage();
 }
@@ -270,7 +270,7 @@ try {
 $programs = [];
 try {
     $sql = "SELECT p.*, 
-            (SELECT COUNT(*) FROM user_programs up WHERE up.program_id = p.id) as user_count,
+            (SELECT COUNT(*) FROM user_programs up WHERE up.program_id = p.id AND up.status = 'actif') as user_count,
             DATE_FORMAT(p.created_at, '%d/%m/%Y') as formatted_date
             FROM programs p 
             ORDER BY p.created_at DESC";
@@ -501,11 +501,6 @@ try {
                         <li class="nav-item">
                             <a class="nav-link <?php echo $section === 'programs' ? 'active' : ''; ?>" href="admin.php?section=programs">
                                 <i class="fas fa-dumbbell me-2"></i>Programmes
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo $section === 'predefined_meals' ? 'active' : ''; ?>" href="admin.php?section=predefined_meals">
-                                <i class="fas fa-utensils me-2"></i>Repas prédéfinis
                             </a>
                         </li>
                         <li class="nav-item">
@@ -857,11 +852,11 @@ try {
                 <?php elseif ($section === 'programs'): ?>
                     <!-- Programs management -->
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">Gestion des programmes nutritionnels</h1>
+                        <h1 class="h2">Gestion des programmes</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createProgramModal">
-                                <i class="fas fa-plus me-1"></i>Créer un programme
-                            </button>
+                            <a href="admin/program-management.php" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-plus me-1"></i>Créer un nouveau programme
+                            </a>
                         </div>
                     </div>
                     
@@ -875,89 +870,38 @@ try {
                                     <thead>
                                         <tr>
                                             <th>Nom</th>
+                                            <th>Type</th>
                                             <th>Description</th>
-                                            <th>Utilisateurs</th>
+                                            <th>Utilisateurs actifs</th>
                                             <th>Date de création</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($nutrition_programs as $program): ?>
+                                        <?php foreach ($programs as $program): ?>
                                             <tr>
                                                 <td><?php echo htmlspecialchars($program['name']); ?></td>
-                                                <td><?php echo htmlspecialchars($program['description']); ?></td>
-                                                <td><?php echo $program['user_count']; ?> utilisateurs</td>
+                                                <td>
+                                                    <span class="badge bg-<?php echo $program['type'] === 'complet' ? 'primary' : ($program['type'] === 'nutrition' ? 'success' : 'warning'); ?>">
+                                                        <?php echo ucfirst($program['type']); ?>
+                                                    </span>
+                                                </td>
+                                                <td><?php echo htmlspecialchars(substr($program['description'], 0, 100)) . (strlen($program['description']) > 100 ? '...' : ''); ?></td>
+                                                <td><?php echo $program['user_count']; ?></td>
                                                 <td><?php echo $program['formatted_date']; ?></td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProgramModal<?php echo $program['id']; ?>">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProgramModal<?php echo $program['id']; ?>">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
+                                                    <div class="btn-group">
+                                                        <a href="admin/program-management.php?action=edit&program_id=<?php echo $program['id']; ?>" class="btn btn-sm btn-outline-primary">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProgramModal<?php echo $program['id']; ?>">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                             
-                                            <!-- Modal d'édition du programme -->
-                                            <div class="modal fade" id="editProgramModal<?php echo $program['id']; ?>" tabindex="-1">
-                                                <div class="modal-dialog">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Modifier le programme</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                        </div>
-                                                        <form action="admin.php?section=programs" method="POST">
-                                                            <input type="hidden" name="action" value="update_program">
-                                                            <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
-                                                            
-                                                            <div class="modal-body">
-                                                                <div class="mb-3">
-                                                                    <label for="program_name<?php echo $program['id']; ?>" class="form-label">Nom</label>
-                                                                    <input type="text" class="form-control" id="program_name<?php echo $program['id']; ?>" name="name" value="<?php echo htmlspecialchars($program['name']); ?>" required>
-                                                                </div>
-                                                                
-                                                                <div class="mb-3">
-                                                                    <label for="program_description<?php echo $program['id']; ?>" class="form-label">Description</label>
-                                                                    <textarea class="form-control" id="program_description<?php echo $program['id']; ?>" name="description" rows="3"><?php echo htmlspecialchars($program['description']); ?></textarea>
-                                                                </div>
-                                                                
-                                                                <div class="mb-3">
-                                                                    <label for="calorie_adjustment<?php echo $program['id']; ?>" class="form-label">Ajustement calorique</label>
-                                                                    <input type="number" class="form-control" id="calorie_adjustment<?php echo $program['id']; ?>" name="calorie_adjustment" value="<?php echo $program['calorie_adjustment']; ?>" required>
-                                                                </div>
-                                                                
-                                                                <div class="row">
-                                                                    <div class="col-md-4">
-                                                                        <div class="mb-3">
-                                                                            <label for="protein_ratio<?php echo $program['id']; ?>" class="form-label">Protéines (%)</label>
-                                                                            <input type="number" class="form-control" id="protein_ratio<?php echo $program['id']; ?>" name="protein_ratio" value="<?php echo $program['protein_ratio']; ?>" required>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="col-md-4">
-                                                                        <div class="mb-3">
-                                                                            <label for="carbs_ratio<?php echo $program['id']; ?>" class="form-label">Glucides (%)</label>
-                                                                            <input type="number" class="form-control" id="carbs_ratio<?php echo $program['id']; ?>" name="carbs_ratio" value="<?php echo $program['carbs_ratio']; ?>" required>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="col-md-4">
-                                                                        <div class="mb-3">
-                                                                            <label for="fat_ratio<?php echo $program['id']; ?>" class="form-label">Lipides (%)</label>
-                                                                            <input type="number" class="form-control" id="fat_ratio<?php echo $program['id']; ?>" name="fat_ratio" value="<?php echo $program['fat_ratio']; ?>" required>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                                <button type="submit" class="btn btn-primary">Enregistrer</button>
-                                                            </div>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <!-- Modal de suppression du programme -->
+                                            <!-- Delete Program Modal -->
                                             <div class="modal fade" id="deleteProgramModal<?php echo $program['id']; ?>" tabindex="-1">
                                                 <div class="modal-dialog">
                                                     <div class="modal-content">
@@ -969,8 +913,7 @@ try {
                                                             <p>Êtes-vous sûr de vouloir supprimer ce programme ? Cette action est irréversible.</p>
                                                         </div>
                                                         <div class="modal-footer">
-                                                            <form action="admin.php?section=programs" method="POST">
-                                                                <input type="hidden" name="action" value="delete_program">
+                                                            <form action="admin.php?section=delete_program" method="POST">
                                                                 <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                                                                 <button type="submit" class="btn btn-danger">Supprimer</button>
@@ -980,66 +923,13 @@ try {
                                                 </div>
                                             </div>
                                         <?php endforeach; ?>
+                                        <?php if (empty($programs)): ?>
+                                            <tr>
+                                                <td colspan="6" class="text-center">Aucun programme trouvé</td>
+                                            </tr>
+                                        <?php endif; ?>
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Modal de création de programme -->
-                    <div class="modal fade" id="createProgramModal" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Créer un nouveau programme</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <form action="admin.php?section=programs" method="POST">
-                                    <input type="hidden" name="action" value="create_program">
-                                    
-                                    <div class="modal-body">
-                                        <div class="mb-3">
-                                            <label for="new_program_name" class="form-label">Nom</label>
-                                            <input type="text" class="form-control" id="new_program_name" name="name" required>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="new_program_description" class="form-label">Description</label>
-                                            <textarea class="form-control" id="new_program_description" name="description" rows="3"></textarea>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="new_calorie_adjustment" class="form-label">Ajustement calorique</label>
-                                            <input type="number" class="form-control" id="new_calorie_adjustment" name="calorie_adjustment" value="0" required>
-                                        </div>
-                                        
-                                        <div class="row">
-                                            <div class="col-md-4">
-                                                <div class="mb-3">
-                                                    <label for="new_protein_ratio" class="form-label">Protéines (%)</label>
-                                                    <input type="number" class="form-control" id="new_protein_ratio" name="protein_ratio" value="30" required>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="mb-3">
-                                                    <label for="new_carbs_ratio" class="form-label">Glucides (%)</label>
-                                                    <input type="number" class="form-control" id="new_carbs_ratio" name="carbs_ratio" value="40" required>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-4">
-                                                <div class="mb-3">
-                                                    <label for="new_fat_ratio" class="form-label">Lipides (%)</label>
-                                                    <input type="number" class="form-control" id="new_fat_ratio" name="fat_ratio" value="30" required>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                        <button type="submit" class="btn btn-primary">Créer</button>
-                                    </div>
-                                </form>
                             </div>
                         </div>
                     </div>
@@ -1460,10 +1350,6 @@ try {
                                                 <tr>
                                                     <td>Nombre de programmes actifs</td>
                                                     <td><strong><?php echo count($programs); ?></strong></td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Nombre de repas prédéfinis</td>
-                                                    <td><strong><?php echo count($predefined_meals); ?></strong></td>
                                                 </tr>
                                             </tbody>
                                         </table>
