@@ -109,8 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
                     $result = insert($sql, [
                         $user_id, 
-                        $food_id > 0 ? $food_id : null, 
-                        !empty($custom_food_name) ? $custom_food_name : null, 
+                        $food_id > 0 ? $food_id : 0,  // Utiliser 0 au lieu de NULL
+                        !empty($custom_food_name) ? $custom_food_name : '', 
                         $quantity, 
                         $custom_calories, 
                         $custom_protein, 
@@ -244,8 +244,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
                             insert($sql, [
                                 $user_id, 
-                                $food['food_id'], 
-                                $food['custom_food_name'], 
+                                $food['food_id'] ?? 0,  // Utiliser 0 si food_id n'existe pas
+                                $food['custom_food_name'] ?? '', 
                                 $food['quantity'], 
                                 $food['custom_calories'], 
                                 $food['custom_protein'], 
