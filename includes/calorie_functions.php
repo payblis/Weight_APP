@@ -341,15 +341,36 @@ function updateCalorieNeedsFromProgram($user_id, $program_id) {
         }
         
         // Utiliser les valeurs du programme pour les macronutriments
-        $goal_calories = $program['daily_calories'];
+        error_log("=== Début du calcul des calories dans updateCalorieNeedsFromProgram ===");
+        error_log("Calories totales de base : " . $total_calories);
+        error_log("Programme : " . $program['name']);
+        error_log("Ajustement du programme : " . $program['calorie_adjustment'] . "%");
+        
+        $program_adjustment = $total_calories * (floatval($program['calorie_adjustment']) / 100);
+        error_log("Ajustement calculé : " . $program_adjustment);
+        
+        $goal_calories = round($total_calories + $program_adjustment);
+        error_log("Calories finales : " . $goal_calories);
+        
         $protein_pct = $program['protein_pct'];
         $carbs_pct = $program['carbs_pct'];
         $fat_pct = $program['fat_pct'];
+        
+        error_log("Répartition des macronutriments :");
+        error_log("Protéines : " . ($protein_pct * 100) . "%");
+        error_log("Glucides : " . ($carbs_pct * 100) . "%");
+        error_log("Lipides : " . ($fat_pct * 100) . "%");
         
         // Calculer les grammes de macronutriments
         $protein_g = round(($goal_calories * ($protein_pct / 100)) / 4);
         $carbs_g = round(($goal_calories * ($carbs_pct / 100)) / 4);
         $fat_g = round(($goal_calories * ($fat_pct / 100)) / 9);
+        
+        error_log("Grammes de macronutriments :");
+        error_log("Protéines : " . $protein_g . "g");
+        error_log("Glucides : " . $carbs_g . "g");
+        error_log("Lipides : " . $fat_g . "g");
+        error_log("=== Fin du calcul des calories dans updateCalorieNeedsFromProgram ===");
         
         // Mettre à jour les besoins caloriques de l'utilisateur
         return updateUserCalorieNeeds($user_id, $bmr, $total_calories, $goal_calories, $protein_g, $carbs_g, $fat_g);

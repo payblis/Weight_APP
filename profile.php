@@ -77,15 +77,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $total_calories_needed = $weight_difference * 7700;
                         $daily_calories_adjustment = $total_calories_needed / $days_until_target;
                         
+                        error_log("=== Début du calcul des calories pour l'objectif ===");
+                        error_log("Différence de poids : " . $weight_difference . " kg");
+                        error_log("Jours jusqu'à l'objectif : " . $days_until_target);
+                        error_log("Calories totales nécessaires : " . $total_calories_needed);
+                        error_log("Ajustement quotidien pour l'objectif : " . $daily_calories_adjustment);
+                        
                         // Appliquer l'ajustement du programme
-                        $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                        if ($active_program) {
+                            error_log("Programme actif : " . $active_program['name']);
+                            error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
+                            $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                            error_log("Ajustement du programme calculé : " . $program_adjustment);
+                        } else {
+                            $program_adjustment = 0;
+                            error_log("Aucun programme actif");
+                        }
                         
                         // Combiner les ajustements
                         $final_calories = $tdee + $program_adjustment + $daily_calories_adjustment;
+                        error_log("TDEE : " . $tdee);
+                        error_log("Calories finales : " . $final_calories);
+                        error_log("=== Fin du calcul des calories pour l'objectif ===");
                     } else {
                         // Si la date cible est dépassée, utiliser uniquement l'ajustement du programme
-                        $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                        error_log("=== Début du calcul des calories (date cible dépassée) ===");
+                        if ($active_program) {
+                            error_log("Programme actif : " . $active_program['name']);
+                            error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
+                            $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                            error_log("Ajustement du programme calculé : " . $program_adjustment);
+                        } else {
+                            $program_adjustment = 0;
+                            error_log("Aucun programme actif");
+                        }
                         $final_calories = $tdee + $program_adjustment;
+                        error_log("TDEE : " . $tdee);
+                        error_log("Calories finales : " . $final_calories);
+                        error_log("=== Fin du calcul des calories ===");
                     }
                 }
                 // Si seulement un programme est actif

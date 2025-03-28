@@ -50,15 +50,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['program_id'])) {
                 if ($profile) {
                     // Calculer le BMR de base
                     $bmr = calculateBMR($profile['weight'], $profile['height'], $profile['birth_date'], $profile['gender']);
+                    error_log("=== Début du calcul des calories pour l'activation du programme ===");
+                    error_log("BMR calculé : " . $bmr);
                     
                     // Calculer le TDEE (calories de base)
                     $tdee = calculateTDEE($bmr, $profile['activity_level']);
+                    error_log("TDEE calculé : " . $tdee);
+                    error_log("Niveau d'activité : " . $profile['activity_level']);
                     
                     // Ajuster les calories selon le programme
-                    // Pour une réduction de 50%, calorie_adjustment = -50
-                    // Pour une augmentation de 50%, calorie_adjustment = 50
-                    $program_adjustment = $tdee * ($program['calorie_adjustment'] / 100);
-                    $adjusted_calories = $tdee + $program_adjustment;
+                    error_log("Programme sélectionné : " . $program['name']);
+                    error_log("Ajustement calorique du programme : " . $program['calorie_adjustment'] . "%");
+                    $program_adjustment = round($tdee * (floatval($program['calorie_adjustment']) / 100));
+                    error_log("Ajustement calculé : " . $program_adjustment);
+                    $adjusted_calories = round($tdee + $program_adjustment);
+                    error_log("Calories finales : " . $adjusted_calories);
+                    error_log("=== Fin du calcul des calories pour l'activation du programme ===");
                     
                     // Mettre à jour les objectifs de l'utilisateur
                     $sql = "UPDATE user_profiles SET 
