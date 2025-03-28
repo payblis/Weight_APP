@@ -218,7 +218,7 @@ if (count($weight_dates) < 7) {
 }
 
 // Récupérer les dernières entrées de journal
-$sql = "SELECT 'weight' as type, log_date, weight as value, NULL as notes, created_at 
+$sql = "SELECT 'weight' as type, log_date, weight as value, notes, created_at 
         FROM weight_logs 
         WHERE user_id = ? 
         UNION 
@@ -420,7 +420,17 @@ if ($latest_weight) {
                                         <?php
                                         $progress = 0;
                                         $weight_diff = abs($latest_weight['weight'] - $current_goal['target_weight']);
-                                        $total_diff = abs($current_goal['start_weight'] - $current_goal['target_weight']);
+                                        
+                                        // Récupérer le poids initial (le plus ancien poids enregistré depuis la création de l'objectif)
+                                        $sql = "SELECT weight FROM weight_logs 
+                                                WHERE user_id = ? 
+                                                AND log_date >= ? 
+                                                ORDER BY log_date ASC 
+                                                LIMIT 1";
+                                        $start_weight = fetchOne($sql, [$user_id, $current_goal['created_at']]);
+                                        $start_weight = $start_weight ? $start_weight['weight'] : $latest_weight['weight'];
+                                        
+                                        $total_diff = abs($start_weight - $current_goal['target_weight']);
                                         
                                         if ($total_diff > 0) {
                                             $progress = 100 - ($weight_diff / $total_diff * 100);
