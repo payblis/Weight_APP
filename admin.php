@@ -205,6 +205,142 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Traitement des actions pour la gestion des programmes
+if ($section === 'program_management' || $section === 'delete_program') {
+    // Initialiser les variables
+    $action = isset($_GET['action']) ? sanitizeInput($_GET['action']) : 'create';
+    $program_id = isset($_GET['program_id']) ? intval($_GET['program_id']) : 0;
+    $errors = [];
+
+    // Récupérer les détails du programme si en mode édition
+    $program = null;
+    if ($action === 'edit' && $program_id > 0) {
+        try {
+            $sql = "SELECT * FROM programs WHERE id = ?";
+            $program = fetchOne($sql, [$program_id]);
+            if (!$program) {
+                $_SESSION['error'] = "Programme non trouvé.";
+                redirect('admin.php?section=programs');
+            }
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Erreur lors de la récupération du programme: " . $e->getMessage();
+            redirect('admin.php?section=programs');
+        }
+    }
+
+    // Traitement du formulaire
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $name = sanitizeInput($_POST['name'] ?? '');
+        $description = sanitizeInput($_POST['description'] ?? '');
+        $type = sanitizeInput($_POST['type'] ?? 'complet');
+        $calorie_adjustment = floatval($_POST['calorie_adjustment'] ?? 0);
+        $protein_ratio = floatval($_POST['protein_ratio'] ?? 0.3);
+        $carbs_ratio = floatval($_POST['carbs_ratio'] ?? 0.4);
+        $fat_ratio = floatval($_POST['fat_ratio'] ?? 0.3);
+        
+        // Validation
+        if (empty($name)) {
+            $errors[] = "Le nom du programme est requis";
+        }
+        
+        if (empty($description)) {
+            $errors[] = "La description du programme est requise";
+        }
+        
+        if (!in_array($type, ['complet', 'nutrition', 'exercice'])) {
+            $errors[] = "Type de programme invalide";
+        }
+        
+        if ($protein_ratio + $carbs_ratio + $fat_ratio !== 1) {
+            $errors[] = "La somme des ratios de macronutriments doit être égale à 1 (100%)";
+        }
+        
+        if (empty($errors)) {
+            try {
+                if ($action === 'edit' && $program_id > 0) {
+                    // Mise à jour du programme
+                    $sql = "UPDATE programs SET 
+                            name = ?, 
+                            description = ?, 
+                            type = ?, 
+                            calorie_adjustment = ?, 
+                            protein_ratio = ?, 
+                            carbs_ratio = ?, 
+                            fat_ratio = ?,
+                            updated_at = NOW()
+                            WHERE id = ?";
+                    $result = update($sql, [
+                        $name, 
+                        $description, 
+                        $type, 
+                        $calorie_adjustment, 
+                        $protein_ratio, 
+                        $carbs_ratio, 
+                        $fat_ratio,
+                        $program_id
+                    ]);
+                    
+                    if ($result) {
+                        $_SESSION['success'] = "Programme mis à jour avec succès";
+                        redirect('admin.php?section=programs');
+                    } else {
+                        $errors[] = "Une erreur s'est produite lors de la mise à jour du programme";
+                    }
+                } else {
+                    // Création d'un nouveau programme
+                    $sql = "INSERT INTO programs (name, description, type, calorie_adjustment, protein_ratio, carbs_ratio, fat_ratio, created_at) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+                    $result = insert($sql, [
+                        $name, 
+                        $description, 
+                        $type, 
+                        $calorie_adjustment, 
+                        $protein_ratio, 
+                        $carbs_ratio, 
+                        $fat_ratio
+                    ]);
+                    
+                    if ($result) {
+                        $_SESSION['success'] = "Programme créé avec succès";
+                        redirect('admin.php?section=programs');
+                    } else {
+                        $errors[] = "Une erreur s'est produite lors de la création du programme";
+                    }
+                }
+            } catch (Exception $e) {
+                $errors[] = "Erreur: " . $e->getMessage();
+            }
+        }
+    }
+}
+
+// Traitement de la suppression d'un programme
+if ($section === 'delete_program' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $program_id = isset($_POST['program_id']) ? intval($_POST['program_id']) : 0;
+    
+    if ($program_id > 0) {
+        try {
+            // Mettre à jour le statut des utilisateurs qui suivent ce programme
+            $sql = "UPDATE user_programs SET status = 'inactif' WHERE program_id = ?";
+            update($sql, [$program_id]);
+            
+            // Supprimer le programme
+            $sql = "DELETE FROM programs WHERE id = ?";
+            $result = delete($sql, [$program_id]);
+            
+            if ($result) {
+                $_SESSION['success'] = "Programme supprimé avec succès";
+            } else {
+                $_SESSION['error'] = "Une erreur s'est produite lors de la suppression du programme";
+            }
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Erreur lors de la suppression du programme: " . $e->getMessage();
+        }
+    }
+    
+    redirect('admin.php?section=programs');
+}
+
 // Récupérer les données pour le tableau de bord administrateur
 $total_users = 0;
 $total_weight_logs = 0;
@@ -854,7 +990,7 @@ try {
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                         <h1 class="h2">Gestion des programmes</h1>
                         <div class="btn-toolbar mb-2 mb-md-0">
-                            <a href="admin/program-management.php" class="btn btn-sm btn-outline-primary">
+                            <a href="admin.php?section=program_management" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-plus me-1"></i>Créer un nouveau programme
                             </a>
                         </div>
@@ -891,7 +1027,7 @@ try {
                                                 <td><?php echo $program['formatted_date']; ?></td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        <a href="admin/program-management.php?action=edit&program_id=<?php echo $program['id']; ?>" class="btn btn-sm btn-outline-primary">
+                                                        <a href="admin.php?section=program_management&action=edit&program_id=<?php echo $program['id']; ?>" class="btn btn-sm btn-outline-primary">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                         <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProgramModal<?php echo $program['id']; ?>">
@@ -913,7 +1049,7 @@ try {
                                                             <p>Êtes-vous sûr de vouloir supprimer ce programme ? Cette action est irréversible.</p>
                                                         </div>
                                                         <div class="modal-footer">
-                                                            <form action="admin/delete-program.php" method="POST">
+                                                            <form action="admin.php?section=delete_program" method="POST">
                                                                 <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                                                                 <button type="submit" class="btn btn-danger">Supprimer</button>
@@ -934,332 +1070,48 @@ try {
                         </div>
                     </div>
                     
-                <?php elseif ($section === 'predefined_meals'): ?>
-                    <!-- Predefined Meals Management -->
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">Gestion des repas prédéfinis</h1>
-                        <div class="btn-toolbar mb-2 mb-md-0">
-                            <a href="admin.php?section=predefined_meals&action=create" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-plus me-1"></i>Créer un repas prédéfini
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <?php if ($action === 'create'): ?>
-                        <!-- Create Predefined Meal Form -->
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-header bg-white">
-                                <h6 class="m-0 font-weight-bold">Créer un nouveau repas prédéfini</h6>
-                            </div>
-                            <div class="card-body">
-                                <form action="admin.php?section=predefined_meals" method="POST" novalidate>
-                                    <input type="hidden" name="action" value="create_predefined_meal">
-                                    
-                                    <div class="mb-3">
-                                        <label for="name" class="form-label">Nom du repas</label>
-                                        <input type="text" class="form-control" id="name" name="name" required>
+                <?php elseif ($section === 'program_management'): ?>
+                    <!-- Program management form -->
+                    <div class="container mt-4">
+                        <div class="row">
+                            <div class="col-md-8 offset-md-2">
+                                <div class="card shadow-sm">
+                                    <div class="card-header bg-white">
+                                        <h4 class="mb-0"><?php echo $action === 'edit' ? 'Modifier' : 'Créer'; ?> un programme</h4>
                                     </div>
-                                    
-                                    <div class="mb-3">
-                                        <label for="description" class="form-label">Description</label>
-                                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-                                    </div>
-                                    
-                                    <div class="mb-3 form-check">
-                                        <input type="checkbox" class="form-check-input" id="is_public" name="is_public" checked>
-                                        <label class="form-check-label" for="is_public">Rendre ce repas public (visible par tous les utilisateurs)</label>
-                                    </div>
-                                    
-                                    <div class="d-flex justify-content-between">
-                                        <a href="admin.php?section=predefined_meals" class="btn btn-outline-secondary">Annuler</a>
-                                        <button type="submit" class="btn btn-primary">Créer le repas</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    <?php elseif ($action === 'edit_meal' && $predefined_meal_details): ?>
-                        <!-- Edit Predefined Meal -->
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 font-weight-bold">
-                                    Éditer le repas prédéfini: <?php echo htmlspecialchars($predefined_meal_details['name']); ?>
-                                    <?php if ($predefined_meal_details['is_public']): ?>
-                                        <span class="badge bg-success ms-2">Public</span>
-                                    <?php endif; ?>
-                                </h6>
-                                <form action="admin.php?section=predefined_meals" method="POST" class="d-inline">
-                                    <input type="hidden" name="action" value="delete_predefined_meal">
-                                    <input type="hidden" name="predefined_meal_id" value="<?php echo $predefined_meal_details['id']; ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas prédéfini ?')">
-                                        <i class="fas fa-trash me-1"></i>Supprimer
-                                    </button>
-                                </form>
-                            </div>
-                            <div class="card-body">
-                                <?php if (!empty($predefined_meal_details['description'])): ?>
-                                    <p><strong>Description:</strong> <?php echo htmlspecialchars($predefined_meal_details['description']); ?></p>
-                                <?php endif; ?>
-                                
-                                <?php
-                                $total_calories = 0;
-                                $total_protein = 0;
-                                $total_carbs = 0;
-                                $total_fat = 0;
-                                
-                                foreach ($predefined_meal_foods as $food) {
-                                    $nutrients = calculateNutrients($food);
-                                    $total_calories += $nutrients['calories'];
-                                    $total_protein += $nutrients['protein'];
-                                    $total_carbs += $nutrients['carbs'];
-                                    $total_fat += $nutrients['fat'];
-                                }
-                                ?>
-                                <div class="row mb-4">
-                                    <div class="col-md-6">
-                                        <div class="d-flex justify-content-between">
-                                            <div>
-                                                <p class="mb-1"><strong>Total calories:</strong> <?php echo $total_calories; ?> kcal</p>
-                                                <p class="mb-1"><strong>Protéines:</strong> <?php echo $total_protein; ?> g</p>
+                                    <div class="card-body">
+                                        <?php if (!empty($errors)): ?>
+                                            <div class="alert alert-danger">
+                                                <ul class="mb-0">
+                                                    <?php foreach ($errors as $error): ?>
+                                                        <li><?php echo $error; ?></li>
+                                                    <?php endforeach; ?>
+                                                </ul>
                                             </div>
-                                            <div>
-                                                <p class="mb-1"><strong>Glucides:</strong> <?php echo $total_carbs; ?> g</p>
-                                                <p class="mb-1"><strong>Lipides:</strong> <?php echo $total_fat; ?> g</p>
+                                        <?php endif; ?>
+
+                                        <form method="POST" novalidate>
+                                            <div class="mb-3">
+                                                <label for="name" class="form-label">Nom du programme</label>
+                                                <input type="text" class="form-control" id="name" name="name" value="<?php echo htmlspecialchars($program['name'] ?? ''); ?>" required>
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Liste des aliments du repas -->
-                                <?php if (!empty($predefined_meal_foods)): ?>
-                                    <h6 class="mb-3">Aliments dans ce repas:</h6>
-                                    <div class="table-responsive mb-4">
-                                        <table class="table table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th>Aliment</th>
-                                                    <th>Quantité (g)</th>
-                                                    <th>Calories</th>
-                                                    <th>Protéines (g)</th>
-                                                    <th>Glucides (g)</th>
-                                                    <th>Lipides (g)</th>
-                                                    <th>Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($predefined_meal_foods as $food): ?>
-                                                    <?php $nutrients = calculateNutrients($food); ?>
-                                                    <tr>
-                                                        <td>
-                                                            <?php if ($food['food_id']): ?>
-                                                                <?php echo htmlspecialchars($food['food_name']); ?>
-                                                            <?php else: ?>
-                                                                <?php echo htmlspecialchars($food['custom_food_name']); ?> <span class="badge bg-secondary">Personnalisé</span>
-                                                            <?php endif; ?>
-                                                        </td>
-                                                        <td><?php echo $food['quantity']; ?></td>
-                                                        <td><?php echo $nutrients['calories']; ?></td>
-                                                        <td><?php echo $nutrients['protein']; ?></td>
-                                                        <td><?php echo $nutrients['carbs']; ?></td>
-                                                        <td><?php echo $nutrients['fat']; ?></td>
-                                                        <td>
-                                                            <form action="admin.php?section=predefined_meals&action=edit_meal&meal_id=<?php echo $predefined_meal_details['id']; ?>" method="POST">
-                                                                <input type="hidden" name="action" value="remove_food_from_predefined_meal">
-                                                                <input type="hidden" name="food_id" value="<?php echo $food['id']; ?>">
-                                                                <input type="hidden" name="predefined_meal_id" value="<?php echo $predefined_meal_details['id']; ?>">
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?')">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="alert alert-info">
-                                        Ce repas ne contient pas encore d'aliments. Ajoutez-en ci-dessous.
-                                    </div>
-                                <?php endif; ?>
-                                
-                                <!-- Formulaire d'ajout d'aliment -->
-                                <h6 class="mb-3">Ajouter un aliment à ce repas:</h6>
-                                <form action="admin.php?section=predefined_meals&action=edit_meal&meal_id=<?php echo $predefined_meal_details['id']; ?>" method="POST" novalidate>
-                                    <input type="hidden" name="action" value="add_food_to_predefined_meal">
-                                    <input type="hidden" name="predefined_meal_id" value="<?php echo $predefined_meal_details['id']; ?>">
-                                    
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="food_id" class="form-label">Aliment</label>
-                                            <select class="form-select" id="food_id" name="food_id">
-                                                <option value="">Sélectionnez un aliment ou saisissez un nom personnalisé</option>
-                                                <?php foreach ($foods as $food): ?>
-                                                    <option value="<?php echo $food['id']; ?>" 
-                                                            data-calories="<?php echo $food['calories']; ?>"
-                                                            data-protein="<?php echo $food['protein']; ?>"
-                                                            data-carbs="<?php echo $food['carbs']; ?>"
-                                                            data-fat="<?php echo $food['fat']; ?>">
-                                                        <?php echo htmlspecialchars($food['name']); ?> 
-                                                        (<?php echo $food['calories']; ?> kcal/100g)
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="col-md-6 mb-3">
-                                            <label for="custom_food_name" class="form-label">Nom d'aliment personnalisé (si non listé)</label>
-                                            <input type="text" class="form-control" id="custom_food_name" name="custom_food_name">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row">
-                                        <div class="col-md-3 mb-3">
-                                            <label for="quantity" class="form-label">Quantité (g)</label>
-                                            <input type="number" class="form-control" id="quantity" name="quantity" value="100" min="1" required>
-                                        </div>
-                                        
-                                        <div class="col-md-3 mb-3">
-                                            <label for="custom_calories" class="form-label">Calories</label>
-                                            <input type="number" class="form-control" id="custom_calories" name="custom_calories" value="0" min="0" required>
-                                        </div>
-                                        
-                                        <div class="col-md-2 mb-3">
-                                            <label for="custom_protein" class="form-label">Protéines (g)</label>
-                                            <input type="number" class="form-control" id="custom_protein" name="custom_protein" value="0" min="0" step="0.1">
-                                        </div>
-                                        
-                                        <div class="col-md-2 mb-3">
-                                            <label for="custom_carbs" class="form-label">Glucides (g)</label>
-                                            <input type="number" class="form-control" id="custom_carbs" name="custom_carbs" value="0" min="0" step="0.1">
-                                        </div>
-                                        
-                                        <div class="col-md-2 mb-3">
-                                            <label for="custom_fat" class="form-label">Lipides (g)</label>
-                                            <input type="number" class="form-control" id="custom_fat" name="custom_fat" value="0" min="0" step="0.1">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="d-flex justify-content-between">
-                                        <a href="admin.php?section=predefined_meals" class="btn btn-outline-secondary">Retour à la liste</a>
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-plus me-1"></i>Ajouter l'aliment
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    <?php else: ?>
-                        <!-- Predefined Meals List -->
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-header bg-white">
-                                <h6 class="m-0 font-weight-bold">Liste des repas prédéfinis</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Nom</th>
-                                                <th>Description</th>
-                                                <th>Aliments</th>
-                                                <th>Visibilité</th>
-                                                <th>Date de création</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($predefined_meals as $meal): ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($meal['name']); ?></td>
-                                                    <td>
-                                                        <?php 
-                                                            echo !empty($meal['description']) 
-                                                                ? htmlspecialchars(substr($meal['description'], 0, 50)) . (strlen($meal['description']) > 50 ? '...' : '') 
-                                                                : '—'; 
-                                                        ?>
-                                                    </td>
-                                                    <td><?php echo $meal['food_count']; ?></td>
-                                                    <td>
-                                                        <?php if ($meal['is_public']): ?>
-                                                            <span class="badge bg-success">Public</span>
-                                                        <?php else: ?>
-                                                            <span class="badge bg-secondary">Privé</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                    <td><?php echo $meal['formatted_date']; ?></td>
-                                                    <td>
-                                                        <div class="btn-group">
-                                                            <a href="admin.php?section=predefined_meals&action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-outline-primary">
-                                                                <i class="fas fa-edit"></i>
-                                                            </a>
-                                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteMealModal<?php echo $meal['id']; ?>">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                
-                                                <!-- Delete Meal Modal -->
-                                                <div class="modal fade" id="deleteMealModal<?php echo $meal['id']; ?>" tabindex="-1" aria-labelledby="deleteMealModalLabel<?php echo $meal['id']; ?>" aria-hidden="true">
-                                                    <div class="modal-dialog">
-                                                        <div class="modal-content">
-                                                            <div class="modal-header">
-                                                                <h5 class="modal-title" id="deleteMealModalLabel<?php echo $meal['id']; ?>">Confirmer la suppression</h5>
-                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                            </div>
-                                                            <div class="modal-body">
-                                                                <p>Êtes-vous sûr de vouloir supprimer le repas prédéfini "<?php echo htmlspecialchars($meal['name']); ?>" ?</p>
-                                                                <p class="text-danger">Cette action est irréversible.</p>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                                <form action="admin.php?section=predefined_meals" method="POST">
-                                                                    <input type="hidden" name="action" value="delete_predefined_meal">
-                                                                    <input type="hidden" name="predefined_meal_id" value="<?php echo $meal['id']; ?>">
-                                                                    <button type="submit" class="btn btn-danger">Supprimer</button>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            <?php endforeach; ?>
-                                            <?php if (empty($predefined_meals)): ?>
-                                                <tr>
-                                                    <td colspan="6" class="text-center">Aucun repas prédéfini trouvé</td>
-                                                </tr>
-                                            <?php endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                    
-                <?php elseif ($section === 'api_settings'): ?>
-                    <!-- API Settings -->
-                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">Paramètres API</h1>
-                    </div>
-                    
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-white">
-                            <h6 class="m-0 font-weight-bold">Clé API ChatGPT</h6>
-                        </div>
-                        <div class="card-body">
-                            <form action="admin.php?section=api_settings" method="POST" novalidate>
-                                <input type="hidden" name="action" value="update_api_key">
-                                
-                                <div class="mb-3">
-                                    <label for="api_key" class="form-label">Clé API</label>
-                                    <div class="input-group">
-                                        <input type="password" class="form-control" id="api_key" name="api_key" value="<?php echo htmlspecialchars($chatgpt_api_key); ?>" required>
-                                        <button class="btn btn-outline-secondary" type="button" id="toggleApiKey">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    </div>
-                                    <div class="form-text">Cette clé API sera utilisée pour toutes les fonctionnalités d'IA de l'application.</div>
-                                </div>
-                                
+
+                                            <div class="mb-3">
+                                                <label for="description" class="form-label">Description</label>
+                                                <textarea class="form-control" id="description" name="description" rows="3" required><?php echo htmlspecialchars($program['description'] ?? ''); ?></textarea>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="type" class="form-label">Type de programme</label>
+                                                <select class="form-select" id="type" name="type" required>
+                                                    <option value="complet" <?php echo ($program['type'] ?? '') === 'complet' ? 'selected' : ''; ?>>Complet (nutrition + exercice)</option>
+                                                    <option value="nutrition" <?php echo ($program['type'] ?? '') === 'nutrition' ? 'selected' : ''; ?>>Nutrition uniquement</option>
+                                                    <option value="exercice" <?php echo ($program['type'] ?? '') === 'exercice' ? 'selected' : ''; ?>>Exercice uniquement</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="calorie_adjustment" class="form-label">Ajustement calorique (%)</label>
                                 <div class="alert alert-info">
                                     <h6 class="alert-heading">Comment obtenir une clé API ChatGPT</h6>
                                     <ol class="mb-0">
