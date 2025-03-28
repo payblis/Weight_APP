@@ -659,46 +659,60 @@ function recalculateCalories($user_id) {
     $stmt->execute([$user_id]);
     $active_program = $stmt->fetch(PDO::FETCH_ASSOC);
     
+    // Récupérer l'objectif actif
+    $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$user_id]);
+    $current_goal = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Système de priorité : Programme > Objectif > TDEE
     if ($active_program) {
-        error_log("Programme actif trouvé : " . $active_program['type']);
+        error_log("Programme actif trouvé, priorité sur l'objectif");
         // Appliquer l'ajustement calorique du programme sur le TDEE
         $calorie_adjustment = $active_program['calorie_adjustment'] / 100;
         $caloric_goal = $tdee * (1 + $calorie_adjustment);
         error_log("Calories après ajustement du programme : " . $caloric_goal);
-    } else {
-        // Récupérer l'objectif actif
-        $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$user_id]);
-        $current_goal = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($current_goal) {
-            error_log("Objectif actif trouvé : " . $current_goal['type']);
-            
-            // Calculer l'ajustement quotidien nécessaire pour atteindre l'objectif
-            $weight_difference = $current_goal['target_weight'] - $profile['weight'];
-            $days_to_target = (strtotime($current_goal['target_date']) - time()) / (24 * 60 * 60);
-            $daily_adjustment = ($weight_difference * 7700) / $days_to_target;
-            
-            // Ajuster le TDEE avec l'ajustement quotidien
-            $caloric_goal = $tdee + $daily_adjustment;
-            error_log("Calories après ajustement de l'objectif : " . $caloric_goal);
-            
-            // Avertir si l'ajustement est important
-            if (abs($daily_adjustment) > 500) {
-                error_log("ATTENTION : Ajustement calorique important de " . $daily_adjustment . " calories par jour");
-            }
-        } else {
-            error_log("Pas d'objectif actif, utilisation du TDEE comme objectif");
-            $caloric_goal = $tdee;
+        // Utiliser les ratios de macronutriments du programme
+        $macro_ratios = [
+            'protein' => $active_program['protein_ratio'] / 100,
+            'carbs' => $active_program['carbs_ratio'] / 100,
+            'fat' => $active_program['fat_ratio'] / 100
+        ];
+        error_log("Ratios de macronutriments du programme : " . print_r($macro_ratios, true));
+    } elseif ($current_goal) {
+        error_log("Objectif actif trouvé, calcul des calories et ratios");
+        // Calculer l'ajustement quotidien nécessaire pour atteindre l'objectif
+        $weight_difference = $current_goal['target_weight'] - $profile['weight'];
+        $days_to_target = (strtotime($current_goal['target_date']) - time()) / (24 * 60 * 60);
+        $daily_adjustment = ($weight_difference * 7700) / $days_to_target;
+        
+        // Ajuster le TDEE avec l'ajustement quotidien
+        $caloric_goal = $tdee + $daily_adjustment;
+        error_log("Calories après ajustement de l'objectif : " . $caloric_goal);
+        
+        // Calculer les ratios de macronutriments selon l'objectif
+        $macro_ratios = calculateMacroRatios($profile['weight'], 
+            $current_goal['target_weight'],
+            null, // Pas de programme actif
+            $profile['activity_level']);
+        
+        // Avertir si l'ajustement est important
+        if (abs($daily_adjustment) > 500) {
+            error_log("ATTENTION : Ajustement calorique important de " . $daily_adjustment . " calories par jour");
         }
+    } else {
+        error_log("Ni programme ni objectif actif, utilisation du TDEE et ratios par défaut");
+        $caloric_goal = $tdee;
+        
+        // Ratios par défaut (40% protéines, 30% glucides, 30% lipides)
+        $macro_ratios = [
+            'protein' => 0.40,
+            'carbs' => 0.30,
+            'fat' => 0.30
+        ];
+        error_log("Ratios de macronutriments par défaut : " . print_r($macro_ratios, true));
     }
-    
-    // Calculer les ratios de macronutriments
-    $macro_ratios = calculateMacroRatios($profile['weight'], 
-        $current_goal ? $current_goal['target_weight'] : $profile['weight'],
-        $active_program,
-        $profile['activity_level']);
     
     // Mettre à jour le profil avec les nouvelles valeurs
     $sql = "UPDATE user_profiles SET 
