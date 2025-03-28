@@ -68,6 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $sql = "INSERT INTO user_programs (user_id, program_id, status, created_at, updated_at) VALUES (?, ?, 'actif', NOW(), NOW())";
             error_log("SQL d'insertion : " . $sql);
             error_log("Paramètres : user_id=" . $user_id . ", program_id=" . $program_id);
+            error_log("Classe de pdo dans insert : " . get_class($pdo));
+            error_log("Hash de l'objet PDO dans insert : " . spl_object_hash($pdo));
             $stmt = $pdo->prepare($sql);
             $result = $stmt->execute([$user_id, $program_id]);
             error_log("Résultat de l'insertion : " . ($result ? "Succès" : "Échec"));
@@ -77,9 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $insertedId = $pdo->lastInsertId();
                 error_log("Programme inséré avec ID : " . $insertedId);
                 
-                // 3. Vérification
-                $check = fetchOne("SELECT * FROM user_programs WHERE id = ?", [$insertedId]);
-                error_log("Post-insert (vérification) : " . print_r($check, true));
+                // 3. Vérification avec la même connexion PDO
+                $stmt = $pdo->prepare("SELECT * FROM user_programs WHERE id = ?");
+                $stmt->execute([$insertedId]);
+                $check = $stmt->fetch(PDO::FETCH_ASSOC);
+                error_log("Check direct dans même PDO : " . print_r($check, true));
                 
                 // Récupérer les valeurs du programme
                 $sql = "SELECT * FROM programs WHERE id = ?";

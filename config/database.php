@@ -94,12 +94,11 @@ function executeQuery($sql, $params = []) {
 
 // Fonction pour obtenir une seule ligne
 function fetchOne($sql, $params = []) {
+    global $pdo;
     try {
-        $result = executeQuery($sql, $params);
-        if ($result) {
-            return $result->fetch_assoc();
-        }
-        return null;
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
         error_log("Erreur dans fetchOne: " . $e->getMessage());
         return null;
@@ -108,12 +107,11 @@ function fetchOne($sql, $params = []) {
 
 // Fonction pour obtenir plusieurs lignes
 function fetchAll($sql, $params = []) {
+    global $pdo;
     try {
-        $result = executeQuery($sql, $params);
-        if ($result) {
-            return $result->fetch_all(MYSQLI_ASSOC);
-        }
-        return [];
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
         error_log("Erreur dans fetchAll: " . $e->getMessage());
         return [];
