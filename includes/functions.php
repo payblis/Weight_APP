@@ -738,25 +738,3 @@ function execute($sql, $params = []) {
         return false;
     }
 }
-
-/**
- * Exécute une requête SQL et retourne une seule ligne
- * @param string $sql La requête SQL à exécuter
- * @param array $params Les paramètres de la requête
- * @return array|false La ligne de résultat ou false en cas d'erreur
- */
-function fetchOne($sql, $params = []) {
-    global $pdo;
-    try {
-        error_log("Exécution de la requête fetchOne : " . $sql);
-        error_log("Paramètres : " . print_r($params, true));
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        error_log("Résultat de fetchOne : " . ($result ? "Données trouvées" : "Aucune donnée trouvée"));
-        return $result;
-    } catch (PDOException $e) {
-        error_log("Erreur SQL dans fetchOne: " . $e->getMessage());
-        return false;
-    }
-}
