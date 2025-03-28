@@ -100,20 +100,16 @@ function getBMICategory($bmi) {
  * 
  * @param float $weight Poids en kg
  * @param float $height Taille en cm
- * @param string $birth_date Date de naissance au format Y-m-d
+ * @param int $age Âge en années
  * @param string $gender Genre ('homme' ou 'femme')
  * @return float BMR en calories
  */
-function calculateBMR($weight, $height, $birth_date, $gender) {
-    // Calculer l'âge à partir de la date de naissance
-    $birth = new DateTime($birth_date);
-    $today = new DateTime();
-    $age = $birth->diff($today)->y;
-    
+function calculateBMR($weight, $height, $age, $gender) {
+    // Formule de Mifflin-St Jeor
     if ($gender === 'homme') {
-        return 10 * $weight + 6.25 * $height - 5 * $age + 5;
+        return (10 * $weight) + (6.25 * $height) - (5 * $age) + 5;
     } else {
-        return 10 * $weight + 6.25 * $height - 5 * $age - 161;
+        return (10 * $weight) + (6.25 * $height) - (5 * $age) - 161;
     }
 }
 
@@ -125,16 +121,19 @@ function calculateBMR($weight, $height, $birth_date, $gender) {
  * @return float TDEE en calories
  */
 function calculateTDEE($bmr, $activity_level) {
+    // Facteurs d'activité
     $activity_factors = [
         'sedentaire' => 1.2,
-        'legerement_actif' => 1.375,
-        'moderement_actif' => 1.55,
-        'tres_actif' => 1.725,
-        'extremement_actif' => 1.9
+        'leger' => 1.375,
+        'modere' => 1.55,
+        'actif' => 1.725,
+        'tres_actif' => 1.9
     ];
     
-    $activity_factor = $activity_factors[$activity_level] ?? 1.2;
-    return $bmr * $activity_factor;
+    // Utiliser le facteur d'activité par défaut si le niveau n'est pas reconnu
+    $factor = $activity_factors[$activity_level] ?? 1.55;
+    
+    return round($bmr * $factor);
 }
 
 /**
