@@ -1,0 +1,526 @@
+/* Styles personnalisés pour l'application Weight Tracker */
+
+/* Variables de couleurs */
+:root {
+    --primary-color: #0066cc;
+    --secondary-color: #5cb85c;
+    --accent-color: #f0ad4e;
+    --danger-color: #d9534f;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --gray-color: #6c757d;
+    --light-gray-color: #e9ecef;
+}
+
+/* Styles généraux */
+body {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: #333;
+    line-height: 1.6;
+}
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+a:hover {
+    color: #004c99;
+    text-decoration: underline;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #004c99;
+    border-color: #004c99;
+}
+
+.btn-success {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+/* Barre de navigation */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+/* En-tête */
+header {
+    padding: 6rem 0;
+    background-color: var(--light-color);
+}
+
+header h1 {
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+}
+
+header .lead {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+/* Cartes */
+.card {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.card-title {
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* Formulaires */
+.form-control {
+    border-radius: 0.25rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #ced4da;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(0, 102, 204, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Tableaux */
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.table th {
+    font-weight: 600;
+    background-color: var(--light-gray-color);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 102, 204, 0.05);
+}
+
+/* Badges */
+.badge {
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+    border-radius: 0.25rem;
+}
+
+/* Alertes */
+.alert {
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+}
+
+/* Graphiques */
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin-bottom: 2rem;
+}
+
+/* Tableau de bord */
+.dashboard-card {
+    border-left: 4px solid var(--primary-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    background-color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-card .card-title {
+    font-size: 1.1rem;
+    color: var(--gray-color);
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-card .card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0;
+}
+
+.dashboard-card.weight-card {
+    border-left-color: var(--primary-color);
+}
+
+.dashboard-card.calories-card {
+    border-left-color: var(--secondary-color);
+}
+
+.dashboard-card.exercise-card {
+    border-left-color: var(--accent-color);
+}
+
+.dashboard-card.goal-card {
+    border-left-color: var(--danger-color);
+}
+
+/* Progression */
+.progress {
+    height: 0.8rem;
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--light-gray-color);
+}
+
+.progress-bar {
+    background-color: var(--primary-color);
+}
+
+/* Icônes */
+.icon-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background-color: rgba(0, 102, 204, 0.1);
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+/* Pied de page */
+footer {
+    background-color: var(--dark-color);
+    color: white;
+    padding: 3rem 0 1.5rem;
+}
+
+footer a {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+footer a:hover {
+    color: white;
+}
+
+footer h5 {
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    header {
+        padding: 4rem 0;
+    }
+    
+    header h1 {
+        font-size: 2.5rem;
+    }
+    
+    .dashboard-card .card-value {
+        font-size: 1.5rem;
+    }
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Styles pour les pages de journal alimentaire et d'exercices */
+.food-item, .exercise-item {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.food-item:hover, .exercise-item:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.food-item .food-name, .exercise-item .exercise-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.food-item .food-details, .exercise-item .exercise-details {
+    color: var(--gray-color);
+    font-size: 0.9rem;
+}
+
+.macro-circle {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+.protein-circle {
+    background-color: #ff6b6b;
+}
+
+.carbs-circle {
+    background-color: #48dbfb;
+}
+
+.fat-circle {
+    background-color: #feca57;
+}
+
+/* Styles pour la page de profil */
+.profile-header {
+    background-color: white;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.profile-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.profile-stats {
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.profile-stat-item {
+    padding: 1rem;
+}
+
+.profile-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.25rem;
+}
+
+.profile-stat-label {
+    color: var(--gray-color);
+    font-size: 0.9rem;
+}
+
+/* Styles pour les objectifs */
+.goal-progress {
+    padding: 1.5rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.goal-dates {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    color: var(--gray-color);
+    font-size: 0.9rem;
+}
+
+.goal-weight {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.goal-weight-item {
+    text-align: center;
+}
+
+.goal-weight-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.goal-weight-label {
+    color: var(--gray-color);
+    font-size: 0.9rem;
+}
+
+/* Styles pour les pages de connexion et d'inscription */
+.auth-container {
+    max-width: 500px;
+    margin: 3rem auto;
+    padding: 2rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.auth-header h2 {
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--light-gray-color);
+}
+
+/* Styles pour les boutons d'action */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+/* Styles pour les tooltips */
+.tooltip-inner {
+    background-color: var(--dark-color);
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+}
+
+.bs-tooltip-auto[data-popper-placement^=top] .tooltip-arrow::before, 
+.bs-tooltip-top .tooltip-arrow::before {
+    border-top-color: var(--dark-color);
+}
+
+/* Styles pour les modals */
+.modal-content {
+    border-radius: 0.5rem;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--light-gray-color);
+    padding: 1.5rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--light-gray-color);
+    padding: 1.5rem;
+}
+
+/* Styles pour les notifications */
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 18px;
+    height: 18px;
+    background-color: var(--danger-color);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.notification-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--light-gray-color);
+    transition: background-color 0.3s ease;
+}
+
+.notification-item:hover {
+    background-color: rgba(0, 102, 204, 0.05);
+}
+
+.notification-item.unread {
+    background-color: rgba(0, 102, 204, 0.1);
+}
+
+.notification-time {
+    color: var(--gray-color);
+    font-size: 0.8rem;
+}
+
+/* Styles pour les pages d'erreur */
+.error-container {
+    text-align: center;
+    padding: 5rem 0;
+}
+
+.error-code {
+    font-size: 6rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Styles pour l'impression */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        background-color: white !important;
+    }
+    
+    .container {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
