@@ -20,99 +20,87 @@ $user = fetchOne($sql, [$user_id]);
 $success_message = '';
 $errors = [];
 
-// Traitement de la sélection d'un programme
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['program_id'])) {
+// Gérer l'activation/désactivation des programmes
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    error_log("=== Début de la gestion de l'action POST ===");
+    error_log("Action : " . $_POST['action']);
+    error_log("Program ID : " . $_POST['program_id']);
+    
+    $program_id = (int)$_POST['program_id'];
+    $user_id = $_SESSION['user_id'];
+    
     try {
-        $program_id = (int)$_POST['program_id'];
+        $pdo->beginTransaction();
         
-        // Vérifier si le programme existe
-        $sql = "SELECT * FROM programs WHERE id = ?";
-        $program = fetchOne($sql, [$program_id]);
-        
-        if (!$program) {
-            $errors[] = "Programme non trouvé.";
-        } else {
-            // Désactiver le programme actuel de l'utilisateur s'il en a un
-            $sql = "UPDATE user_programs SET status = 'inactif', updated_at = NOW() 
-                    WHERE user_id = ? AND status = 'actif'";
-            update($sql, [$user_id]);
+        if ($_POST['action'] === 'activate') {
+            error_log("Tentative d'activation du programme");
+            
+            // Désactiver tous les programmes actifs de l'utilisateur
+            $sql = "UPDATE user_programs SET status = 'inactive' WHERE user_id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$user_id]);
+            error_log("Programmes précédents désactivés");
             
             // Activer le nouveau programme
-            $sql = "INSERT INTO user_programs (user_id, program_id, status, created_at) 
-                    VALUES (?, ?, 'actif', NOW())";
-            $result = insert($sql, [$user_id, $program_id]);
+            $sql = "INSERT INTO user_programs (user_id, program_id, status, created_at) VALUES (?, ?, 'active', NOW())";
+            $stmt = $pdo->prepare($sql);
+            $result = $stmt->execute([$user_id, $program_id]);
+            error_log("Résultat de l'insertion du nouveau programme : " . ($result ? "Succès" : "Échec"));
             
             if ($result) {
-                // Récupérer le profil de l'utilisateur
-                $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
-                $profile = fetchOne($sql, [$user_id]);
-                
-                if ($profile) {
-                    // Vérifier et mettre à jour le poids dans le profil
-                    $current_weight = ensureProfileWeight($user_id);
-                    
-                    if ($current_weight === null) {
-                        $errors[] = "Veuillez d'abord enregistrer votre poids avant d'activer un programme.";
-                    } else {
-                        // Recalculer les calories
-                        recalculateCalories($user_id);
-                        
-                        $success_message = "Le programme a été activé avec succès ! Vos objectifs ont été ajustés.";
-                    }
+                error_log("Programme activé avec succès, appel de recalculateCalories");
+                // Recalculer les calories et les ratios
+                if (recalculateCalories($user_id)) {
+                    error_log("Recalcul des calories réussi");
+                } else {
+                    error_log("Échec du recalcul des calories");
                 }
+                
+                $pdo->commit();
+                $_SESSION['success'] = "Programme activé avec succès.";
             } else {
-                $errors[] = "Une erreur s'est produite lors de l'activation du programme.";
+                error_log("Échec de l'activation du programme");
+                $pdo->rollBack();
+                $_SESSION['error'] = "Erreur lors de l'activation du programme.";
             }
-        }
-    } catch (Exception $e) {
-        $errors[] = "Une erreur s'est produite : " . $e->getMessage();
-        error_log("Erreur dans programs.php: " . $e->getMessage());
-    }
-}
-
-// Traitement de la désactivation d'un programme
-if (isset($_GET['action']) && $_GET['action'] === 'deactivate' && isset($_GET['id'])) {
-    try {
-        $program_id = (int)$_GET['id'];
-        
-        // Vérifier si le programme appartient à l'utilisateur
-        $sql = "SELECT * FROM user_programs WHERE program_id = ? AND user_id = ? AND status = 'actif'";
-        $user_program = fetchOne($sql, [$program_id, $user_id]);
-        
-        if ($user_program) {
+        } elseif ($_POST['action'] === 'deactivate') {
+            error_log("Tentative de désactivation du programme");
+            
             // Désactiver le programme
-            $sql = "UPDATE user_programs SET status = 'inactif', updated_at = NOW() 
-                    WHERE program_id = ? AND user_id = ?";
-            $result = update($sql, [$program_id, $user_id]);
+            $sql = "UPDATE user_programs SET status = 'inactive' WHERE user_id = ? AND program_id = ?";
+            $stmt = $pdo->prepare($sql);
+            $result = $stmt->execute([$user_id, $program_id]);
+            error_log("Résultat de la désactivation : " . ($result ? "Succès" : "Échec"));
             
             if ($result) {
-                // Récupérer le profil de l'utilisateur
-                $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
-                $profile = fetchOne($sql, [$user_id]);
-                
-                if ($profile) {
-                    // Vérifier et mettre à jour le poids dans le profil
-                    $current_weight = ensureProfileWeight($user_id);
-                    
-                    if ($current_weight === null) {
-                        $errors[] = "Veuillez d'abord enregistrer votre poids avant de désactiver le programme.";
-                    } else {
-                        // Recalculer les calories
-                        recalculateCalories($user_id);
-                        
-                        $success_message = "Le programme a été désactivé avec succès ! Vos objectifs ont été réinitialisés.";
-                    }
+                error_log("Programme désactivé avec succès, appel de recalculateCalories");
+                // Recalculer les calories et les ratios
+                if (recalculateCalories($user_id)) {
+                    error_log("Recalcul des calories réussi");
+                } else {
+                    error_log("Échec du recalcul des calories");
                 }
+                
+                $pdo->commit();
+                $_SESSION['success'] = "Programme désactivé avec succès.";
             } else {
-                $errors[] = "Une erreur s'est produite lors de la désactivation du programme.";
+                error_log("Échec de la désactivation du programme");
+                $pdo->rollBack();
+                $_SESSION['error'] = "Erreur lors de la désactivation du programme.";
             }
-        } else {
-            $errors[] = "Programme non trouvé ou vous n'êtes pas autorisé à le modifier.";
         }
-    } catch (Exception $e) {
-        $errors[] = "Une erreur s'est produite : " . $e->getMessage();
-        error_log("Erreur dans programs.php: " . $e->getMessage());
+        
+        error_log("=== Fin de la gestion de l'action POST ===");
+        
+    } catch (PDOException $e) {
+        error_log("Erreur lors de la gestion du programme : " . $e->getMessage());
+        $pdo->rollBack();
+        $_SESSION['error'] = "Une erreur est survenue lors de la gestion du programme.";
     }
+    
+    // Rediriger vers la page des programmes
+    header("Location: programs.php");
+    exit;
 }
 
 // Suppression d'un programme
