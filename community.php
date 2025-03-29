@@ -61,6 +61,9 @@ $sql = "SELECT cp.*, u.username, u.avatar,
         LIMIT 20";
 $posts = fetchAll($sql);
 
+// Récupérer les groupes de l'utilisateur
+$user_groups = getUserGroups($user_id);
+
 // Récupérer les utilisateurs suggérés
 $sql = "SELECT u.id, u.username, u.avatar,
         (SELECT COUNT(*) FROM community_posts WHERE user_id = u.id) as posts_count,
