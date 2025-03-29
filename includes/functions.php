@@ -959,7 +959,8 @@ function checkMealNotifications($user_id) {
                     'meal_type' => $pref['meal_type'],
                     'start_time' => $pref['start_time'],
                     'end_time' => $pref['end_time'],
-                    'priority' => 1 // Priorité pour les notifications de repas
+                    'priority' => 1, // Priorité pour les notifications de repas
+                    'action_url' => 'food-log.php?action=add&meal_type=' . $pref['meal_type']
                 ];
                 
                 // Si on est dans la plage horaire, ajouter un message sur l'urgence

@@ -243,6 +243,9 @@ $meal_notifications = checkMealNotifications($user_id);
                      data-message="<?php echo htmlspecialchars($notification['message']); ?>">
                     <i class="fas fa-<?php echo $icon; ?> me-2"></i>
                     <?php echo $notification['message']; ?>
+                    <a href="<?php echo $notification['action_url']; ?>" class="alert-link ms-2">
+                        <i class="fas fa-plus-circle me-1"></i>Ajouter ce repas
+                    </a>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endforeach; ?>
