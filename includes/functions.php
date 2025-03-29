@@ -1036,7 +1036,13 @@ function createCommunityPost($user_id, $post_type, $content, $reference_id = nul
     global $pdo;
     
     try {
-        // Vérifier si le post est pour un groupe et si l'utilisateur en est membre
+        // Si la visibilité est 'group', s'assurer que le group_id est fourni
+        if ($visibility === 'group' && !$group_id) {
+            error_log("Tentative de création d'un post de groupe sans group_id");
+            return false;
+        }
+        
+        // Si la visibilité est 'group', vérifier si le groupe existe
         if ($visibility === 'group' && $group_id) {
             // Vérifier si le groupe existe
             $sql = "SELECT id FROM community_groups WHERE id = ?";
@@ -1052,6 +1058,11 @@ function createCommunityPost($user_id, $post_type, $content, $reference_id = nul
                 error_log("Tentative de création d'un post par un non-membre du groupe (User ID: $user_id, Group ID: $group_id)");
                 return false;
             }
+        }
+        
+        // Si la visibilité est 'public', s'assurer que group_id est null
+        if ($visibility === 'public') {
+            $group_id = null;
         }
         
         $sql = "INSERT INTO community_posts (user_id, post_type, content, reference_id, reference_type, visibility, group_id) 

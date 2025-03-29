@@ -28,11 +28,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (createCommunityPost($user_id, $post_type, $content, $reference_id, $reference_type, $visibility, $group_id)) {
             $_SESSION['success_message'] = "Votre post a été publié avec succès !";
         } else {
-            $_SESSION['error_message'] = "Une erreur est survenue lors de la publication du post. Vérifiez que vous êtes bien membre du groupe sélectionné.";
+            if ($visibility === 'group') {
+                $_SESSION['error_message'] = "Impossible de créer le post. Vérifiez que vous êtes bien membre du groupe sélectionné.";
+            } else {
+                $_SESSION['error_message'] = "Une erreur est survenue lors de la publication du post.";
+            }
         }
-    } catch (Exception $e) {
+    } catch (PDOException $e) {
         error_log("Erreur lors de la création du post : " . $e->getMessage());
-        $_SESSION['error_message'] = "Une erreur est survenue lors de la publication du post. Veuillez réessayer.";
+        if ($e->getCode() == 23000) { // Code d'erreur pour violation de contrainte d'intégrité
+            $_SESSION['error_message'] = "Impossible de créer le post. Le groupe sélectionné n'existe pas.";
+        } else {
+            $_SESSION['error_message'] = "Une erreur est survenue lors de la publication du post. Veuillez réessayer.";
+        }
     }
     
     // Rediriger vers la page appropriée
