@@ -34,16 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Ajouter un repas
     if ($post_action === 'add_meal') {
-        $meal_name = sanitizeInput($_POST['meal_name'] ?? '');
         $meal_type = sanitizeInput($_POST['meal_type'] ?? '');
         $log_date = sanitizeInput($_POST['log_date'] ?? date('Y-m-d'));
         $notes = sanitizeInput($_POST['notes'] ?? '');
         
         // Validation
-        if (empty($meal_name)) {
-            $errors[] = "Le nom du repas est requis";
-        }
-        
         if (empty($meal_type)) {
             $errors[] = "Le type de repas est requis";
         }
@@ -55,9 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($errors)) {
             try {
                 // Insérer le repas
-                $sql = "INSERT INTO meals (user_id, meal_name, meal_type, log_date, notes, created_at) 
-                        VALUES (?, ?, ?, ?, ?, NOW())";
-                $meal_id = insert($sql, [$user_id, $meal_name, $meal_type, $log_date, $notes]);
+                $sql = "INSERT INTO meals (user_id, meal_type, log_date, notes, created_at) 
+                        VALUES (?, ?, ?, ?, NOW())";
+                $meal_id = insert($sql, [$user_id, $meal_type, $log_date, $notes]);
                 
                 if ($meal_id) {
                     $success_message = "Repas ajouté avec succès. Vous pouvez maintenant ajouter des aliments à ce repas.";
@@ -605,41 +600,41 @@ function updateMealTotals($meal_id) {
                     <h5 class="card-title mb-0">Ajouter un nouveau repas</h5>
                 </div>
                 <div class="card-body">
-                    <form action="food-log.php" method="POST" novalidate>
+                    <form method="post" action="food-log.php" class="needs-validation" novalidate>
                         <input type="hidden" name="action" value="add_meal">
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="meal_name" class="form-label">Nom du repas</label>
-                                <input type="text" class="form-control" id="meal_name" name="meal_name" required>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="meal_type" class="form-label">Type de repas</label>
-                                <select class="form-select" id="meal_type" name="meal_type" required>
-                                    <option value="">Sélectionnez un type</option>
-                                    <option value="petit_dejeuner">Petit déjeuner</option>
-                                    <option value="dejeuner">Déjeuner</option>
-                                    <option value="diner">Dîner</option>
-                                    <option value="collation">Collation</option>
-                                    <option value="autre">Autre</option>
-                                </select>
+                        <div class="mb-3">
+                            <label for="meal_type" class="form-label">Type de repas</label>
+                            <select class="form-select" id="meal_type" name="meal_type" required>
+                                <option value="">Sélectionnez un type de repas</option>
+                                <option value="petit_dejeuner">Petit déjeuner</option>
+                                <option value="dejeuner">Déjeuner</option>
+                                <option value="diner">Dîner</option>
+                                <option value="collation">Collation</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Veuillez sélectionner un type de repas.
                             </div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="log_date" class="form-label">Date</label>
                             <input type="date" class="form-control" id="log_date" name="log_date" value="<?php echo date('Y-m-d'); ?>" required>
+                            <div class="invalid-feedback">
+                                Veuillez sélectionner une date valide.
+                            </div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="notes" class="form-label">Notes (optionnel)</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
                         </div>
                         
-                        <div class="d-flex justify-content-between">
-                            <a href="food-log.php" class="btn btn-outline-secondary">Annuler</a>
-                            <button type="submit" class="btn btn-primary">Créer le repas</button>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>Ajouter le repas
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -1141,25 +1136,24 @@ function updateMealTotals($meal_id) {
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Date</th>
-                                        <th>Repas</th>
                                         <th>Type</th>
+                                        <th>Date</th>
                                         <th>Aliments</th>
-                                        <th>Calories</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($meal_history as $meal): ?>
                                         <tr>
-                                            <td><?php echo $meal['formatted_date']; ?></td>
-                                            <td><?php echo htmlspecialchars($meal['name']); ?></td>
                                             <td><?php echo getMealTypeName($meal['meal_type']); ?></td>
-                                            <td><?php echo $meal['food_count']; ?></td>
-                                            <td><?php echo round($meal['total_calories'] ?? 0); ?> kcal</td>
+                                            <td><?php echo $meal['formatted_date']; ?></td>
+                                            <td><?php echo $meal['food_count']; ?> aliments</td>
                                             <td>
-                                                <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-eye"></i>
+                                                <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?');">
+                                                    <i class="fas fa-trash"></i>
                                                 </a>
                                             </td>
                                         </tr>
