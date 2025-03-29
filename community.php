@@ -44,8 +44,9 @@ $sql = "SELECT cp.*, u.username, u.avatar,
                 'notes', m.notes
             )
             WHEN cp.post_type = 'exercise' THEN JSON_OBJECT(
-                'name', el.exercise_name,
+                'name', COALESCE(el.custom_exercise_name, e.name),
                 'duration', el.duration,
+                'intensity', el.intensity,
                 'calories', el.calories_burned,
                 'notes', el.notes
             )
@@ -62,6 +63,7 @@ $sql = "SELECT cp.*, u.username, u.avatar,
         JOIN users u ON cp.user_id = u.id
         LEFT JOIN meals m ON cp.reference_id = m.id AND cp.post_type = 'meal'
         LEFT JOIN exercise_logs el ON cp.reference_id = el.id AND cp.post_type = 'exercise'
+        LEFT JOIN exercises e ON el.exercise_id = e.id
         LEFT JOIN programs p ON cp.reference_id = p.id AND cp.post_type = 'program'
         LEFT JOIN user_programs up ON cp.reference_id = up.program_id AND cp.post_type = 'program'
         WHERE cp.visibility = 'public' 
@@ -213,6 +215,9 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                                             </p>
                                                             <p class="mb-2">
                                                                 <strong>Durée:</strong> <?php echo $exercise_info['duration']; ?> minutes
+                                                            </p>
+                                                            <p class="mb-2">
+                                                                <strong>Intensité:</strong> <?php echo ucfirst($exercise_info['intensity']); ?>
                                                             </p>
                                                             <p class="mb-2">
                                                                 <strong>Calories brûlées:</strong> <?php echo number_format($exercise_info['calories']); ?> kcal
