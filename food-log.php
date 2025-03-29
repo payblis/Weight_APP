@@ -364,6 +364,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Traitement des actions GET
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if ($action === 'delete_meal' && $meal_id > 0) {
+        try {
+            // Vérifier si le repas existe et appartient à l'utilisateur
+            $sql = "SELECT id, meal_type FROM meals WHERE id = ? AND user_id = ?";
+            $meal = fetchOne($sql, [$meal_id, $user_id]);
+            
+            if (!$meal) {
+                $errors[] = "Repas introuvable ou vous n'avez pas les droits pour le supprimer";
+            } else {
+                // Supprimer tous les aliments du repas
+                $sql = "DELETE FROM food_logs WHERE meal_id = ?";
+                update($sql, [$meal_id]);
+                
+                // Supprimer le repas
+                $sql = "DELETE FROM meals WHERE id = ?";
+                $result = update($sql, [$meal_id]);
+                
+                if ($result) {
+                    $success_message = "Repas supprimé avec succès";
+                    redirect("food-log.php");
+                } else {
+                    $errors[] = "Une erreur s'est produite lors de la suppression du repas";
+                }
+            }
+        } catch (Exception $e) {
+            $errors[] = "Erreur: " . $e->getMessage();
+        }
+    }
+}
+
 // Récupérer les repas de l'utilisateur
 $date_filter = isset($_GET['date']) ? sanitizeInput($_GET['date']) : date('Y-m-d');
 $sql = "SELECT m.*, 
@@ -1152,7 +1184,9 @@ function updateMealTotals($meal_id) {
                                                 <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-primary">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?');">
+                                                <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" 
+                                                   class="btn btn-sm btn-danger" 
+                                                   onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?');">
                                                     <i class="fas fa-trash"></i>
                                                 </a>
                                             </td>
