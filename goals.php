@@ -166,18 +166,32 @@ $daily_loss_needed = 0;
 $completion_percentage = 0;
 
 if ($current_goal && $latest_weight) {
+    // Debug: Afficher les informations de base
+    error_log("=== Début du calcul de la progression ===");
+    error_log("Poids le plus récent: " . $latest_weight['weight']);
+    error_log("Poids cible: " . $current_goal['target_weight']);
+    error_log("Date de création de l'objectif: " . $current_goal['created_at']);
+    
     // Récupérer le poids initial (le plus ancien poids enregistré depuis la création de l'objectif)
     $sql = "SELECT weight FROM weight_logs WHERE user_id = ? AND log_date >= ? ORDER BY log_date ASC LIMIT 1";
     $start_weight_log = fetchOne($sql, [$user_id, $current_goal['created_at']]);
     $start_weight = $start_weight_log ? $start_weight_log['weight'] : $latest_weight['weight'];
+    
+    error_log("Poids initial: " . $start_weight);
     
     $weight_diff = $start_weight - $current_goal['target_weight'];
     $total_days = (strtotime($current_goal['target_date']) - strtotime($current_goal['created_at'])) / (60 * 60 * 24);
     $elapsed_days = (time() - strtotime($current_goal['created_at'])) / (60 * 60 * 24);
     $remaining_days = max(0, $total_days - $elapsed_days);
     
+    error_log("Différence de poids à perdre: " . $weight_diff);
+    error_log("Jours totaux: " . $total_days);
+    error_log("Jours écoulés: " . $elapsed_days);
+    error_log("Jours restants: " . $remaining_days);
+    
     // Si l'objectif est de perdre du poids
     if ($weight_diff > 0) {
+        error_log("Objectif: Perte de poids");
         // Récupérer le poids le plus récent
         $sql = "SELECT * FROM weight_logs WHERE user_id = ? AND log_date >= ? ORDER BY log_date DESC LIMIT 1";
         $current_weight_log = fetchOne($sql, [$user_id, $current_goal['created_at']]);
@@ -188,14 +202,24 @@ if ($current_goal && $latest_weight) {
             $progress = ($actual_loss / $weight_diff) * 100;
             $completion_percentage = min(100, max(0, $progress));
             
+            error_log("Poids actuel: " . $current_weight);
+            error_log("Perte réelle: " . $actual_loss);
+            error_log("Progression calculée: " . $progress);
+            error_log("Pourcentage final: " . $completion_percentage);
+            
             if ($remaining_days > 0) {
                 $remaining_weight = $current_weight - $current_goal['target_weight'];
                 $daily_loss_needed = $remaining_weight / $remaining_days;
+                error_log("Poids restant à perdre: " . $remaining_weight);
+                error_log("Perte quotidienne nécessaire: " . $daily_loss_needed);
             }
+        } else {
+            error_log("Aucun poids trouvé depuis la création de l'objectif");
         }
     }
     // Si l'objectif est de prendre du poids
     elseif ($weight_diff < 0) {
+        error_log("Objectif: Prise de poids");
         $weight_diff = abs($weight_diff);
         
         // Récupérer le poids le plus récent
@@ -208,12 +232,22 @@ if ($current_goal && $latest_weight) {
             $progress = ($actual_gain / $weight_diff) * 100;
             $completion_percentage = min(100, max(0, $progress));
             
+            error_log("Poids actuel: " . $current_weight);
+            error_log("Gain réel: " . $actual_gain);
+            error_log("Progression calculée: " . $progress);
+            error_log("Pourcentage final: " . $completion_percentage);
+            
             if ($remaining_days > 0) {
                 $remaining_weight = $current_goal['target_weight'] - $current_weight;
                 $daily_loss_needed = $remaining_weight / $remaining_days; // En réalité, c'est un gain quotidien
+                error_log("Poids restant à prendre: " . $remaining_weight);
+                error_log("Gain quotidien nécessaire: " . $daily_loss_needed);
             }
+        } else {
+            error_log("Aucun poids trouvé depuis la création de l'objectif");
         }
     }
+    error_log("=== Fin du calcul de la progression ===");
 }
 
 // Récupérer les programmes disponibles
