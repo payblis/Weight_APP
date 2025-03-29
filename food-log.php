@@ -1080,21 +1080,48 @@ function updateMealTotals($meal_id) {
                             <?php else: ?>
                                 <div class="list-group">
                                     <?php foreach ($meals as $meal): ?>
-                                        <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h6 class="mb-1"><?php echo htmlspecialchars($meal['name']); ?></h6>
-                                                <p class="text-muted small mb-0">
-                                                    <span class="badge bg-primary"><?php echo getMealTypeName($meal['meal_type']); ?></span>
-                                                    <span class="ms-2"><?php echo $meal['food_count']; ?> aliment(s)</span>
-                                                </p>
+                                        <div class="card mb-3">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h5 class="card-title mb-1">
+                                                            <?php echo getMealTypeName($meal['meal_type']); ?>
+                                                        </h5>
+                                                        <p class="card-text mb-1">
+                                                            <strong>Calories:</strong> <?php echo number_format($meal['total_calories']); ?> kcal
+                                                        </p>
+                                                        <?php if ($meal['notes']): ?>
+                                                            <p class="card-text mb-1">
+                                                                <strong>Notes:</strong> <?php echo htmlspecialchars($meal['notes']); ?>
+                                                            </p>
+                                                        <?php endif; ?>
+                                                        <small class="text-muted">
+                                                            <?php echo date('d/m/Y H:i', strtotime($meal['log_date'])); ?>
+                                                        </small>
+                                                    </div>
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary share-meal-btn" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#shareMealModal"
+                                                                data-meal-id="<?php echo $meal['id']; ?>"
+                                                                data-meal-type="<?php echo $meal['meal_type']; ?>"
+                                                                data-calories="<?php echo $meal['total_calories']; ?>"
+                                                                data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>">
+                                                            <i class="fas fa-share-alt me-1"></i>Partager
+                                                        </button>
+                                                        <a href="food-log.php?action=edit&id=<?php echo $meal['id']; ?>" 
+                                                           class="btn btn-sm btn-outline-secondary">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <a href="food-log.php?action=delete&id=<?php echo $meal['id']; ?>" 
+                                                           class="btn btn-sm btn-outline-danger"
+                                                           onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="text-end">
-                                                <h6 class="mb-0"><?php echo round($meal['total_calories'] ?? 0); ?> kcal</h6>
-                                                <button class="btn btn-sm btn-outline-primary mt-1">
-                                                    <i class="fas fa-eye me-1"></i>Détails
-                                                </button>
-                                            </div>
-                                        </a>
+                                        </div>
                                     <?php endforeach; ?>
                                 </div>
                             <?php endif; ?>
@@ -1279,6 +1306,56 @@ function updateMealTotals($meal_id) {
         </div>
     </div>
 
+    <!-- Modal de partage de repas -->
+    <div class="modal fade" id="shareMealModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Partager ce repas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="create-post.php" method="POST">
+                        <input type="hidden" name="post_type" value="meal">
+                        <input type="hidden" name="reference_id" id="share_meal_id">
+                        <div class="mb-3">
+                            <label for="share_visibility" class="form-label">Visibilité</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="visibility" id="visibility_public" value="public" checked>
+                                <label class="form-check-label" for="visibility_public">
+                                    <i class="fas fa-globe me-1"></i>Public
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="visibility" id="visibility_group" value="group">
+                                <label class="form-check-label" for="visibility_group">
+                                    <i class="fas fa-users me-1"></i>Groupe
+                                </label>
+                            </div>
+                            <div id="group_select" class="mt-2" style="display: none;">
+                                <select class="form-select" name="group_id">
+                                    <option value="">Sélectionnez un groupe</option>
+                                    <?php foreach ($user_groups as $group): ?>
+                                        <option value="<?php echo $group['id']; ?>">
+                                            <?php echo htmlspecialchars($group['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="share_content" class="form-label">Message (optionnel)</label>
+                            <textarea class="form-control" id="share_content" name="content" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-1"></i>Partager
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Mise à jour automatique des valeurs nutritionnelles lors de la sélection d'un aliment
@@ -1317,7 +1394,17 @@ function updateMealTotals($meal_id) {
         });
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Gestion du partage des repas
+            // Gestion de la visibilité du post
+            const visibilityInputs = document.querySelectorAll('input[name="visibility"]');
+            const groupSelect = document.getElementById('group_select');
+            
+            visibilityInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    groupSelect.style.display = this.value === 'group' ? 'block' : 'none';
+                });
+            });
+
+            // Gestion du bouton de partage
             document.querySelectorAll('.share-meal-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const mealId = this.dataset.mealId;
@@ -1325,30 +1412,15 @@ function updateMealTotals($meal_id) {
                     const calories = this.dataset.calories;
                     const notes = this.dataset.notes;
                     
-                    // Créer un formulaire temporaire pour le partage
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = 'create-post.php';
+                    // Mettre à jour les champs du formulaire
+                    document.getElementById('share_meal_id').value = mealId;
                     
-                    // Ajouter les champs cachés
-                    const fields = {
-                        'post_type': 'meal',
-                        'reference_id': mealId,
-                        'reference_type': 'meals',
-                        'content': `J'ai partagé mon ${mealType} de ${calories} calories${notes ? ' : ' + notes : ''}`
-                    };
-                    
-                    for (const [name, value] of Object.entries(fields)) {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = name;
-                        input.value = value;
-                        form.appendChild(input);
+                    // Pré-remplir le message
+                    let content = `Je viens de manger un ${getMealTypeName(mealType)} de ${calories} calories`;
+                    if (notes) {
+                        content += `\nNote: ${notes}`;
                     }
-                    
-                    // Ajouter le formulaire au document et le soumettre
-                    document.body.appendChild(form);
-                    form.submit();
+                    document.getElementById('share_content').value = content;
                 });
             });
         });

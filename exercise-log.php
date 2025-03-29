@@ -697,6 +697,7 @@ foreach ($daily_calories as $date => $calories) {
         document.querySelectorAll('.share-exercise-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const exerciseId = this.dataset.exerciseId;
+                const exerciseName = this.dataset.exerciseName;
                 const exerciseType = this.dataset.exerciseType;
                 const calories = this.dataset.calories;
                 const duration = this.dataset.duration;
