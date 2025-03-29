@@ -900,6 +900,17 @@ function checkMealNotifications($user_id) {
     $current_time = new DateTime();
     $current_date = $current_time->format('Y-m-d');
     
+    // Récupérer la dernière date de réinitialisation des notifications
+    $sql = "SELECT last_notification_reset FROM users WHERE id = ?";
+    $user = fetchOne($sql, [$user_id]);
+    
+    // Si la dernière réinitialisation n'est pas aujourd'hui, réinitialiser
+    if (!$user['last_notification_reset'] || $user['last_notification_reset'] !== $current_date) {
+        $sql = "UPDATE users SET last_notification_reset = ? WHERE id = ?";
+        update($sql, [$current_date, $user_id]);
+        return []; // Retourner un tableau vide pour la première visite du jour
+    }
+    
     // Récupérer les préférences de notifications
     $sql = "SELECT * FROM meal_notification_preferences WHERE user_id = ? AND is_active = TRUE";
     $preferences = fetchAll($sql, [$user_id]);
@@ -908,8 +919,8 @@ function checkMealNotifications($user_id) {
         $start_time = new DateTime($pref['start_time']);
         $end_time = new DateTime($pref['end_time']);
         
-        // Vérifier si l'heure actuelle est dans la plage horaire
-        if ($current_time >= $start_time && $current_time <= $end_time) {
+        // Vérifier si l'heure actuelle est après l'heure de début
+        if ($current_time >= $start_time) {
             // Vérifier si un repas a déjà été enregistré pour ce type aujourd'hui
             $sql = "SELECT COUNT(*) as count FROM meals m 
                     JOIN food_logs fl ON m.id = fl.meal_id 
@@ -926,16 +937,30 @@ function checkMealNotifications($user_id) {
                     'diner' => 'dîner'
                 ];
                 
-                $notifications[] = [
+                $notification = [
                     'type' => 'meal_reminder',
                     'message' => "N'oubliez pas de prendre votre " . $meal_names[$pref['meal_type']] . " !",
                     'meal_type' => $pref['meal_type'],
                     'start_time' => $pref['start_time'],
-                    'end_time' => $pref['end_time']
+                    'end_time' => $pref['end_time'],
+                    'priority' => 1 // Priorité pour les notifications de repas
                 ];
+                
+                // Si on est dans la plage horaire, ajouter un message sur l'urgence
+                if ($current_time >= $start_time && $current_time <= $end_time) {
+                    $notification['message'] .= " (À faire maintenant)";
+                    $notification['priority'] = 2; // Priorité plus élevée pendant la plage horaire
+                }
+                
+                $notifications[] = $notification;
             }
         }
     }
+    
+    // Trier les notifications par priorité
+    usort($notifications, function($a, $b) {
+        return $b['priority'] - $a['priority'];
+    });
     
     return $notifications;
 }

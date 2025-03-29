@@ -740,8 +740,12 @@ $meal_notifications = checkMealNotifications($user_id);
         <!-- Après la section des notifications existantes -->
         <?php if (!empty($meal_notifications)): ?>
             <?php foreach ($meal_notifications as $notification): ?>
-                <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                    <i class="fas fa-utensils me-2"></i>
+                <?php
+                $alert_class = $notification['priority'] == 2 ? 'alert-danger' : 'alert-warning';
+                $icon = $notification['priority'] == 2 ? 'fa-exclamation-circle' : 'fa-utensils';
+                ?>
+                <div class="alert <?php echo $alert_class; ?> alert-dismissible fade show" role="alert">
+                    <i class="fas <?php echo $icon; ?> me-2"></i>
                     <?php echo $notification['message']; ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
