@@ -1223,17 +1223,24 @@ function getPostCommentsCount($post_id) {
  * @return bool|int ID du groupe si succès, false sinon
  */
 function createGroup($user_id, $name, $description) {
-    $sql = "INSERT INTO community_groups (name, description, created_by) VALUES (?, ?, ?)";
-    $result = insert($sql, [$name, $description, $user_id]);
-    
-    if ($result) {
-        $group_id = getLastInsertId();
-        // Ajouter le créateur comme admin du groupe
-        $sql = "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'admin')";
-        insert($sql, [$group_id, $user_id]);
-        return $group_id;
+    try {
+        // Créer le groupe
+        $sql = "INSERT INTO community_groups (name, description, created_by) VALUES (?, ?, ?)";
+        $group_id = insert($sql, [$name, $description, $user_id]);
+        
+        if ($group_id) {
+            // Ajouter le créateur comme admin du groupe
+            $sql = "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'admin')";
+            if (insert($sql, [$group_id, $user_id])) {
+                return $group_id;
+            }
+        }
+        
+        return false;
+    } catch (Exception $e) {
+        error_log("Erreur lors de la création du groupe : " . $e->getMessage());
+        return false;
     }
-    return false;
 }
 
 /**
