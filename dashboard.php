@@ -737,20 +737,25 @@ $meal_notifications = checkMealNotifications($user_id);
             </div>
         </div>
 
-        <!-- Après la section des notifications existantes -->
-        <?php if (!empty($meal_notifications)): ?>
-            <?php foreach ($meal_notifications as $notification): ?>
-                <?php
-                $alert_class = $notification['priority'] == 2 ? 'alert-danger' : 'alert-warning';
-                $icon = $notification['priority'] == 2 ? 'fa-exclamation-circle' : 'fa-utensils';
-                ?>
-                <div class="alert <?php echo $alert_class; ?> alert-dismissible fade show" role="alert">
-                    <i class="fas <?php echo $icon; ?> me-2"></i>
+        <!-- Section des notifications -->
+        <div class="notifications-section mb-4">
+            <?php
+            $notifications = checkMealNotifications($_SESSION['user_id']);
+            foreach ($notifications as $notification): 
+                $alertClass = $notification['priority'] == 2 ? 'alert-danger' : 'alert-warning';
+                $icon = $notification['priority'] == 2 ? 'exclamation-triangle' : 'bell';
+            ?>
+                <div class="alert <?php echo $alertClass; ?> alert-dismissible fade show meal-notification" 
+                     role="alert"
+                     data-start-time="<?php echo $notification['start_time']; ?>"
+                     data-end-time="<?php echo $notification['end_time']; ?>"
+                     data-priority="<?php echo $notification['priority']; ?>">
+                    <i class="fas fa-<?php echo $icon; ?> me-2"></i>
                     <?php echo $notification['message']; ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endforeach; ?>
-        <?php endif; ?>
+        </div>
     </div>
 
     <!-- Scripts JavaScript -->
@@ -841,6 +846,49 @@ $meal_notifications = checkMealNotifications($user_id);
             }
         });
         <?php endif; ?>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fonction pour formater l'heure en format 24h
+            function formatTime(date) {
+                return date.toLocaleTimeString('fr-FR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false 
+                });
+            }
+
+            // Fonction pour vérifier si une notification doit être affichée
+            function shouldShowNotification(startTime, endTime) {
+                const now = new Date();
+                const currentTime = formatTime(now);
+                return currentTime >= startTime && currentTime <= endTime;
+            }
+
+            // Fonction pour mettre à jour l'affichage des notifications
+            function updateNotifications() {
+                const notifications = document.querySelectorAll('.meal-notification');
+                notifications.forEach(notification => {
+                    const startTime = notification.dataset.startTime;
+                    const endTime = notification.dataset.endTime;
+                    const priority = parseInt(notification.dataset.priority);
+                    
+                    if (shouldShowNotification(startTime, endTime)) {
+                        notification.style.display = 'block';
+                        // Mettre à jour la classe d'urgence si nécessaire
+                        if (priority === 2) {
+                            notification.classList.remove('alert-warning');
+                            notification.classList.add('alert-danger');
+                        }
+                    } else {
+                        notification.style.display = 'none';
+                    }
+                });
+            }
+
+            // Mettre à jour les notifications toutes les minutes
+            updateNotifications();
+            setInterval(updateNotifications, 60000);
+        });
     </script>
 </body>
 </html>
