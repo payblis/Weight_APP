@@ -16,6 +16,21 @@ $user_id = $_SESSION['user_id'];
 $sql = "SELECT * FROM users WHERE id = ?";
 $user = fetchOne($sql, [$user_id]);
 
+// Calculer la recommandation d'hydratation
+$water_goal = calculateWaterGoal($user);
+if (!$user['water_goal']) {
+    // Mettre à jour le water_goal de l'utilisateur
+    $sql = "UPDATE users SET water_goal = ? WHERE id = ?";
+    update($sql, [$water_goal, $user_id]);
+    $user['water_goal'] = $water_goal;
+}
+
+// Récupérer la consommation d'eau du jour
+$sql = "SELECT SUM(amount) as total_amount FROM water_logs WHERE user_id = ? AND log_date = CURDATE()";
+$water_log = fetchOne($sql, [$user_id]);
+$water_consumed = $water_log['total_amount'] ?? 0;
+$water_percentage = $water_goal > 0 ? min(100, ($water_consumed / $water_goal) * 100) : 0;
+
 // Initialiser les variables
 $success_message = '';
 $errors = [];
@@ -485,6 +500,81 @@ $exercise_suggestions = fetchAll($sql, [$user_id]);
                                 </a>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Après la section des objectifs -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tint me-2"></i>Hydratation
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Objectif quotidien : <?php echo number_format($user['water_goal'], 1); ?> L</h6>
+                        <div class="progress mb-3">
+                            <div class="progress-bar bg-info" role="progressbar" 
+                                 style="width: <?php echo $water_percentage; ?>%"
+                                 aria-valuenow="<?php echo $water_percentage; ?>" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                <?php echo number_format($water_consumed, 1); ?> L
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            <?php echo number_format($water_consumed, 1); ?> L sur <?php echo number_format($user['water_goal'], 1); ?> L
+                        </small>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <?php
+                        // Tailles de bouteilles standard (en cl)
+                        $bottle_sizes = [25, 33, 50, 75, 100];
+                        foreach ($bottle_sizes as $size):
+                            $amount = $size / 100; // Convertir en litres
+                        ?>
+                        <div class="col-6 col-md-4">
+                            <form action="water-log.php" method="POST" class="h-100">
+                                <input type="hidden" name="amount" value="<?php echo $amount; ?>">
+                                <button type="submit" class="btn btn-outline-info w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-bottle-water fa-2x mb-2"></i>
+                                    <span><?php echo $size; ?> cl</span>
+                                </button>
+                            </form>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#resetWaterModal">
+                            <i class="fas fa-undo me-1"></i>Réinitialiser le compteur
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de réinitialisation -->
+        <div class="modal fade" id="resetWaterModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Réinitialiser le compteur d'eau</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Êtes-vous sûr de vouloir réinitialiser votre consommation d'eau du jour ?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <form action="water-log.php" method="POST" class="d-inline">
+                            <input type="hidden" name="action" value="reset">
+                            <button type="submit" class="btn btn-danger">Réinitialiser</button>
+                        </form>
                     </div>
                 </div>
             </div>

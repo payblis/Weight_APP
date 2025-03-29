@@ -863,3 +863,53 @@ function calculateMacroRatios($current_weight, $target_weight, $active_program, 
     
     return $base_ratios;
 }
+
+/**
+ * Calcule la recommandation d'hydratation quotidienne en litres
+ * Formule : (poids * 0.033) + (activité * 0.5) + (taille * 0.01)
+ * @param array $user Les données de l'utilisateur
+ * @return float La quantité d'eau recommandée en litres
+ */
+function calculateWaterGoal($user) {
+    // Facteurs de base
+    $base_factor = 0.033; // 33ml par kg de poids
+    $activity_factor = 0.5; // 500ml par niveau d'activité
+    $height_factor = 0.01; // 10ml par cm de taille
+    
+    // Calcul de base basé sur le poids
+    $water_goal = $user['weight'] * $base_factor;
+    
+    // Ajout selon le niveau d'activité
+    $activity_level = 0;
+    switch ($user['activity_level']) {
+        case 'sedentary':
+            $activity_level = 1;
+            break;
+        case 'light':
+            $activity_level = 2;
+            break;
+        case 'moderate':
+            $activity_level = 3;
+            break;
+        case 'active':
+            $activity_level = 4;
+            break;
+        case 'very_active':
+            $activity_level = 5;
+            break;
+    }
+    $water_goal += $activity_level * $activity_factor;
+    
+    // Ajout selon la taille
+    $water_goal += $user['height'] * $height_factor;
+    
+    // Ajustement selon l'âge
+    if ($user['age'] < 18) {
+        $water_goal *= 0.9; // 10% moins pour les moins de 18 ans
+    } elseif ($user['age'] > 65) {
+        $water_goal *= 0.95; // 5% moins pour les plus de 65 ans
+    }
+    
+    // Arrondir à 1 décimale
+    return round($water_goal, 1);
+}
