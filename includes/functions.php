@@ -900,12 +900,18 @@ function checkMealNotifications($user_id) {
     $current_time = new DateTime();
     $current_date = $current_time->format('Y-m-d');
     
+    error_log("=== Début de la vérification des notifications ===");
+    error_log("Heure actuelle : " . $current_time->format('H:i:s'));
+    error_log("Date actuelle : " . $current_date);
+    
     // Récupérer la dernière date de réinitialisation des notifications
     $sql = "SELECT last_notification_reset FROM users WHERE id = ?";
     $user = fetchOne($sql, [$user_id]);
+    error_log("Dernière réinitialisation : " . ($user['last_notification_reset'] ?? 'jamais'));
     
     // Si la dernière réinitialisation n'est pas aujourd'hui, réinitialiser
     if (!$user['last_notification_reset'] || $user['last_notification_reset'] !== $current_date) {
+        error_log("Réinitialisation des notifications pour la nouvelle journée");
         $sql = "UPDATE users SET last_notification_reset = ? WHERE id = ?";
         update($sql, [$current_date, $user_id]);
         return []; // Retourner un tableau vide pour la première visite du jour
@@ -914,13 +920,21 @@ function checkMealNotifications($user_id) {
     // Récupérer les préférences de notifications
     $sql = "SELECT * FROM meal_notification_preferences WHERE user_id = ? AND is_active = TRUE";
     $preferences = fetchAll($sql, [$user_id]);
+    error_log("Préférences de notifications trouvées : " . count($preferences));
     
     foreach ($preferences as $pref) {
+        error_log("=== Vérification de la préférence ===");
+        error_log("Type de repas : " . $pref['meal_type']);
+        error_log("Heure de début : " . $pref['start_time']);
+        error_log("Heure de fin : " . $pref['end_time']);
+        
         $start_time = new DateTime($pref['start_time']);
         $end_time = new DateTime($pref['end_time']);
         
         // Vérifier si l'heure actuelle est après l'heure de début
         if ($current_time >= $start_time) {
+            error_log("L'heure actuelle est après l'heure de début");
+            
             // Vérifier si un repas a déjà été enregistré pour ce type aujourd'hui
             $sql = "SELECT COUNT(*) as count FROM meals m 
                     JOIN food_logs fl ON m.id = fl.meal_id 
@@ -928,8 +942,10 @@ function checkMealNotifications($user_id) {
                     AND m.meal_type = ? 
                     AND DATE(fl.log_date) = ?";
             $result = fetchOne($sql, [$user_id, $pref['meal_type'], $current_date]);
+            error_log("Nombre de repas enregistrés aujourd'hui pour ce type : " . $result['count']);
             
             if ($result['count'] == 0) {
+                error_log("Aucun repas enregistré, création de la notification");
                 // Créer la notification
                 $meal_names = [
                     'petit_dejeuner' => 'petit-déjeuner',
@@ -948,12 +964,18 @@ function checkMealNotifications($user_id) {
                 
                 // Si on est dans la plage horaire, ajouter un message sur l'urgence
                 if ($current_time >= $start_time && $current_time <= $end_time) {
+                    error_log("Dans la plage horaire, notification urgente");
                     $notification['message'] .= " (À faire maintenant)";
                     $notification['priority'] = 2; // Priorité plus élevée pendant la plage horaire
                 }
                 
                 $notifications[] = $notification;
+                error_log("Notification ajoutée : " . json_encode($notification));
+            } else {
+                error_log("Un repas a déjà été enregistré aujourd'hui pour ce type");
             }
+        } else {
+            error_log("L'heure actuelle est avant l'heure de début");
         }
     }
     
@@ -962,5 +984,7 @@ function checkMealNotifications($user_id) {
         return $b['priority'] - $a['priority'];
     });
     
+    error_log("=== Fin de la vérification des notifications ===");
+    error_log("Nombre total de notifications : " . count($notifications));
     return $notifications;
 }
