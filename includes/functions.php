@@ -1028,12 +1028,24 @@ function getMealTypeLabel($meal_type) {
  * @param string $content Contenu du post
  * @param int|null $reference_id ID de référence (meal_id, exercise_id, etc.)
  * @param string|null $reference_type Type de référence
+ * @param string $visibility Visibilité du post (public ou group)
+ * @param int|null $group_id ID du groupe si la visibilité est 'group'
  * @return bool
  */
 function createCommunityPost($user_id, $post_type, $content, $reference_id = null, $reference_type = null, $visibility = 'public', $group_id = null) {
     // Vérifier si le post est pour un groupe et si l'utilisateur en est membre
     if ($visibility === 'group' && $group_id) {
+        // Vérifier si le groupe existe
+        $sql = "SELECT id FROM community_groups WHERE id = ?";
+        $result = fetch($sql, [$group_id]);
+        if (!$result) {
+            error_log("Tentative de création d'un post pour un groupe inexistant (ID: $group_id)");
+            return false;
+        }
+        
+        // Vérifier si l'utilisateur est membre du groupe
         if (!isGroupMember($group_id, $user_id)) {
+            error_log("Tentative de création d'un post par un non-membre du groupe (User ID: $user_id, Group ID: $group_id)");
             return false;
         }
     }

@@ -18,18 +18,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $visibility = $_POST['visibility'] ?? 'public';
     $group_id = $_POST['group_id'] ?? null;
     
-    // Vérifier si le post est pour un groupe et si l'utilisateur en est membre
-    if ($visibility === 'group' && $group_id) {
-        if (!isGroupMember($group_id, $user_id)) {
-            $_SESSION['error_message'] = "Vous n'êtes pas membre de ce groupe.";
-            redirect('community.php');
-        }
+    // Si le post est pour un groupe, s'assurer que le group_id est fourni
+    if ($visibility === 'group' && !$group_id) {
+        $_SESSION['error_message'] = "Veuillez sélectionner un groupe pour ce post.";
+        redirect('community.php');
     }
     
-    if (createCommunityPost($user_id, $post_type, $content, $reference_id, $reference_type, $visibility, $group_id)) {
-        $_SESSION['success_message'] = "Votre post a été publié avec succès !";
-    } else {
-        $_SESSION['error_message'] = "Une erreur est survenue lors de la publication du post.";
+    try {
+        if (createCommunityPost($user_id, $post_type, $content, $reference_id, $reference_type, $visibility, $group_id)) {
+            $_SESSION['success_message'] = "Votre post a été publié avec succès !";
+        } else {
+            $_SESSION['error_message'] = "Une erreur est survenue lors de la publication du post. Vérifiez que vous êtes bien membre du groupe sélectionné.";
+        }
+    } catch (Exception $e) {
+        error_log("Erreur lors de la création du post : " . $e->getMessage());
+        $_SESSION['error_message'] = "Une erreur est survenue lors de la publication du post. Veuillez réessayer.";
     }
     
     // Rediriger vers la page appropriée

@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS community_posts (
     FOREIGN KEY (group_id) REFERENCES community_groups(id) ON DELETE SET NULL
 );
 
+-- Ajouter les colonnes manquantes si elles n'existent pas
+ALTER TABLE community_posts
+ADD COLUMN IF NOT EXISTS visibility ENUM('public', 'group') NOT NULL DEFAULT 'public',
+ADD COLUMN IF NOT EXISTS group_id INT,
+ADD FOREIGN KEY IF NOT EXISTS (group_id) REFERENCES community_groups(id) ON DELETE SET NULL;
+
 -- Table des groupes
 CREATE TABLE IF NOT EXISTS community_groups (
     id INT PRIMARY KEY AUTO_INCREMENT,
