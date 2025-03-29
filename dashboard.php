@@ -171,6 +171,15 @@ $exercise_suggestions = fetchAll($sql, [$user_id]);
 
     <!-- Contenu principal -->
     <div class="container py-4">
+        <?php if (!$current_goal): ?>
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Important !</strong> Vous n'avez pas encore défini d'objectif de poids. 
+                <a href="goals.php" class="alert-link">Définissez un objectif</a> pour suivre votre progression et recevoir des recommandations personnalisées.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
         <!-- En-tête de la page -->
         <div class="row mb-4">
             <div class="col-md-8">
