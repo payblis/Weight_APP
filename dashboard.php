@@ -750,7 +750,8 @@ $meal_notifications = checkMealNotifications($user_id);
                      data-start-time="<?php echo $notification['start_time']; ?>"
                      data-end-time="<?php echo $notification['end_time']; ?>"
                      data-priority="<?php echo $notification['priority']; ?>"
-                     data-message="<?php echo htmlspecialchars($notification['message']); ?>">
+                     data-message="<?php echo htmlspecialchars($notification['message']); ?>"
+                     style="display: none;">
                     <i class="fas fa-<?php echo $icon; ?> me-2"></i>
                     <?php echo $notification['message']; ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -862,25 +863,39 @@ $meal_notifications = checkMealNotifications($user_id);
             function shouldShowNotification(startTime, endTime) {
                 const now = new Date();
                 const currentTime = formatTime(now);
-                error_log("Vérification de l'affichage de la notification");
-                error_log("Heure actuelle : " + currentTime);
-                error_log("Heure de début : " + startTime);
-                error_log("Heure de fin : " + endTime);
-                return currentTime >= startTime;
+                console.log("Vérification de l'affichage de la notification");
+                console.log("Heure actuelle : " + currentTime);
+                console.log("Heure de début : " + startTime);
+                console.log("Heure de fin : " + endTime);
+                
+                // Convertir les heures en minutes pour la comparaison
+                const [currentHours, currentMinutes] = currentTime.split(':').map(Number);
+                const [startHours, startMinutes] = startTime.split(':').map(Number);
+                
+                const currentMinutesTotal = currentHours * 60 + currentMinutes;
+                const startMinutesTotal = startHours * 60 + startMinutes;
+                
+                console.log("Minutes actuelles : " + currentMinutesTotal);
+                console.log("Minutes de début : " + startMinutesTotal);
+                
+                return currentMinutesTotal >= startMinutesTotal;
             }
 
             // Fonction pour mettre à jour l'affichage des notifications
             function updateNotifications() {
                 const notifications = document.querySelectorAll('.meal-notification');
-                error_log("Nombre de notifications trouvées : " + notifications.length);
+                console.log("Nombre de notifications trouvées : " + notifications.length);
                 
                 notifications.forEach(notification => {
                     const startTime = notification.dataset.startTime;
                     const endTime = notification.dataset.endTime;
                     const priority = parseInt(notification.dataset.priority);
+                    const message = notification.dataset.message;
                     
-                    error_log("Traitement de la notification : " + notification.dataset.message);
-                    error_log("Priorité : " + priority);
+                    console.log("Traitement de la notification : " + message);
+                    console.log("Priorité : " + priority);
+                    console.log("Heure de début : " + startTime);
+                    console.log("Heure de fin : " + endTime);
                     
                     if (shouldShowNotification(startTime, endTime)) {
                         notification.style.display = 'block';
@@ -889,10 +904,10 @@ $meal_notifications = checkMealNotifications($user_id);
                             notification.classList.remove('alert-warning');
                             notification.classList.add('alert-danger');
                         }
-                        error_log("Notification affichée");
+                        console.log("Notification affichée : " + message);
                     } else {
                         notification.style.display = 'none';
-                        error_log("Notification masquée");
+                        console.log("Notification masquée : " + message);
                     }
                 });
             }
