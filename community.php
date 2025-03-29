@@ -108,33 +108,162 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                 <textarea class="form-control" name="content" rows="3" placeholder="Partagez votre message avec la communauté..."></textarea>
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="visibility" id="visibility_public" value="public" checked>
-                                    <label class="form-check-label" for="visibility_public">
-                                        <i class="fas fa-globe me-1"></i>Public
-                                    </label>
+                                <div class="d-flex gap-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="visibility" id="visibility_public" value="public" checked>
+                                        <label class="form-check-label" for="visibility_public">
+                                            <i class="fas fa-globe me-1"></i>Public
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="visibility" id="visibility_group" value="group">
+                                        <label class="form-check-label" for="visibility_group">
+                                            <i class="fas fa-users me-1"></i>Groupe
+                                        </label>
+                                    </div>
+                                    <div id="group_select" class="ms-3" style="display: none;">
+                                        <select class="form-select form-select-sm" name="group_id">
+                                            <option value="">Sélectionnez un groupe</option>
+                                            <?php foreach ($user_groups as $group): ?>
+                                                <option value="<?php echo $group['id']; ?>">
+                                                    <?php echo htmlspecialchars($group['name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="visibility" id="visibility_group" value="group">
-                                    <label class="form-check-label" for="visibility_group">
-                                        <i class="fas fa-users me-1"></i>Groupe
-                                    </label>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#shareMealModal">
+                                        <i class="fas fa-utensils me-1"></i>Partager un repas
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#shareExerciseModal">
+                                        <i class="fas fa-running me-1"></i>Partager un exercice
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#shareProgramModal">
+                                        <i class="fas fa-dumbbell me-1"></i>Partager un programme
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane me-1"></i>Publier
+                                    </button>
                                 </div>
-                                <div id="group_select" class="ms-3" style="display: none;">
-                                    <select class="form-select form-select-sm" name="group_id">
-                                        <option value="">Sélectionnez un groupe</option>
-                                        <?php foreach ($user_groups as $group): ?>
-                                            <option value="<?php echo $group['id']; ?>">
-                                                <?php echo htmlspecialchars($group['name']); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-paper-plane me-1"></i>Publier
-                                </button>
                             </div>
                         </form>
+
+                        <!-- Modal de partage de repas -->
+                        <div class="modal fade" id="shareMealModal" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Partager un repas</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form action="create-post.php" method="POST">
+                                            <input type="hidden" name="post_type" value="meal">
+                                            <input type="hidden" name="visibility" value="public">
+                                            <div class="mb-3">
+                                                <label for="meal_select" class="form-label">Sélectionnez un repas</label>
+                                                <select class="form-select" id="meal_select" name="reference_id" required>
+                                                    <option value="">Choisissez un repas</option>
+                                                    <?php
+                                                    $sql = "SELECT id, meal_type, total_calories, notes FROM meals WHERE user_id = ? ORDER BY log_date DESC LIMIT 10";
+                                                    $meals = fetchAll($sql, [$user_id]);
+                                                    foreach ($meals as $meal):
+                                                    ?>
+                                                        <option value="<?php echo $meal['id']; ?>" data-type="<?php echo $meal['meal_type']; ?>">
+                                                            <?php echo getMealTypeLabel($meal['meal_type']); ?> - <?php echo $meal['total_calories']; ?> kcal
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="meal_content" class="form-label">Message (optionnel)</label>
+                                                <textarea class="form-control" id="meal_content" name="content" rows="3"></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Partager</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal de partage d'exercice -->
+                        <div class="modal fade" id="shareExerciseModal" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Partager un exercice</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form action="create-post.php" method="POST">
+                                            <input type="hidden" name="post_type" value="exercise">
+                                            <input type="hidden" name="visibility" value="public">
+                                            <div class="mb-3">
+                                                <label for="exercise_select" class="form-label">Sélectionnez un exercice</label>
+                                                <select class="form-select" id="exercise_select" name="reference_id" required>
+                                                    <option value="">Choisissez un exercice</option>
+                                                    <?php
+                                                    $sql = "SELECT id, exercise_name, calories_burned, notes FROM exercise_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 10";
+                                                    $exercises = fetchAll($sql, [$user_id]);
+                                                    foreach ($exercises as $exercise):
+                                                    ?>
+                                                        <option value="<?php echo $exercise['id']; ?>">
+                                                            <?php echo htmlspecialchars($exercise['exercise_name']); ?> - <?php echo $exercise['calories_burned']; ?> kcal
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="exercise_content" class="form-label">Message (optionnel)</label>
+                                                <textarea class="form-control" id="exercise_content" name="content" rows="3"></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Partager</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal de partage de programme -->
+                        <div class="modal fade" id="shareProgramModal" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Partager un programme</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form action="create-post.php" method="POST">
+                                            <input type="hidden" name="post_type" value="program">
+                                            <input type="hidden" name="visibility" value="public">
+                                            <div class="mb-3">
+                                                <label for="program_select" class="form-label">Sélectionnez un programme</label>
+                                                <select class="form-select" id="program_select" name="reference_id" required>
+                                                    <option value="">Choisissez un programme</option>
+                                                    <?php
+                                                    $sql = "SELECT p.id, p.name, p.description FROM programs p 
+                                                           JOIN user_programs up ON p.id = up.program_id 
+                                                           WHERE up.user_id = ? ORDER BY up.created_at DESC LIMIT 10";
+                                                    $programs = fetchAll($sql, [$user_id]);
+                                                    foreach ($programs as $program):
+                                                    ?>
+                                                        <option value="<?php echo $program['id']; ?>">
+                                                            <?php echo htmlspecialchars($program['name']); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="program_content" class="form-label">Message (optionnel)</label>
+                                                <textarea class="form-control" id="program_content" name="content" rows="3"></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Partager</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Liste des posts -->
                         <?php foreach ($posts as $post): ?>

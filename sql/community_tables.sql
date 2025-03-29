@@ -77,4 +77,19 @@ CREATE TABLE IF NOT EXISTS user_follows (
     FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_follow (follower_id, following_id)
+);
+
+-- Table des invitations de groupe
+CREATE TABLE IF NOT EXISTS group_invitations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    group_id INT NOT NULL,
+    invited_by INT NOT NULL,
+    invited_user_id INT NOT NULL,
+    status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES community_groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (invited_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_invitation (group_id, invited_user_id)
 ); 
