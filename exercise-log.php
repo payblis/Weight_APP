@@ -66,6 +66,46 @@ foreach ($exercises as $exercise) {
     $exercises_by_category[$category_id][] = $exercise;
 }
 
+// Gérer la suppression d'un exercice
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'delete' && isset($_POST['exercise_id'])) {
+        $exercise_id = (int)$_POST['exercise_id'];
+        error_log("Tentative de suppression de l'exercice - Exercise ID: $exercise_id, User ID: $user_id");
+        
+        // Vérifier que l'exercice appartient bien à l'utilisateur
+        $sql = "SELECT id FROM exercise_logs WHERE id = ? AND user_id = ?";
+        $exercise = fetchOne($sql, [$exercise_id, $user_id]);
+        
+        if ($exercise) {
+            $result = delete('exercise_logs', $exercise_id);
+            error_log("Résultat de la suppression de l'exercice: " . ($result ? "succès" : "échec"));
+            if ($result) {
+                $_SESSION['success_message'] = "Exercice supprimé avec succès.";
+            } else {
+                $_SESSION['error_message'] = "Erreur lors de la suppression de l'exercice.";
+            }
+        } else {
+            error_log("Tentative de suppression d'un exercice non autorisé");
+            $_SESSION['error_message'] = "Vous n'êtes pas autorisé à supprimer cet exercice.";
+        }
+        redirect('exercise-log.php');
+    }
+}
+
+// Récupérer les exercices de l'utilisateur
+$sql = "SELECT el.*, e.name as exercise_name,
+        (SELECT COUNT(*) FROM community_posts WHERE reference_id = el.id AND post_type = 'exercise') as share_count
+        FROM exercise_logs el
+        LEFT JOIN exercises e ON el.exercise_id = e.id
+        WHERE el.user_id = ? 
+        ORDER BY el.log_date DESC, el.created_at DESC";
+$exercises = fetchAll($sql, [$user_id]);
+error_log("Nombre d'exercices récupérés: " . count($exercises));
+
+// Récupérer les statistiques
+$stats = getExerciseStats($user_id);
+error_log("Statistiques des exercices: " . print_r($stats, true));
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Récupérer et nettoyer les données du formulaire
     $exercise_id = isset($_POST['exercise_id']) ? (int)$_POST['exercise_id'] : 0;
@@ -139,69 +179,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-
-// Récupérer toutes les entrées d'exercices
-$sql = "SELECT el.*, e.name as exercise_name, e.calories_per_hour 
-        FROM exercise_logs el 
-        LEFT JOIN exercises e ON el.exercise_id = e.id 
-        WHERE el.user_id = ? 
-        ORDER BY el.log_date DESC, el.created_at DESC";
-$exercise_logs = fetchAll($sql, [$user_id]);
-
-// Récupérer l'objectif de poids actuel
-$sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-$current_goal = fetchOne($sql, [$user_id]);
-
-// Calculer les statistiques
-$total_entries = count($exercise_logs);
-$total_duration = 0;
-$total_calories = 0;
-
-foreach ($exercise_logs as $log) {
-    $total_duration += $log['duration'];
-    $total_calories += $log['calories_burned'];
-}
-
-// Préparer les données pour le graphique
-$chart_dates = [];
-$chart_calories = [];
-$chart_duration = [];
-
-// Créer un tableau pour les 7 derniers jours
-$end_date = new DateTime();
-$start_date = new DateTime();
-$start_date->modify('-6 days');
-
-$period = new DatePeriod(
-    $start_date,
-    new DateInterval('P1D'),
-    $end_date->modify('+1 day')
-);
-
-$daily_calories = [];
-$daily_duration = [];
-
-foreach ($period as $date) {
-    $date_str = $date->format('Y-m-d');
-    $daily_calories[$date_str] = 0;
-    $daily_duration[$date_str] = 0;
-}
-
-// Remplir les données pour les jours où il y a des entrées
-foreach ($exercise_logs as $log) {
-    $log_date = $log['log_date'];
-    if (isset($daily_calories[$log_date])) {
-        $daily_calories[$log_date] += $log['calories_burned'];
-        $daily_duration[$log_date] += $log['duration'];
-    }
-}
-
-// Préparer les données pour le graphique
-foreach ($daily_calories as $date => $calories) {
-    $chart_dates[] = date('d/m', strtotime($date));
-    $chart_calories[] = $calories;
-    $chart_duration[] = $daily_duration[$date];
-}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -253,6 +230,15 @@ foreach ($daily_calories as $date => $calories) {
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <?php echo $success_message; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error_message'])): ?>
+            <div class="alert alert-danger">
+                <?php 
+                echo $_SESSION['error_message'];
+                unset($_SESSION['error_message']);
+                ?>
             </div>
         <?php endif; ?>
 
@@ -367,7 +353,7 @@ foreach ($daily_calories as $date => $calories) {
                     <div class="card h-100 border-0 shadow-sm">
                         <div class="card-body text-center">
                             <div class="display-4 text-primary mb-2">
-                                <?php echo number_format($total_calories); ?>
+                                <?php echo number_format($stats['total_calories']); ?>
                             </div>
                             <h5 class="card-title">Calories brûlées</h5>
                             <p class="card-text small text-muted">
@@ -380,7 +366,7 @@ foreach ($daily_calories as $date => $calories) {
                     <div class="card h-100 border-0 shadow-sm">
                         <div class="card-body text-center">
                             <div class="display-4 text-primary mb-2">
-                                <?php echo number_format($total_duration); ?>
+                                <?php echo number_format($stats['total_duration']); ?>
                             </div>
                             <h5 class="card-title">Minutes d'exercice</h5>
                             <p class="card-text small text-muted">
@@ -393,7 +379,7 @@ foreach ($daily_calories as $date => $calories) {
                     <div class="card h-100 border-0 shadow-sm">
                         <div class="card-body text-center">
                             <div class="display-4 text-primary mb-2">
-                                <?php echo $total_entries; ?>
+                                <?php echo $stats['total_exercises']; ?>
                             </div>
                             <h5 class="card-title">Séances d'exercice</h5>
                             <p class="card-text small text-muted">
@@ -407,7 +393,7 @@ foreach ($daily_calories as $date => $calories) {
                         <div class="card-body text-center">
                             <div class="display-4 text-primary mb-2">
                                 <?php 
-                                    $avg_calories = $total_entries > 0 ? round($total_calories / $total_entries) : 0;
+                                    $avg_calories = $stats['total_exercises'] > 0 ? round($stats['total_calories'] / $stats['total_exercises']) : 0;
                                     echo number_format($avg_calories);
                                 ?>
                             </div>
@@ -420,119 +406,60 @@ foreach ($daily_calories as $date => $calories) {
                 </div>
             </div>
 
-            <!-- Graphique d'activité -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">Activité des 7 derniers jours</h5>
-                </div>
-                <div class="card-body">
-                    <?php if (array_sum($chart_calories) > 0): ?>
-                        <canvas id="exerciseChart" height="300"></canvas>
-                    <?php else: ?>
-                        <div class="text-center py-5">
-                            <p class="text-muted mb-0">Aucune donnée disponible</p>
-                            <p class="text-muted">Commencez à enregistrer vos exercices pour voir l'évolution</p>
-                            <a href="exercise-log.php?action=add" class="btn btn-primary mt-2">
-                                <i class="fas fa-plus-circle me-1"></i>Ajouter un exercice
-                            </a>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <!-- Tableau des entrées -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">Historique des exercices</h5>
-                        <a href="exercise-log.php?action=add" class="btn btn-sm btn-primary">
-                            <i class="fas fa-plus-circle me-1"></i>Ajouter
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
+            <!-- Tableau des exercices -->
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Exercice</th>
+                            <th>Durée</th>
+                            <th>Intensité</th>
+                            <th>Calories</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($exercises)): ?>
+                            <tr>
+                                <td colspan="7" class="text-center">Aucun exercice enregistré</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($exercises as $exercise): ?>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Exercice</th>
-                                    <th>Durée</th>
-                                    <th>Intensité</th>
-                                    <th>Calories</th>
-                                    <th>Notes</th>
-                                    <th>Actions</th>
+                                    <td><?php echo date('d/m/Y', strtotime($exercise['log_date'])); ?></td>
+                                    <td><?php echo htmlspecialchars($exercise['custom_exercise_name'] ?: $exercise['exercise_name']); ?></td>
+                                    <td><?php echo $exercise['duration']; ?> min</td>
+                                    <td><?php echo ucfirst($exercise['intensity']); ?></td>
+                                    <td><?php echo number_format($exercise['calories_burned']); ?></td>
+                                    <td><?php echo htmlspecialchars($exercise['notes']); ?></td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-success share-btn" 
+                                                    data-exercise-id="<?php echo $exercise['id']; ?>"
+                                                    data-exercise-name="<?php echo htmlspecialchars($exercise['custom_exercise_name'] ?: $exercise['exercise_name']); ?>"
+                                                    data-duration="<?php echo $exercise['duration']; ?>"
+                                                    data-intensity="<?php echo $exercise['intensity']; ?>"
+                                                    data-calories="<?php echo $exercise['calories_burned']; ?>"
+                                                    data-notes="<?php echo htmlspecialchars($exercise['notes']); ?>">
+                                                <i class="fas fa-share-alt"></i>
+                                            </button>
+                                            <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet exercice ?');">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="exercise_id" value="<?php echo $exercise['id']; ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($exercise_logs)): ?>
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4">
-                                            <p class="text-muted mb-0">Aucun exercice enregistré</p>
-                                            <small class="text-muted">Commencez à enregistrer vos exercices pour suivre votre activité physique</small>
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($exercise_logs as $log): ?>
-                                        <tr>
-                                            <td><?php echo date('d/m/Y', strtotime($log['log_date'])); ?></td>
-                                            <td>
-                                                <?php 
-                                                    if (!empty($log['custom_exercise_name'])) {
-                                                        echo htmlspecialchars($log['custom_exercise_name']);
-                                                    } elseif (!empty($log['exercise_name'])) {
-                                                        echo htmlspecialchars($log['exercise_name']);
-                                                    } else {
-                                                        echo '—';
-                                                    }
-                                                ?>
-                                            </td>
-                                            <td><?php echo $log['duration']; ?> min</td>
-                                            <td>
-                                                <?php 
-                                                    if ($log['intensity'] === 'faible') {
-                                                        echo '<span class="badge bg-info">Faible</span>';
-                                                    } elseif ($log['intensity'] === 'moderee') {
-                                                        echo '<span class="badge bg-success">Modérée</span>';
-                                                    } else {
-                                                        echo '<span class="badge bg-warning">Élevée</span>';
-                                                    }
-                                                ?>
-                                            </td>
-                                            <td><?php echo number_format($log['calories_burned']); ?> cal</td>
-                                            <td><?php echo $log['notes'] ? htmlspecialchars($log['notes']) : '—'; ?></td>
-                                            <td>
-                                                <div class="btn-group">
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-outline-primary share-exercise-btn" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#shareExerciseModal"
-                                                            data-exercise-id="<?php echo $log['id']; ?>"
-                                                            data-exercise-name="<?php echo htmlspecialchars($log['custom_exercise_name'] ?: $log['exercise_name']); ?>"
-                                                            data-duration="<?php echo $log['duration']; ?>"
-                                                            data-calories="<?php echo $log['calories_burned']; ?>"
-                                                            data-notes="<?php echo htmlspecialchars($log['notes'] ?? ''); ?>"
-                                                            onclick="console.log('Partage d\'exercice:', this.dataset);">
-                                                        <i class="fas fa-share-alt me-1"></i>Partager
-                                                    </button>
-                                                    <a href="exercise-log.php?edit=<?php echo $log['id']; ?>" 
-                                                       class="btn btn-sm btn-outline-secondary">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <a href="exercise-log.php?delete=<?php echo $log['id']; ?>" 
-                                                       class="btn btn-sm btn-outline-danger"
-                                                       onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet exercice ?')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         <?php endif; ?>
     </div>
@@ -552,6 +479,42 @@ foreach ($daily_calories as $date => $calories) {
             </div>
         </div>
     </footer>
+
+    <!-- Modal de partage -->
+    <div class="modal fade" id="shareModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Partager l'exercice</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="shareForm" action="create-post.php" method="POST">
+                        <input type="hidden" name="post_type" value="exercise">
+                        <input type="hidden" name="reference_id" id="share_exercise_id">
+                        <input type="hidden" name="visibility" value="public">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Message (optionnel)</label>
+                            <textarea class="form-control" name="content" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="exercise-details mb-3">
+                            <p class="mb-1"><strong>Exercice:</strong> <span id="share_exercise_name"></span></p>
+                            <p class="mb-1"><strong>Durée:</strong> <span id="share_exercise_duration"></span> minutes</p>
+                            <p class="mb-1"><strong>Intensité:</strong> <span id="share_exercise_intensity"></span></p>
+                            <p class="mb-1"><strong>Calories brûlées:</strong> <span id="share_exercise_calories"></span> kcal</p>
+                            <p class="mb-0"><strong>Notes:</strong> <span id="share_exercise_notes"></span></p>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" form="shareForm" class="btn btn-primary">Partager</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
@@ -619,128 +582,37 @@ foreach ($daily_calories as $date => $calories) {
             }
         });
         
-        <?php if (array_sum($chart_calories) > 0): ?>
-        // Graphique d'activité
-        const exerciseCtx = document.getElementById('exerciseChart').getContext('2d');
-        const exerciseChart = new Chart(exerciseCtx, {
-            type: 'bar',
-            data: {
-                labels: <?php echo json_encode($chart_dates); ?>,
-                datasets: [
-                    {
-                        label: 'Calories brûlées',
-                        data: <?php echo json_encode($chart_calories); ?>,
-                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        borderWidth: 1,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'Durée (minutes)',
-                        data: <?php echo json_encode($chart_duration); ?>,
-                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1,
-                        type: 'line',
-                        yAxisID: 'y1'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Calories'
-                        },
-                        grid: {
-                            borderDash: [2, 2]
-                        }
-                    },
-                    y1: {
-                        beginAtZero: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Minutes'
-                        },
-                        grid: {
-                            display: false
-                        }
-                    }
-                },
-                plugins: {
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false
-                    }
-                }
-            }
-        });
-        <?php endif; ?>
-    </script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Page chargée, recherche des boutons de partage...');
+        // Gestion du partage
+        const shareModal = new bootstrap.Modal(document.getElementById('shareModal'));
         
-        // Gestion de la visibilité du post
-        const visibilityInputs = document.querySelectorAll('input[name="visibility"]');
-        const groupSelect = document.getElementById('group_select');
-        
-        visibilityInputs.forEach(input => {
-            input.addEventListener('change', function() {
-                groupSelect.style.display = this.value === 'group' ? 'block' : 'none';
-            });
-        });
-
-        // Gestion du bouton de partage
-        const shareButtons = document.querySelectorAll('.share-exercise-btn');
-        console.log('Nombre de boutons de partage trouvés:', shareButtons.length);
-        
-        shareButtons.forEach(btn => {
-            console.log('Configuration du bouton:', btn.dataset);
+        document.querySelectorAll('.share-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                console.log('Clic sur le bouton de partage');
                 const exerciseId = this.dataset.exerciseId;
                 const exerciseName = this.dataset.exerciseName;
                 const duration = this.dataset.duration;
+                const intensity = this.dataset.intensity;
                 const calories = this.dataset.calories;
                 const notes = this.dataset.notes;
                 
-                console.log('Données de l\'exercice:', {
-                    exerciseId,
-                    exerciseName,
-                    duration,
-                    calories,
-                    notes
+                console.log('Données de l\'exercice:', { 
+                    exerciseId, 
+                    exerciseName, 
+                    duration, 
+                    intensity, 
+                    calories, 
+                    notes 
                 });
                 
-                // Mettre à jour les champs du formulaire
                 document.getElementById('share_exercise_id').value = exerciseId;
+                document.getElementById('share_exercise_name').textContent = exerciseName;
+                document.getElementById('share_exercise_duration').textContent = duration;
+                document.getElementById('share_exercise_intensity').textContent = intensity.charAt(0).toUpperCase() + intensity.slice(1);
+                document.getElementById('share_exercise_calories').textContent = calories;
+                document.getElementById('share_exercise_notes').textContent = notes || 'Aucune note';
                 
-                // Pré-remplir le message
-                let content = `Je viens de faire ${exerciseName} pendant ${duration} minutes (${calories} calories brûlées)`;
-                if (notes) {
-                    content += `\nNote: ${notes}`;
-                }
-                document.getElementById('share_content').value = content;
-                
-                console.log('Formulaire mis à jour avec:', {
-                    exerciseId,
-                    content
-                });
+                shareModal.show();
             });
         });
-    });
     </script>
 </body>
 </html>

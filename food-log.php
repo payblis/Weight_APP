@@ -1330,42 +1330,26 @@ function updateMealTotals($meal_id) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form action="create-post.php" method="POST">
+                    <form id="shareForm" action="create-post.php" method="POST">
                         <input type="hidden" name="post_type" value="meal">
                         <input type="hidden" name="reference_id" id="share_meal_id">
+                        <input type="hidden" name="visibility" value="public">
+                        
                         <div class="mb-3">
-                            <label for="share_visibility" class="form-label">Visibilité</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="visibility" id="visibility_public" value="public" checked>
-                                <label class="form-check-label" for="visibility_public">
-                                    <i class="fas fa-globe me-1"></i>Public
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="visibility" id="visibility_group" value="group">
-                                <label class="form-check-label" for="visibility_group">
-                                    <i class="fas fa-users me-1"></i>Groupe
-                                </label>
-                            </div>
-                            <div id="group_select" class="mt-2" style="display: none;">
-                                <select class="form-select" name="group_id">
-                                    <option value="">Sélectionnez un groupe</option>
-                                    <?php foreach ($user_groups as $group): ?>
-                                        <option value="<?php echo $group['id']; ?>">
-                                            <?php echo htmlspecialchars($group['name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                            <label class="form-label">Message (optionnel)</label>
+                            <textarea class="form-control" name="content" rows="3"></textarea>
                         </div>
-                        <div class="mb-3">
-                            <label for="share_content" class="form-label">Message (optionnel)</label>
-                            <textarea class="form-control" id="share_content" name="content" rows="3"></textarea>
+                        
+                        <div class="meal-details mb-3">
+                            <p class="mb-1"><strong>Type:</strong> <span id="share_meal_type"></span></p>
+                            <p class="mb-1"><strong>Calories:</strong> <span id="share_meal_calories"></span> kcal</p>
+                            <p class="mb-0"><strong>Notes:</strong> <span id="share_meal_notes"></span></p>
                         </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-paper-plane me-1"></i>Partager
-                        </button>
                     </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" form="shareForm" class="btn btn-primary">Partager</button>
                 </div>
             </div>
         </div>
@@ -1374,52 +1358,24 @@ function updateMealTotals($meal_id) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page chargée, recherche des boutons de partage...');
+            // Gestion du partage
+            const shareModal = new bootstrap.Modal(document.getElementById('shareMealModal'));
             
-            // Gestion de la visibilité du post
-            const visibilityInputs = document.querySelectorAll('input[name="visibility"]');
-            const groupSelect = document.getElementById('group_select');
-            
-            visibilityInputs.forEach(input => {
-                input.addEventListener('change', function() {
-                    groupSelect.style.display = this.value === 'group' ? 'block' : 'none';
-                });
-            });
-
-            // Gestion du bouton de partage
-            const shareButtons = document.querySelectorAll('.share-meal-btn');
-            console.log('Nombre de boutons de partage trouvés:', shareButtons.length);
-            
-            shareButtons.forEach(btn => {
-                console.log('Configuration du bouton:', btn.dataset);
+            document.querySelectorAll('.share-meal-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    console.log('Clic sur le bouton de partage');
                     const mealId = this.dataset.mealId;
                     const mealType = this.dataset.mealType;
                     const calories = this.dataset.calories;
                     const notes = this.dataset.notes;
                     
-                    console.log('Données du repas:', {
-                        mealId,
-                        mealType,
-                        calories,
-                        notes
-                    });
+                    console.log('Données du repas:', { mealId, mealType, calories, notes });
                     
-                    // Mettre à jour les champs du formulaire
                     document.getElementById('share_meal_id').value = mealId;
+                    document.getElementById('share_meal_type').textContent = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+                    document.getElementById('share_meal_calories').textContent = calories;
+                    document.getElementById('share_meal_notes').textContent = notes || 'Aucune note';
                     
-                    // Pré-remplir le message
-                    let content = `Je viens de manger un ${getMealTypeName(mealType)} de ${calories} calories`;
-                    if (notes) {
-                        content += `\nNote: ${notes}`;
-                    }
-                    document.getElementById('share_content').value = content;
-                    
-                    console.log('Formulaire mis à jour avec:', {
-                        mealId,
-                        content
-                    });
+                    shareModal.show();
                 });
             });
         });
