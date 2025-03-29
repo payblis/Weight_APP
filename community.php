@@ -41,7 +41,6 @@ $sql = "SELECT cp.*, u.username, u.avatar,
         CASE 
             WHEN cp.post_type = 'meal' THEN JSON_OBJECT(
                 'calories', m.total_calories,
-                'foods', (SELECT GROUP_CONCAT(f.name) FROM meal_foods mf JOIN foods f ON mf.food_id = f.id WHERE mf.meal_id = m.id),
                 'notes', m.notes
             )
             WHEN cp.post_type = 'exercise' THEN JSON_OBJECT(
@@ -188,11 +187,6 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                                             <p class="mb-2">
                                                                 <strong>Calories:</strong> <?php echo number_format($meal_info['calories']); ?> kcal
                                                             </p>
-                                                            <?php if (!empty($meal_info['foods'])): ?>
-                                                                <p class="mb-2">
-                                                                    <strong>Aliments:</strong> <?php echo htmlspecialchars($meal_info['foods']); ?>
-                                                                </p>
-                                                            <?php endif; ?>
                                                             <?php if (!empty($meal_info['notes'])): ?>
                                                                 <p class="mb-0">
                                                                     <strong>Notes:</strong> <?php echo htmlspecialchars($meal_info['notes']); ?>
