@@ -1004,3 +1004,19 @@ function checkMealNotifications($user_id) {
     
     return $notifications;
 }
+
+/**
+ * Convertit le type de repas en label français
+ * 
+ * @param string $meal_type Type de repas (petit_dejeuner, dejeuner, diner)
+ * @return string Label en français
+ */
+function getMealTypeLabel($meal_type) {
+    $labels = [
+        'petit_dejeuner' => 'petit-déjeuner',
+        'dejeuner' => 'déjeuner',
+        'diner' => 'dîner'
+    ];
+    
+    return $labels[$meal_type] ?? $meal_type;
+}
