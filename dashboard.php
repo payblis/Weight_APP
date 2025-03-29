@@ -13,7 +13,11 @@ if (!isLoggedIn()) {
 
 // Récupérer les informations de l'utilisateur
 $user_id = $_SESSION['user_id'];
-$sql = "SELECT * FROM users WHERE id = ?";
+$sql = "SELECT u.*, up.*, 
+        TIMESTAMPDIFF(YEAR, up.birth_date, CURDATE()) as age
+        FROM users u 
+        LEFT JOIN user_profiles up ON u.id = up.user_id 
+        WHERE u.id = ?";
 $user = fetchOne($sql, [$user_id]);
 
 // Debug des données utilisateur
