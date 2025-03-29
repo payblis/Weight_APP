@@ -871,67 +871,21 @@ function calculateMacroRatios($current_weight, $target_weight, $active_program, 
  * @return float La quantité d'eau recommandée en litres
  */
 function calculateWaterGoal($user) {
-    // Log des données reçues
+    // Vérifier si l'utilisateur a un poids défini
+    if (!isset($user['weight']) || $user['weight'] <= 0) {
+        error_log("Poids non défini pour le calcul d'eau");
+        return 2.5; // Valeur par défaut
+    }
+
+    // Calculer la base en fonction du poids (30 ml/kg)
+    $base_water = $user['weight'] * 0.03; // Conversion en litres
+
+    // Limiter entre 1.5 et 4 litres
+    $water_goal = max(1.5, min(4, $base_water));
+
     error_log("Calcul de l'objectif d'eau pour l'utilisateur : " . print_r($user, true));
-    
-    // Vérifier si l'utilisateur a les données nécessaires
-    if (!isset($user['weight']) || !isset($user['height']) || !isset($user['activity_level'])) {
-        error_log("Données manquantes pour le calcul de l'objectif d'eau");
-        return 2.5; // Valeur par défaut si les données sont manquantes
-    }
-    
-    // Facteurs de base ajustés
-    $base_factor = 0.025; // 25ml par kg de poids (réduit de 33ml)
-    $activity_factor = 0.3; // 300ml par niveau d'activité (réduit de 500ml)
-    $height_factor = 0.008; // 8ml par cm de taille (réduit de 10ml)
-    
-    // Calcul de base basé sur le poids
-    $water_goal = $user['weight'] * $base_factor;
-    error_log("Base (poids) : " . $water_goal . "L");
-    
-    // Ajout selon le niveau d'activité
-    $activity_level = 0;
-    switch ($user['activity_level']) {
-        case 'sedentary':
-            $activity_level = 1;
-            break;
-        case 'light':
-            $activity_level = 2;
-            break;
-        case 'moderate':
-            $activity_level = 3;
-            break;
-        case 'active':
-            $activity_level = 4;
-            break;
-        case 'very_active':
-            $activity_level = 5;
-            break;
-        default:
-            $activity_level = 3; // Valeur par défaut
-    }
-    $water_goal += $activity_level * $activity_factor;
-    error_log("Après activité (niveau " . $activity_level . ") : " . $water_goal . "L");
-    
-    // Ajout selon la taille
-    $water_goal += $user['height'] * $height_factor;
-    error_log("Après taille : " . $water_goal . "L");
-    
-    // Ajustement selon l'âge
-    if (isset($user['age'])) {
-        if ($user['age'] < 18) {
-            $water_goal *= 0.9; // 10% moins pour les moins de 18 ans
-            error_log("Ajustement -18 ans : " . $water_goal . "L");
-        } elseif ($user['age'] > 65) {
-            $water_goal *= 0.95; // 5% moins pour les plus de 65 ans
-            error_log("Ajustement +65 ans : " . $water_goal . "L");
-        }
-    }
-    
-    // S'assurer que la valeur est au moins 2L et au maximum 3.5L
-    $water_goal = max(2, min(3.5, $water_goal));
-    error_log("Valeur finale après limites : " . $water_goal . "L");
-    
-    // Arrondir à 1 décimale
-    return round($water_goal, 1);
+    error_log("Base (poids) : {$base_water}L");
+    error_log("Valeur finale après limites : {$water_goal}L");
+
+    return $water_goal;
 }
