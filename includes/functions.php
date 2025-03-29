@@ -925,7 +925,17 @@ function checkMealNotifications($user_id) {
     }
     
     // Récupérer les préférences de notifications
-    $sql = "SELECT * FROM notification_preferences WHERE user_id = ? AND is_active = TRUE";
+    error_log("=== Vérification de la table meal_notification_preferences ===");
+    if (!tableExists('meal_notification_preferences')) {
+        error_log("La table meal_notification_preferences n'existe pas");
+        return [];
+    }
+    error_log("La table meal_notification_preferences existe");
+    
+    $sql = "SELECT * FROM meal_notification_preferences WHERE user_id = ? AND is_active = TRUE";
+    error_log("Exécution de la requête : " . $sql);
+    error_log("Paramètres : " . json_encode([$user_id]));
+    
     $preferences = fetchAll($sql, [$user_id]);
     
     error_log("Préférences de notifications trouvées : " . count($preferences));
