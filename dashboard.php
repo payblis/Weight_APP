@@ -749,7 +749,8 @@ $meal_notifications = checkMealNotifications($user_id);
                      role="alert"
                      data-start-time="<?php echo $notification['start_time']; ?>"
                      data-end-time="<?php echo $notification['end_time']; ?>"
-                     data-priority="<?php echo $notification['priority']; ?>">
+                     data-priority="<?php echo $notification['priority']; ?>"
+                     data-message="<?php echo htmlspecialchars($notification['message']); ?>">
                     <i class="fas fa-<?php echo $icon; ?> me-2"></i>
                     <?php echo $notification['message']; ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -861,16 +862,25 @@ $meal_notifications = checkMealNotifications($user_id);
             function shouldShowNotification(startTime, endTime) {
                 const now = new Date();
                 const currentTime = formatTime(now);
-                return currentTime >= startTime && currentTime <= endTime;
+                error_log("Vérification de l'affichage de la notification");
+                error_log("Heure actuelle : " + currentTime);
+                error_log("Heure de début : " + startTime);
+                error_log("Heure de fin : " + endTime);
+                return currentTime >= startTime;
             }
 
             // Fonction pour mettre à jour l'affichage des notifications
             function updateNotifications() {
                 const notifications = document.querySelectorAll('.meal-notification');
+                error_log("Nombre de notifications trouvées : " + notifications.length);
+                
                 notifications.forEach(notification => {
                     const startTime = notification.dataset.startTime;
                     const endTime = notification.dataset.endTime;
                     const priority = parseInt(notification.dataset.priority);
+                    
+                    error_log("Traitement de la notification : " + notification.dataset.message);
+                    error_log("Priorité : " + priority);
                     
                     if (shouldShowNotification(startTime, endTime)) {
                         notification.style.display = 'block';
@@ -879,8 +889,10 @@ $meal_notifications = checkMealNotifications($user_id);
                             notification.classList.remove('alert-warning');
                             notification.classList.add('alert-danger');
                         }
+                        error_log("Notification affichée");
                     } else {
                         notification.style.display = 'none';
+                        error_log("Notification masquée");
                     }
                 });
             }
