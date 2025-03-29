@@ -209,12 +209,22 @@ if ($current_goal && $latest_weight) {
             
             if ($remaining_days > 0) {
                 $remaining_weight = $current_weight - $current_goal['target_weight'];
-                $daily_loss_needed = $remaining_weight / $remaining_days;
+                $daily_loss_needed = -($remaining_weight / $remaining_days); // Négatif pour indiquer une perte
                 error_log("Poids restant à perdre: " . $remaining_weight);
                 error_log("Perte quotidienne nécessaire: " . $daily_loss_needed);
             }
         } else {
             error_log("Aucun poids trouvé depuis la création de l'objectif");
+            // Si aucun poids n'est trouvé, utiliser le poids le plus récent
+            $current_weight = $latest_weight['weight'];
+            $actual_loss = $start_weight - $current_weight;
+            $progress = ($actual_loss / $weight_diff) * 100;
+            $completion_percentage = min(100, max(0, $progress));
+            
+            if ($remaining_days > 0) {
+                $remaining_weight = $current_weight - $current_goal['target_weight'];
+                $daily_loss_needed = -($remaining_weight / $remaining_days); // Négatif pour indiquer une perte
+            }
         }
     }
     // Si l'objectif est de prendre du poids
@@ -239,12 +249,22 @@ if ($current_goal && $latest_weight) {
             
             if ($remaining_days > 0) {
                 $remaining_weight = $current_goal['target_weight'] - $current_weight;
-                $daily_loss_needed = $remaining_weight / $remaining_days; // En réalité, c'est un gain quotidien
+                $daily_loss_needed = $remaining_weight / $remaining_days; // Positif pour indiquer un gain
                 error_log("Poids restant à prendre: " . $remaining_weight);
                 error_log("Gain quotidien nécessaire: " . $daily_loss_needed);
             }
         } else {
             error_log("Aucun poids trouvé depuis la création de l'objectif");
+            // Si aucun poids n'est trouvé, utiliser le poids le plus récent
+            $current_weight = $latest_weight['weight'];
+            $actual_gain = $current_weight - $start_weight;
+            $progress = ($actual_gain / $weight_diff) * 100;
+            $completion_percentage = min(100, max(0, $progress));
+            
+            if ($remaining_days > 0) {
+                $remaining_weight = $current_goal['target_weight'] - $current_weight;
+                $daily_loss_needed = $remaining_weight / $remaining_days; // Positif pour indiquer un gain
+            }
         }
     }
     error_log("=== Fin du calcul de la progression ===");
@@ -422,10 +442,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'leave_program' && isset($_GET
                                         <div class="alert alert-info mt-3">
                                             <i class="fas fa-info-circle me-1"></i>
                                             <?php 
-                                            if ($daily_loss_needed > 0) {
-                                                echo 'Pour atteindre votre objectif, vous devez prendre environ ' . number_format($daily_loss_needed, 2) . ' kg par jour.';
+                                            if ($current_goal['target_weight'] < $latest_weight['weight']) {
+                                                echo 'Pour atteindre votre objectif de perte de poids, vous devez perdre environ ' . number_format(abs($daily_loss_needed), 2) . ' kg par jour.';
                                             } else {
-                                                echo 'Pour atteindre votre objectif, vous devez perdre environ ' . number_format(abs($daily_loss_needed), 2) . ' kg par jour.';
+                                                echo 'Pour atteindre votre objectif de prise de poids, vous devez prendre environ ' . number_format($daily_loss_needed, 2) . ' kg par jour.';
                                             }
                                             ?>
                                             <br>
