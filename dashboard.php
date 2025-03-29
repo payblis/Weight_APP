@@ -750,8 +750,7 @@ $meal_notifications = checkMealNotifications($user_id);
                      data-start-time="<?php echo $notification['start_time']; ?>"
                      data-end-time="<?php echo $notification['end_time']; ?>"
                      data-priority="<?php echo $notification['priority']; ?>"
-                     data-message="<?php echo htmlspecialchars($notification['message']); ?>"
-                     style="display: none;">
+                     data-message="<?php echo htmlspecialchars($notification['message']); ?>">
                     <i class="fas fa-<?php echo $icon; ?> me-2"></i>
                     <?php echo $notification['message']; ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -859,26 +858,27 @@ $meal_notifications = checkMealNotifications($user_id);
                 });
             }
 
+            // Fonction pour convertir une heure en minutes depuis minuit
+            function timeToMinutes(timeStr) {
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                return hours * 60 + minutes;
+            }
+
             // Fonction pour vérifier si une notification doit être affichée
             function shouldShowNotification(startTime, endTime) {
                 const now = new Date();
                 const currentTime = formatTime(now);
+                const currentMinutes = timeToMinutes(currentTime);
+                const startMinutes = timeToMinutes(startTime);
+                
                 console.log("Vérification de l'affichage de la notification");
                 console.log("Heure actuelle : " + currentTime);
                 console.log("Heure de début : " + startTime);
-                console.log("Heure de fin : " + endTime);
+                console.log("Minutes actuelles depuis minuit : " + currentMinutes);
+                console.log("Minutes de début depuis minuit : " + startMinutes);
                 
-                // Convertir les heures en minutes pour la comparaison
-                const [currentHours, currentMinutes] = currentTime.split(':').map(Number);
-                const [startHours, startMinutes] = startTime.split(':').map(Number);
-                
-                const currentMinutesTotal = currentHours * 60 + currentMinutes;
-                const startMinutesTotal = startHours * 60 + startMinutes;
-                
-                console.log("Minutes actuelles : " + currentMinutesTotal);
-                console.log("Minutes de début : " + startMinutesTotal);
-                
-                return currentMinutesTotal >= startMinutesTotal;
+                // Si l'heure actuelle est après l'heure de début, afficher la notification
+                return currentMinutes >= startMinutes;
             }
 
             // Fonction pour mettre à jour l'affichage des notifications
