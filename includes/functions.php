@@ -959,8 +959,8 @@ function checkMealNotifications($user_id) {
         
         error_log("L'heure actuelle est " . ($current >= $start_time ? "après" : "avant") . " l'heure de début");
         
-        // Vérifier si l'heure actuelle est dans la plage horaire
-        if ($current >= $start_time && $current <= $end_time) {
+        // Vérifier si l'heure actuelle est dans la plage horaire ou si le repas est en retard
+        if ($current >= $start_time) {
             // Vérifier si un repas a déjà été enregistré aujourd'hui pour ce type
             $sql = "SELECT COUNT(*) as count FROM meals 
                     WHERE user_id = ? 
