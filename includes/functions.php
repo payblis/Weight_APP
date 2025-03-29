@@ -889,3 +889,53 @@ function calculateWaterGoal($user) {
 
     return $water_goal;
 }
+
+/**
+ * Vérifie les notifications de repas pour l'utilisateur
+ * @param int $user_id L'ID de l'utilisateur
+ * @return array Les notifications à afficher
+ */
+function checkMealNotifications($user_id) {
+    $notifications = [];
+    $current_time = new DateTime();
+    $current_date = $current_time->format('Y-m-d');
+    
+    // Récupérer les préférences de notifications
+    $sql = "SELECT * FROM meal_notification_preferences WHERE user_id = ? AND is_active = TRUE";
+    $preferences = fetchAll($sql, [$user_id]);
+    
+    foreach ($preferences as $pref) {
+        $start_time = new DateTime($pref['start_time']);
+        $end_time = new DateTime($pref['end_time']);
+        
+        // Vérifier si l'heure actuelle est dans la plage horaire
+        if ($current_time >= $start_time && $current_time <= $end_time) {
+            // Vérifier si un repas a déjà été enregistré pour ce type aujourd'hui
+            $sql = "SELECT COUNT(*) as count FROM meals m 
+                    JOIN food_logs fl ON m.id = fl.meal_id 
+                    WHERE fl.user_id = ? 
+                    AND m.meal_type = ? 
+                    AND DATE(fl.log_date) = ?";
+            $result = fetchOne($sql, [$user_id, $pref['meal_type'], $current_date]);
+            
+            if ($result['count'] == 0) {
+                // Créer la notification
+                $meal_names = [
+                    'petit_dejeuner' => 'petit-déjeuner',
+                    'dejeuner' => 'déjeuner',
+                    'diner' => 'dîner'
+                ];
+                
+                $notifications[] = [
+                    'type' => 'meal_reminder',
+                    'message' => "N'oubliez pas de prendre votre " . $meal_names[$pref['meal_type']] . " !",
+                    'meal_type' => $pref['meal_type'],
+                    'start_time' => $pref['start_time'],
+                    'end_time' => $pref['end_time']
+                ];
+            }
+        }
+    }
+    
+    return $notifications;
+}

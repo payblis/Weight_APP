@@ -179,6 +179,9 @@ $sql = "SELECT * FROM ai_suggestions
         ORDER BY created_at DESC 
         LIMIT 3";
 $exercise_suggestions = fetchAll($sql, [$user_id]);
+
+// Récupérer les notifications de repas
+$meal_notifications = checkMealNotifications($user_id);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -733,6 +736,17 @@ $exercise_suggestions = fetchAll($sql, [$user_id]);
                 </div>
             </div>
         </div>
+
+        <!-- Après la section des notifications existantes -->
+        <?php if (!empty($meal_notifications)): ?>
+            <?php foreach ($meal_notifications as $notification): ?>
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="fas fa-utensils me-2"></i>
+                    <?php echo $notification['message']; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 
     <!-- Scripts JavaScript -->
