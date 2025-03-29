@@ -514,35 +514,39 @@ $exercise_suggestions = fetchAll($sql, [$user_id]);
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="mb-3">
+                    <div class="text-center mb-4">
                         <h6>Objectif quotidien : <?php echo number_format($user['water_goal'], 1); ?> L</h6>
-                        <div class="progress mb-3">
-                            <div class="progress-bar bg-info" role="progressbar" 
-                                 style="width: <?php echo $water_percentage; ?>%"
-                                 aria-valuenow="<?php echo $water_percentage; ?>" 
-                                 aria-valuemin="0" 
-                                 aria-valuemax="100">
+                        <div class="water-bottle-container position-relative" style="height: 300px; width: 150px; margin: 0 auto;">
+                            <!-- Bouteille d'eau -->
+                            <div class="water-bottle" style="position: absolute; bottom: 0; left: 0; right: 0; height: 100%; background: #e9ecef; border-radius: 20px; overflow: hidden;">
+                                <!-- Niveau d'eau -->
+                                <div class="water-level" style="position: absolute; bottom: 0; left: 0; right: 0; height: <?php echo $water_percentage; ?>%; background: rgba(13, 202, 240, 0.5); transition: height 0.3s ease;"></div>
+                                <!-- Contour de la bouteille -->
+                                <div class="bottle-outline" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 3px solid #0dcaf0; border-radius: 20px;"></div>
+                            </div>
+                            <!-- Affichage de la quantité -->
+                            <div class="water-amount" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: bold; color: #0dcaf0;">
                                 <?php echo number_format($water_consumed, 1); ?> L
                             </div>
                         </div>
-                        <small class="text-muted">
+                        <small class="text-muted mt-2">
                             <?php echo number_format($water_consumed, 1); ?> L sur <?php echo number_format($user['water_goal'], 1); ?> L
                         </small>
                     </div>
                     
                     <div class="row g-3">
                         <?php
-                        // Tailles de bouteilles standard (en cl)
-                        $bottle_sizes = [25, 33, 50, 75, 100];
-                        foreach ($bottle_sizes as $size):
-                            $amount = $size / 100; // Convertir en litres
+                        // Paliers de remplissage (en cl)
+                        $fill_levels = [25, 50, 75, 100];
+                        foreach ($fill_levels as $level):
+                            $amount = ($user['water_goal'] * $level) / 100; // Convertir le pourcentage en litres
                         ?>
-                        <div class="col-6 col-md-4">
+                        <div class="col-6">
                             <form action="water-log.php" method="POST" class="h-100">
                                 <input type="hidden" name="amount" value="<?php echo $amount; ?>">
                                 <button type="submit" class="btn btn-outline-info w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
-                                    <i class="fas fa-bottle-water fa-2x mb-2"></i>
-                                    <span><?php echo $size; ?> cl</span>
+                                    <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                                    <span>Ajouter <?php echo $level; ?>%</span>
                                 </button>
                             </form>
                         </div>

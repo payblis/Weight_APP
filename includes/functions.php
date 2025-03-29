@@ -871,6 +871,11 @@ function calculateMacroRatios($current_weight, $target_weight, $active_program, 
  * @return float La quantité d'eau recommandée en litres
  */
 function calculateWaterGoal($user) {
+    // Vérifier si l'utilisateur a les données nécessaires
+    if (!isset($user['weight']) || !isset($user['height']) || !isset($user['activity_level'])) {
+        return 2.5; // Valeur par défaut si les données sont manquantes
+    }
+    
     // Facteurs de base
     $base_factor = 0.033; // 33ml par kg de poids
     $activity_factor = 0.5; // 500ml par niveau d'activité
@@ -897,6 +902,8 @@ function calculateWaterGoal($user) {
         case 'very_active':
             $activity_level = 5;
             break;
+        default:
+            $activity_level = 3; // Valeur par défaut
     }
     $water_goal += $activity_level * $activity_factor;
     
@@ -904,11 +911,16 @@ function calculateWaterGoal($user) {
     $water_goal += $user['height'] * $height_factor;
     
     // Ajustement selon l'âge
-    if ($user['age'] < 18) {
-        $water_goal *= 0.9; // 10% moins pour les moins de 18 ans
-    } elseif ($user['age'] > 65) {
-        $water_goal *= 0.95; // 5% moins pour les plus de 65 ans
+    if (isset($user['age'])) {
+        if ($user['age'] < 18) {
+            $water_goal *= 0.9; // 10% moins pour les moins de 18 ans
+        } elseif ($user['age'] > 65) {
+            $water_goal *= 0.95; // 5% moins pour les plus de 65 ans
+        }
     }
+    
+    // S'assurer que la valeur est au moins 1.5L et au maximum 4L
+    $water_goal = max(1.5, min(4, $water_goal));
     
     // Arrondir à 1 décimale
     return round($water_goal, 1);
