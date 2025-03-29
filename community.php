@@ -162,29 +162,94 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                     <!-- Contenu du post -->
                                     <div class="post-content">
                                         <?php if ($post['post_type'] === 'meal'): ?>
-                                            <div class="meal-post">
-                                                <i class="fas fa-utensils me-2"></i>
-                                                <strong>Repas partagé</strong>
-                                                <p class="mb-0"><?php echo number_format($post['calories']); ?> calories</p>
-                                                <?php if ($post['notes']): ?>
-                                                    <p class="mb-0"><?php echo htmlspecialchars($post['notes']); ?></p>
-                                                <?php endif; ?>
-                                            </div>
+                                            <?php 
+                                            $meal_info = json_decode($post['additional_info'], true);
+                                            if ($meal_info): 
+                                            ?>
+                                                <div class="meal-post">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="fas fa-utensils me-2 text-primary"></i>
+                                                        <h6 class="mb-0">Repas partagé</h6>
+                                                    </div>
+                                                    <div class="card bg-light">
+                                                        <div class="card-body">
+                                                            <p class="mb-2">
+                                                                <strong>Calories:</strong> <?php echo number_format($meal_info['calories']); ?> kcal
+                                                            </p>
+                                                            <?php if (!empty($meal_info['foods'])): ?>
+                                                                <p class="mb-2">
+                                                                    <strong>Aliments:</strong> <?php echo htmlspecialchars($meal_info['foods']); ?>
+                                                                </p>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($meal_info['notes'])): ?>
+                                                                <p class="mb-0">
+                                                                    <strong>Notes:</strong> <?php echo htmlspecialchars($meal_info['notes']); ?>
+                                                                </p>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
                                         <?php elseif ($post['post_type'] === 'exercise'): ?>
-                                            <div class="exercise-post">
-                                                <i class="fas fa-running me-2"></i>
-                                                <strong>Exercice partagé</strong>
-                                                <p class="mb-0"><?php echo number_format($post['calories']); ?> calories brûlées</p>
-                                                <?php if ($post['notes']): ?>
-                                                    <p class="mb-0"><?php echo htmlspecialchars($post['notes']); ?></p>
-                                                <?php endif; ?>
-                                            </div>
+                                            <?php 
+                                            $exercise_info = json_decode($post['additional_info'], true);
+                                            if ($exercise_info): 
+                                            ?>
+                                                <div class="exercise-post">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="fas fa-running me-2 text-success"></i>
+                                                        <h6 class="mb-0">Exercice partagé</h6>
+                                                    </div>
+                                                    <div class="card bg-light">
+                                                        <div class="card-body">
+                                                            <p class="mb-2">
+                                                                <strong>Exercice:</strong> <?php echo htmlspecialchars($exercise_info['name']); ?>
+                                                            </p>
+                                                            <p class="mb-2">
+                                                                <strong>Durée:</strong> <?php echo $exercise_info['duration']; ?> minutes
+                                                            </p>
+                                                            <p class="mb-2">
+                                                                <strong>Calories brûlées:</strong> <?php echo number_format($exercise_info['calories']); ?> kcal
+                                                            </p>
+                                                            <?php if (!empty($exercise_info['notes'])): ?>
+                                                                <p class="mb-0">
+                                                                    <strong>Notes:</strong> <?php echo htmlspecialchars($exercise_info['notes']); ?>
+                                                                </p>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
                                         <?php elseif ($post['post_type'] === 'program'): ?>
-                                            <div class="program-post">
-                                                <i class="fas fa-dumbbell me-2"></i>
-                                                <strong>Nouveau programme</strong>
-                                                <p class="mb-0"><?php echo htmlspecialchars($post['reference_name']); ?></p>
-                                            </div>
+                                            <?php 
+                                            $program_info = json_decode($post['additional_info'], true);
+                                            if ($program_info): 
+                                            ?>
+                                                <div class="program-post">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="fas fa-dumbbell me-2 text-warning"></i>
+                                                        <h6 class="mb-0">Programme partagé</h6>
+                                                    </div>
+                                                    <div class="card bg-light">
+                                                        <div class="card-body">
+                                                            <p class="mb-2">
+                                                                <strong>Nom:</strong> <?php echo htmlspecialchars($program_info['name']); ?>
+                                                            </p>
+                                                            <p class="mb-2">
+                                                                <strong>Type:</strong> <?php echo htmlspecialchars($program_info['type']); ?>
+                                                            </p>
+                                                            <p class="mb-2">
+                                                                <strong>Description:</strong> <?php echo htmlspecialchars($program_info['description']); ?>
+                                                            </p>
+                                                            <p class="mb-0">
+                                                                <strong>Période:</strong> 
+                                                                <?php echo date('d/m/Y', strtotime($program_info['start_date'])); ?> - 
+                                                                <?php echo date('d/m/Y', strtotime($program_info['end_date'])); ?>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
                                         <?php elseif ($post['post_type'] === 'goal'): ?>
                                             <div class="goal-post">
                                                 <i class="fas fa-bullseye me-2"></i>

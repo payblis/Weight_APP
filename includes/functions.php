@@ -1082,42 +1082,37 @@ function createCommunityPost($user_id, $post_type, $content, $reference_id = nul
  * @return array
  */
 function togglePostLike($post_id, $user_id) {
-    global $db;
-    
     try {
+        error_log("Tentative de basculement du like - Post ID: $post_id, User ID: $user_id");
+        
+        // Vérifier si le post existe
+        $sql = "SELECT id FROM community_posts WHERE id = ?";
+        $post = fetchOne($sql, [$post_id]);
+        if (!$post) {
+            error_log("Erreur: Le post $post_id n'existe pas");
+            return false;
+        }
+
         // Vérifier si l'utilisateur a déjà liké le post
         $sql = "SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?";
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$post_id, $user_id]);
-        
-        if ($stmt->rowCount() > 0) {
+        $existing_like = fetchOne($sql, [$post_id, $user_id]);
+
+        if ($existing_like) {
             // Supprimer le like
             $sql = "DELETE FROM post_likes WHERE post_id = ? AND user_id = ?";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([$post_id, $user_id]);
-            
-            // Mettre à jour le compteur de likes
-            $sql = "UPDATE community_posts SET likes_count = likes_count - 1 WHERE id = ?";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([$post_id]);
-            
-            return ['success' => true, 'likes_count' => getPostLikesCount($post_id), 'action' => 'unliked'];
+            $result = execute($sql, [$post_id, $user_id]);
+            error_log("Suppression du like: " . ($result ? "succès" : "échec"));
         } else {
             // Ajouter le like
-            $sql = "INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([$post_id, $user_id]);
-            
-            // Mettre à jour le compteur de likes
-            $sql = "UPDATE community_posts SET likes_count = likes_count + 1 WHERE id = ?";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([$post_id]);
-            
-            return ['success' => true, 'likes_count' => getPostLikesCount($post_id), 'action' => 'liked'];
+            $sql = "INSERT INTO post_likes (post_id, user_id, created_at) VALUES (?, ?, NOW())";
+            $result = insert($sql, [$post_id, $user_id]);
+            error_log("Ajout du like: " . ($result ? "succès" : "échec"));
         }
-    } catch (PDOException $e) {
-        error_log("Erreur lors du toggle du like : " . $e->getMessage());
-        return ['success' => false, 'error' => $e->getMessage()];
+
+        return $result;
+    } catch (Exception $e) {
+        error_log("Erreur lors du basculement du like: " . $e->getMessage());
+        return false;
     }
 }
 
@@ -1129,23 +1124,26 @@ function togglePostLike($post_id, $user_id) {
  * @return array
  */
 function addComment($post_id, $user_id, $content) {
-    global $db;
-    
     try {
-        // Ajouter le commentaire
-        $sql = "INSERT INTO post_comments (post_id, user_id, content) VALUES (?, ?, ?)";
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$post_id, $user_id, $content]);
+        error_log("Tentative d'ajout de commentaire - Post ID: $post_id, User ID: $user_id");
         
-        // Mettre à jour le compteur de commentaires
-        $sql = "UPDATE community_posts SET comments_count = comments_count + 1 WHERE id = ?";
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$post_id]);
+        // Vérifier si le post existe
+        $sql = "SELECT id FROM community_posts WHERE id = ?";
+        $post = fetchOne($sql, [$post_id]);
+        if (!$post) {
+            error_log("Erreur: Le post $post_id n'existe pas");
+            return false;
+        }
+
+        // Insérer le commentaire
+        $sql = "INSERT INTO post_comments (post_id, user_id, content, created_at) VALUES (?, ?, ?, NOW())";
+        $result = insert($sql, [$post_id, $user_id, $content]);
         
-        return ['success' => true, 'comments_count' => getPostCommentsCount($post_id)];
-    } catch (PDOException $e) {
-        error_log("Erreur lors de l'ajout du commentaire : " . $e->getMessage());
-        return ['success' => false, 'error' => $e->getMessage()];
+        error_log("Résultat de l'insertion du commentaire: " . ($result ? "succès" : "échec"));
+        return $result;
+    } catch (Exception $e) {
+        error_log("Erreur lors de l'ajout du commentaire: " . $e->getMessage());
+        return false;
     }
 }
 
@@ -1156,30 +1154,37 @@ function addComment($post_id, $user_id, $content) {
  * @return array
  */
 function toggleFollow($following_id, $follower_id) {
-    global $db;
-    
     try {
-        // Vérifier si l'utilisateur suit déjà
-        $sql = "SELECT id FROM user_follows WHERE follower_id = ? AND following_id = ?";
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$follower_id, $following_id]);
+        error_log("Tentative de basculement de l'abonnement - Following ID: $following_id, Follower ID: $follower_id");
         
-        if ($stmt->rowCount() > 0) {
+        // Vérifier si l'utilisateur à suivre existe
+        $sql = "SELECT id FROM users WHERE id = ?";
+        $user = fetchOne($sql, [$following_id]);
+        if (!$user) {
+            error_log("Erreur: L'utilisateur $following_id n'existe pas");
+            return false;
+        }
+
+        // Vérifier si l'abonnement existe déjà
+        $sql = "SELECT id FROM user_follows WHERE following_id = ? AND follower_id = ?";
+        $existing_follow = fetchOne($sql, [$following_id, $follower_id]);
+
+        if ($existing_follow) {
             // Supprimer l'abonnement
-            $sql = "DELETE FROM user_follows WHERE follower_id = ? AND following_id = ?";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([$follower_id, $following_id]);
-            return ['success' => true, 'action' => 'unfollowed'];
+            $sql = "DELETE FROM user_follows WHERE following_id = ? AND follower_id = ?";
+            $result = execute($sql, [$following_id, $follower_id]);
+            error_log("Suppression de l'abonnement: " . ($result ? "succès" : "échec"));
         } else {
             // Ajouter l'abonnement
-            $sql = "INSERT INTO user_follows (follower_id, following_id) VALUES (?, ?)";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([$follower_id, $following_id]);
-            return ['success' => true, 'action' => 'followed'];
+            $sql = "INSERT INTO user_follows (following_id, follower_id, created_at) VALUES (?, ?, NOW())";
+            $result = insert($sql, [$following_id, $follower_id]);
+            error_log("Ajout de l'abonnement: " . ($result ? "succès" : "échec"));
         }
-    } catch (PDOException $e) {
-        error_log("Erreur lors du toggle de l'abonnement : " . $e->getMessage());
-        return ['success' => false, 'error' => $e->getMessage()];
+
+        return $result;
+    } catch (Exception $e) {
+        error_log("Erreur lors du basculement de l'abonnement: " . $e->getMessage());
+        return false;
     }
 }
 
@@ -1459,4 +1464,58 @@ function getUserPendingInvitations($user_id) {
             WHERE gi.invited_user_id = ? AND gi.status = 'pending'
             ORDER BY gi.created_at DESC";
     return fetchAll($sql, [$user_id]);
+}
+
+// Fonction pour supprimer un repas
+function deleteMeal($meal_id, $user_id) {
+    try {
+        error_log("Tentative de suppression du repas - Meal ID: $meal_id, User ID: $user_id");
+        
+        // Vérifier si le repas appartient à l'utilisateur
+        $sql = "SELECT id FROM meals WHERE id = ? AND user_id = ?";
+        $meal = fetchOne($sql, [$meal_id, $user_id]);
+        if (!$meal) {
+            error_log("Erreur: Le repas $meal_id n'appartient pas à l'utilisateur $user_id");
+            return false;
+        }
+
+        // Supprimer les aliments associés
+        $sql = "DELETE FROM meal_foods WHERE meal_id = ?";
+        execute($sql, [$meal_id]);
+
+        // Supprimer le repas
+        $sql = "DELETE FROM meals WHERE id = ?";
+        $result = execute($sql, [$meal_id]);
+        
+        error_log("Résultat de la suppression du repas: " . ($result ? "succès" : "échec"));
+        return $result;
+    } catch (Exception $e) {
+        error_log("Erreur lors de la suppression du repas: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Fonction pour supprimer un exercice
+function deleteExercise($exercise_id, $user_id) {
+    try {
+        error_log("Tentative de suppression de l'exercice - Exercise ID: $exercise_id, User ID: $user_id");
+        
+        // Vérifier si l'exercice appartient à l'utilisateur
+        $sql = "SELECT id FROM exercise_logs WHERE id = ? AND user_id = ?";
+        $exercise = fetchOne($sql, [$exercise_id, $user_id]);
+        if (!$exercise) {
+            error_log("Erreur: L'exercice $exercise_id n'appartient pas à l'utilisateur $user_id");
+            return false;
+        }
+
+        // Supprimer l'exercice
+        $sql = "DELETE FROM exercise_logs WHERE id = ?";
+        $result = execute($sql, [$exercise_id]);
+        
+        error_log("Résultat de la suppression de l'exercice: " . ($result ? "succès" : "échec"));
+        return $result;
+    } catch (Exception $e) {
+        error_log("Erreur lors de la suppression de l'exercice: " . $e->getMessage());
+        return false;
+    }
 }

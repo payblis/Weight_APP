@@ -10,43 +10,45 @@ if (!isLoggedIn()) {
 
 $user_id = $_SESSION['user_id'];
 
+// Vérifier si le formulaire a été soumis
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $post_type = $_POST['post_type'] ?? 'message';
-    $content = $_POST['content'] ?? '';
-    $reference_id = $_POST['reference_id'] ?? null;
-    $reference_type = $_POST['reference_type'] ?? null;
-    $visibility = $_POST['visibility'] ?? 'public';
-    $group_id = $_POST['group_id'] ?? null;
-    
-    // Si le post est pour un groupe, s'assurer que le group_id est fourni
-    if ($visibility === 'group' && !$group_id) {
-        $_SESSION['error_message'] = "Veuillez sélectionner un groupe pour ce post.";
-        redirect('community.php');
-    }
-    
     try {
-        if (createCommunityPost($user_id, $post_type, $content, $reference_id, $reference_type, $visibility, $group_id)) {
-            $_SESSION['success_message'] = "Votre post a été publié avec succès !";
-        } else {
-            if ($visibility === 'group') {
-                $_SESSION['error_message'] = "Impossible de créer le post. Vérifiez que vous êtes bien membre du groupe sélectionné.";
-            } else {
-                $_SESSION['error_message'] = "Une erreur est survenue lors de la publication du post.";
-            }
+        error_log("Tentative de création de post - POST data: " . print_r($_POST, true));
+        
+        // Récupérer les données du formulaire
+        $content = $_POST['content'] ?? '';
+        $visibility = $_POST['visibility'] ?? 'public';
+        $group_id = $_POST['group_id'] ?? null;
+        $post_type = $_POST['post_type'] ?? null;
+        $reference_id = $_POST['reference_id'] ?? null;
+
+        // Validation des données
+        if (empty($content) && !$post_type) {
+            error_log("Erreur: Le contenu est requis pour un post normal");
+            $_SESSION['error'] = "Le contenu est requis pour un post normal.";
+            redirect('community.php');
         }
-    } catch (PDOException $e) {
-        error_log("Erreur lors de la création du post : " . $e->getMessage());
-        if ($e->getCode() == 23000) { // Code d'erreur pour violation de contrainte d'intégrité
-            $_SESSION['error_message'] = "Impossible de créer le post. Le groupe sélectionné n'existe pas.";
-        } else {
-            $_SESSION['error_message'] = "Une erreur est survenue lors de la publication du post. Veuillez réessayer.";
+
+        if ($visibility === 'group' && !$group_id) {
+            error_log("Erreur: Un groupe doit être sélectionné pour la visibilité 'group'");
+            $_SESSION['error'] = "Un groupe doit être sélectionné pour la visibilité 'group'.";
+            redirect('community.php');
         }
+
+        // Créer le post
+        $result = createCommunityPost($user_id, $content, $visibility, $group_id, $post_type, $reference_id);
+        
+        if ($result) {
+            error_log("Post créé avec succès");
+            $_SESSION['success'] = "Votre post a été publié avec succès.";
+        } else {
+            error_log("Échec de la création du post");
+            $_SESSION['error'] = "Une erreur est survenue lors de la publication du post.";
+        }
+    } catch (Exception $e) {
+        error_log("Erreur lors de la création du post: " . $e->getMessage());
+        $_SESSION['error'] = "Une erreur est survenue lors de la publication du post.";
     }
-    
-    // Rediriger vers la page appropriée
-    if ($visibility === 'group' && $group_id) {
-        redirect("group.php?id=$group_id");
-    } else {
-        redirect('community.php');
-    }
-} 
+}
+
+redirect('community.php'); 
