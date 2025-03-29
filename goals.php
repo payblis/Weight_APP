@@ -443,9 +443,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'leave_program' && isset($_GET
                                             <i class="fas fa-info-circle me-1"></i>
                                             <?php 
                                             if ($current_goal['target_weight'] < $latest_weight['weight']) {
-                                                echo 'Pour atteindre votre objectif de perte de poids, vous devez perdre environ ' . number_format(abs($daily_loss_needed), 2) . ' kg par jour.';
+                                                $remaining_weight = $latest_weight['weight'] - $current_goal['target_weight'];
+                                                $daily_grams = round(($remaining_weight / $remaining_days) * 1000);
+                                                echo 'Pour atteindre votre objectif de perte de poids, vous devez perdre environ ' . $daily_grams . ' grammes par jour.';
                                             } else {
-                                                echo 'Pour atteindre votre objectif de prise de poids, vous devez prendre environ ' . number_format($daily_loss_needed, 2) . ' kg par jour.';
+                                                $remaining_weight = $current_goal['target_weight'] - $latest_weight['weight'];
+                                                $daily_grams = round(($remaining_weight / $remaining_days) * 1000);
+                                                echo 'Pour atteindre votre objectif de prise de poids, vous devez prendre environ ' . $daily_grams . ' grammes par jour.';
                                             }
                                             ?>
                                             <br>
