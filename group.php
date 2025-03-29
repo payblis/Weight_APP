@@ -96,12 +96,45 @@ $posts = fetchAll($sql, [$group_id]);
                     <div>
                         <?php if (isGroupAdmin($group_id, $user_id)): ?>
                             <span class="badge bg-primary me-2">Admin</span>
+                            <button type="button" class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#inviteUserModal">
+                                <i class="fas fa-user-plus me-1"></i>Inviter
+                            </button>
                         <?php endif; ?>
                         <form method="POST" class="d-inline">
                             <input type="hidden" name="action" value="leave">
                             <input type="hidden" name="group_id" value="<?php echo $group_id; ?>">
                             <button type="submit" class="btn btn-outline-danger">
                                 <i class="fas fa-sign-out-alt me-1"></i>Quitter le groupe
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal d'invitation d'utilisateur -->
+        <div class="modal fade" id="inviteUserModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Inviter un utilisateur</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form action="invite-user.php" method="POST">
+                            <input type="hidden" name="group_id" value="<?php echo $group_id; ?>">
+                            <div class="mb-3">
+                                <label for="user_search" class="form-label">Rechercher un utilisateur</label>
+                                <input type="text" class="form-control" id="user_search" placeholder="Nom d'utilisateur...">
+                            </div>
+                            <div id="user_results" class="list-group mb-3" style="max-height: 200px; overflow-y: auto;">
+                                <!-- Les résultats de recherche seront affichés ici -->
+                            </div>
+                            <div id="selected_users" class="mb-3">
+                                <!-- Les utilisateurs sélectionnés seront affichés ici -->
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="submit_invites" disabled>
+                                <i class="fas fa-paper-plane me-1"></i>Envoyer les invitations
                             </button>
                         </form>
                     </div>
@@ -358,6 +391,70 @@ $posts = fetchAll($sql, [$group_id]);
                             .querySelector('.comments-count');
                         countSpan.textContent = data.count;
                     });
+            }
+
+            const userSearch = document.getElementById('user_search');
+            const userResults = document.getElementById('user_results');
+            const selectedUsers = document.getElementById('selected_users');
+            const submitInvites = document.getElementById('submit_invites');
+            let selectedUserIds = new Set();
+
+            // Recherche d'utilisateurs
+            userSearch.addEventListener('input', function() {
+                const query = this.value.trim();
+                if (query.length < 2) {
+                    userResults.innerHTML = '';
+                    return;
+                }
+
+                fetch(`search-users.php?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        userResults.innerHTML = data.users
+                            .filter(user => !selectedUserIds.has(user.id))
+                            .map(user => `
+                                <button type="button" class="list-group-item list-group-item-action" 
+                                        data-user-id="${user.id}" data-username="${user.username}">
+                                    <div class="d-flex align-items-center">
+                                        <img src="${user.avatar || 'assets/images/default-avatar.png'}" 
+                                             class="rounded-circle me-2" 
+                                             width="32" 
+                                             height="32" 
+                                             alt="Avatar">
+                                        <div>
+                                            <h6 class="mb-0">${user.username}</h6>
+                                        </div>
+                                    </div>
+                                </button>
+                            `).join('');
+
+                        // Ajouter les événements de clic sur les résultats
+                        userResults.querySelectorAll('button').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const userId = this.dataset.userId;
+                                const username = this.dataset.username;
+                                
+                                if (!selectedUserIds.has(userId)) {
+                                    selectedUserIds.add(userId);
+                                    selectedUsers.innerHTML += `
+                                        <div class="badge bg-primary me-2 mb-2">
+                                            ${username}
+                                            <input type="hidden" name="user_ids[]" value="${userId}">
+                                            <button type="button" class="btn-close ms-1" 
+                                                    onclick="this.parentElement.remove(); 
+                                                            selectedUserIds.delete('${userId}'); 
+                                                            updateSubmitButton();"></button>
+                                        </div>
+                                    `;
+                                    updateSubmitButton();
+                                }
+                            });
+                        });
+                    });
+            });
+
+            function updateSubmitButton() {
+                submitInvites.disabled = selectedUserIds.size === 0;
             }
         });
     </script>

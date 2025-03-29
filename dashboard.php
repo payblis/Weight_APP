@@ -182,7 +182,45 @@ $exercise_suggestions = fetchAll($sql, [$user_id]);
 
 // Récupérer les notifications de repas
 $meal_notifications = checkMealNotifications($user_id);
+
+// Section des invitations de groupe
+$pending_invitations = getUserPendingInvitations($user_id);
+if (!empty($pending_invitations)):
 ?>
+<div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">
+            <i class="fas fa-envelope me-2"></i>Invitations de groupe
+        </h5>
+    </div>
+    <div class="card-body">
+        <?php foreach ($pending_invitations as $invitation): ?>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h6 class="mb-1">
+                        <i class="fas fa-users me-2"></i>
+                        <?php echo htmlspecialchars($invitation['group_name']); ?>
+                    </h6>
+                    <small class="text-muted">
+                        Invité par <?php echo htmlspecialchars($invitation['invited_by_name']); ?>
+                    </small>
+                </div>
+                <div>
+                    <form method="POST" action="handle-invitation.php" class="d-inline">
+                        <input type="hidden" name="invitation_id" value="<?php echo $invitation['id']; ?>">
+                        <button type="submit" name="action" value="accept" class="btn btn-sm btn-success me-2">
+                            <i class="fas fa-check me-1"></i>Accepter
+                        </button>
+                        <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger">
+                            <i class="fas fa-times me-1"></i>Refuser
+                        </button>
+                    </form>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>

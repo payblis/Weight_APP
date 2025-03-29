@@ -1351,3 +1351,112 @@ function getCommunityPosts($user_id, $limit = 20) {
     
     return fetchAll($sql, [$user_id, $limit]);
 }
+
+/**
+ * Invite un utilisateur à rejoindre un groupe
+ * @param int $group_id ID du groupe
+ * @param int $invited_by ID de l'utilisateur qui invite
+ * @param int $invited_user_id ID de l'utilisateur invité
+ * @return bool
+ */
+function inviteUserToGroup($group_id, $invited_by, $invited_user_id) {
+    // Vérifier si l'invitant est admin du groupe
+    if (!isGroupAdmin($group_id, $invited_by)) {
+        error_log("Tentative d'invitation par un non-admin (User ID: $invited_by, Group ID: $group_id)");
+        return false;
+    }
+    
+    // Vérifier si l'utilisateur est déjà membre du groupe
+    if (isGroupMember($group_id, $invited_user_id)) {
+        error_log("Tentative d'invitation d'un membre existant (User ID: $invited_user_id, Group ID: $group_id)");
+        return false;
+    }
+    
+    // Vérifier si une invitation est déjà en attente
+    $sql = "SELECT id FROM group_invitations 
+            WHERE group_id = ? AND invited_user_id = ? AND status = 'pending'";
+    if (fetchOne($sql, [$group_id, $invited_user_id])) {
+        error_log("Invitation déjà en attente (User ID: $invited_user_id, Group ID: $group_id)");
+        return false;
+    }
+    
+    // Créer l'invitation
+    $sql = "INSERT INTO group_invitations (group_id, invited_by, invited_user_id, expires_at) 
+            VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))";
+    return insert($sql, [$group_id, $invited_by, $invited_user_id]);
+}
+
+/**
+ * Accepte une invitation à rejoindre un groupe
+ * @param int $invitation_id ID de l'invitation
+ * @param int $user_id ID de l'utilisateur qui accepte
+ * @return bool
+ */
+function acceptGroupInvitation($invitation_id, $user_id) {
+    // Récupérer les informations de l'invitation
+    $sql = "SELECT * FROM group_invitations WHERE id = ? AND invited_user_id = ? AND status = 'pending'";
+    $invitation = fetchOne($sql, [$invitation_id, $user_id]);
+    
+    if (!$invitation) {
+        error_log("Tentative d'acceptation d'une invitation invalide (Invitation ID: $invitation_id, User ID: $user_id)");
+        return false;
+    }
+    
+    // Vérifier si l'invitation n'a pas expiré
+    if (strtotime($invitation['expires_at']) < time()) {
+        error_log("Tentative d'acceptation d'une invitation expirée (Invitation ID: $invitation_id)");
+        return false;
+    }
+    
+    try {
+        // Démarrer la transaction
+        $pdo->beginTransaction();
+        
+        // Ajouter l'utilisateur au groupe
+        $sql = "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'member')";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$invitation['group_id'], $user_id]);
+        
+        // Mettre à jour le statut de l'invitation
+        $sql = "UPDATE group_invitations SET status = 'accepted' WHERE id = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$invitation_id]);
+        
+        // Valider la transaction
+        $pdo->commit();
+        return true;
+    } catch (Exception $e) {
+        // En cas d'erreur, annuler la transaction
+        $pdo->rollBack();
+        error_log("Erreur lors de l'acceptation de l'invitation : " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Rejette une invitation à rejoindre un groupe
+ * @param int $invitation_id ID de l'invitation
+ * @param int $user_id ID de l'utilisateur qui rejette
+ * @return bool
+ */
+function rejectGroupInvitation($invitation_id, $user_id) {
+    $sql = "UPDATE group_invitations 
+            SET status = 'rejected' 
+            WHERE id = ? AND invited_user_id = ? AND status = 'pending'";
+    return execute($sql, [$invitation_id, $user_id]);
+}
+
+/**
+ * Récupère les invitations en attente d'un utilisateur
+ * @param int $user_id ID de l'utilisateur
+ * @return array Liste des invitations
+ */
+function getUserPendingInvitations($user_id) {
+    $sql = "SELECT gi.*, cg.name as group_name, u.username as invited_by_name 
+            FROM group_invitations gi
+            JOIN community_groups cg ON gi.group_id = cg.id
+            JOIN users u ON gi.invited_by = u.id
+            WHERE gi.invited_user_id = ? AND gi.status = 'pending'
+            ORDER BY gi.created_at DESC";
+    return fetchAll($sql, [$user_id]);
+}
