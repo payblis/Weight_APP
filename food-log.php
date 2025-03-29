@@ -16,21 +16,6 @@ $user_id = $_SESSION['user_id'];
 $sql = "SELECT * FROM users WHERE id = ?";
 $user = fetchOne($sql, [$user_id]);
 
-// Calculer la recommandation d'hydratation
-$water_goal = calculateWaterGoal($user);
-if (!$user['water_goal']) {
-    // Mettre à jour le water_goal de l'utilisateur
-    $sql = "UPDATE users SET water_goal = ? WHERE id = ?";
-    update($sql, [$water_goal, $user_id]);
-    $user['water_goal'] = $water_goal;
-}
-
-// Récupérer la consommation d'eau du jour
-$sql = "SELECT SUM(amount) as total_amount FROM water_logs WHERE user_id = ? AND log_date = ?";
-$water_log = fetchOne($sql, [$user_id, $selected_date]);
-$water_consumed = $water_log['total_amount'] ?? 0;
-$water_percentage = $water_goal > 0 ? min(100, ($water_consumed / $water_goal) * 100) : 0;
-
 // Vérifier si l'utilisateur est un administrateur
 $sql = "SELECT role_id FROM users WHERE id = ?";
 $user_role = fetchOne($sql, [$user_id]);
@@ -1177,40 +1162,6 @@ function updateMealTotals($meal_id) {
                             </table>
                         </div>
                     <?php endif; ?>
-                </div>
-            </div>
-
-            <!-- Après la section des repas -->
-            <div class="col-md-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-tint me-2"></i>Hydratation
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <h6>Objectif quotidien : <?php echo number_format($user['water_goal'], 1); ?> L</h6>
-                            <div class="progress mb-2">
-                                <div class="progress-bar bg-info" role="progressbar" 
-                                     style="width: <?php echo $water_percentage; ?>%"
-                                     aria-valuenow="<?php echo $water_percentage; ?>" 
-                                     aria-valuemin="0" 
-                                     aria-valuemax="100">
-                                    <?php echo number_format($water_consumed, 1); ?> L
-                                </div>
-                            </div>
-                            <small class="text-muted">
-                                <?php echo number_format($water_consumed, 1); ?> L sur <?php echo number_format($user['water_goal'], 1); ?> L
-                            </small>
-                        </div>
-                        <form action="water-log.php" method="POST" class="d-flex gap-2">
-                            <input type="number" name="amount" class="form-control" step="0.1" min="0" max="<?php echo $user['water_goal']; ?>" placeholder="Quantité en L" required>
-                            <button type="submit" class="btn btn-info text-white">
-                                <i class="fas fa-plus"></i> Ajouter
-                            </button>
-                        </form>
-                    </div>
                 </div>
             </div>
         <?php endif; ?>

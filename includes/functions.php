@@ -866,7 +866,7 @@ function calculateMacroRatios($current_weight, $target_weight, $active_program, 
 
 /**
  * Calcule la recommandation d'hydratation quotidienne en litres
- * Formule : (poids * 0.033) + (activité * 0.5) + (taille * 0.01)
+ * Formule : (poids * 0.025) + (activité * 0.3) + (taille * 0.008)
  * @param array $user Les données de l'utilisateur
  * @return float La quantité d'eau recommandée en litres
  */
@@ -880,10 +880,10 @@ function calculateWaterGoal($user) {
         return 2.5; // Valeur par défaut si les données sont manquantes
     }
     
-    // Facteurs de base
-    $base_factor = 0.033; // 33ml par kg de poids
-    $activity_factor = 0.5; // 500ml par niveau d'activité
-    $height_factor = 0.01; // 10ml par cm de taille
+    // Facteurs de base ajustés
+    $base_factor = 0.025; // 25ml par kg de poids (réduit de 33ml)
+    $activity_factor = 0.3; // 300ml par niveau d'activité (réduit de 500ml)
+    $height_factor = 0.008; // 8ml par cm de taille (réduit de 10ml)
     
     // Calcul de base basé sur le poids
     $water_goal = $user['weight'] * $base_factor;
@@ -928,8 +928,8 @@ function calculateWaterGoal($user) {
         }
     }
     
-    // S'assurer que la valeur est au moins 1.5L et au maximum 4L
-    $water_goal = max(1.5, min(4, $water_goal));
+    // S'assurer que la valeur est au moins 2L et au maximum 3.5L
+    $water_goal = max(2, min(3.5, $water_goal));
     error_log("Valeur finale après limites : " . $water_goal . "L");
     
     // Arrondir à 1 décimale

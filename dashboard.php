@@ -29,12 +29,11 @@ error_log("Âge : " . ($user['age'] ?? 'non défini'));
 
 // Calculer la recommandation d'hydratation
 $water_goal = calculateWaterGoal($user);
-if (!$user['water_goal']) {
-    // Mettre à jour le water_goal de l'utilisateur
-    $sql = "UPDATE users SET water_goal = ? WHERE id = ?";
-    update($sql, [$water_goal, $user_id]);
-    $user['water_goal'] = $water_goal;
-}
+
+// Mettre à jour le water_goal de l'utilisateur
+$sql = "UPDATE users SET water_goal = ? WHERE id = ?";
+update($sql, [$water_goal, $user_id]);
+$user['water_goal'] = $water_goal;
 
 // Récupérer la consommation d'eau du jour
 $sql = "SELECT SUM(amount) as total_amount FROM water_logs WHERE user_id = ? AND log_date = CURDATE()";
