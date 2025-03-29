@@ -516,16 +516,38 @@ $exercise_suggestions = fetchAll($sql, [$user_id]);
                 <div class="card-body">
                     <div class="text-center mb-4">
                         <h6>Objectif quotidien : <?php echo number_format($user['water_goal'], 1); ?> L</h6>
-                        <div class="water-bottle-container position-relative" style="height: 300px; width: 150px; margin: 0 auto;">
-                            <!-- Bouteille d'eau -->
-                            <div class="water-bottle" style="position: absolute; bottom: 0; left: 0; right: 0; height: 100%; background: #e9ecef; border-radius: 20px; overflow: hidden;">
+                        <div class="water-bottle-container position-relative" style="height: 400px; width: 200px; margin: 0 auto;">
+                            <!-- Bouteille d'eau SVG -->
+                            <svg viewBox="0 0 200 400" class="water-bottle" style="width: 100%; height: 100%;">
+                                <!-- Corps de la bouteille -->
+                                <path d="M60,50 L80,50 L90,20 L110,20 L120,50 L140,50 C140,50 145,60 145,70 L145,350 C145,360 140,370 140,370 L60,370 C60,370 55,360 55,350 L55,70 C55,60 60,50 60,50" 
+                                      fill="none" stroke="#0dcaf0" stroke-width="3"/>
+                                
                                 <!-- Niveau d'eau -->
-                                <div class="water-level" style="position: absolute; bottom: 0; left: 0; right: 0; height: <?php echo $water_percentage; ?>%; background: rgba(13, 202, 240, 0.5); transition: height 0.3s ease;"></div>
-                                <!-- Contour de la bouteille -->
-                                <div class="bottle-outline" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 3px solid #0dcaf0; border-radius: 20px;"></div>
-                            </div>
+                                <rect x="60" y="<?php echo 370 - ($water_percentage * 3.2); ?>" 
+                                      width="80" height="<?php echo $water_percentage * 3.2; ?>" 
+                                      fill="rgba(13, 202, 240, 0.5)" rx="5"/>
+                                
+                                <!-- Marqueurs de niveau -->
+                                <?php
+                                $markers = [25, 50, 75, 100];
+                                foreach ($markers as $marker):
+                                    $y = 370 - ($marker * 3.2);
+                                ?>
+                                <line x1="55" y1="<?php echo $y; ?>" x2="145" y2="<?php echo $y; ?>" 
+                                      stroke="#0dcaf0" stroke-width="2" stroke-dasharray="5,5"/>
+                                <text x="150" y="<?php echo $y + 5; ?>" fill="#0dcaf0" font-size="12">
+                                    <?php echo $marker; ?>%
+                                </text>
+                                <?php endforeach; ?>
+                                
+                                <!-- Goulot de la bouteille -->
+                                <path d="M85,20 L90,10 L110,10 L115,20" 
+                                      fill="none" stroke="#0dcaf0" stroke-width="3"/>
+                            </svg>
+                            
                             <!-- Affichage de la quantité -->
-                            <div class="water-amount" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: bold; color: #0dcaf0;">
+                            <div class="water-amount" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: bold; color: #0dcaf0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
                                 <?php echo number_format($water_consumed, 1); ?> L
                             </div>
                         </div>
