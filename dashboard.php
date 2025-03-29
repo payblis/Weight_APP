@@ -199,14 +199,54 @@ $meal_notifications = checkMealNotifications($user_id);
 
     <!-- Contenu principal -->
     <div class="container py-4">
-        <?php if (!$current_goal): ?>
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                <strong>Important !</strong> Vous n'avez pas encore défini d'objectif de poids. 
-                <a href="goals.php" class="alert-link">Définissez un objectif</a> pour suivre votre progression et recevoir des recommandations personnalisées.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php endif; ?>
+        <!-- Section des notifications importantes -->
+        <div class="notifications-section mb-4">
+            <?php if (!$current_goal): ?>
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Important !</strong> Vous n'avez pas encore défini d'objectif de poids. 
+                    <a href="goals.php" class="alert-link">Définissez un objectif</a> pour suivre votre progression et recevoir des recommandations personnalisées.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        <?php foreach ($errors as $error): ?>
+                            <li><?php echo $error; ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($success_message)): ?>
+                <div class="alert alert-success">
+                    <?php echo $success_message; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Section des notifications de repas -->
+        <div class="meal-notifications-section mb-4">
+            <?php
+            $notifications = checkMealNotifications($_SESSION['user_id']);
+            foreach ($notifications as $notification): 
+                $alertClass = $notification['priority'] == 2 ? 'alert-danger' : 'alert-warning';
+                $icon = $notification['priority'] == 2 ? 'exclamation-triangle' : 'bell';
+            ?>
+                <div class="alert <?php echo $alertClass; ?> alert-dismissible fade show meal-notification" 
+                     role="alert"
+                     data-start-time="<?php echo $notification['start_time']; ?>"
+                     data-end-time="<?php echo $notification['end_time']; ?>"
+                     data-priority="<?php echo $notification['priority']; ?>"
+                     data-message="<?php echo htmlspecialchars($notification['message']); ?>">
+                    <i class="fas fa-<?php echo $icon; ?> me-2"></i>
+                    <?php echo $notification['message']; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endforeach; ?>
+        </div>
 
         <!-- En-tête de la page -->
         <div class="row mb-4">
@@ -223,22 +263,6 @@ $meal_notifications = checkMealNotifications($user_id);
                 </a>
             </div>
         </div>
-
-        <?php if (!empty($errors)): ?>
-            <div class="alert alert-danger">
-                <ul class="mb-0">
-                    <?php foreach ($errors as $error): ?>
-                        <li><?php echo $error; ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        <?php endif; ?>
-
-        <?php if (!empty($success_message)): ?>
-            <div class="alert alert-success">
-                <?php echo $success_message; ?>
-            </div>
-        <?php endif; ?>
 
         <!-- Résumé du jour -->
         <div class="row mb-4">
@@ -736,27 +760,6 @@ $meal_notifications = checkMealNotifications($user_id);
                 </div>
             </div>
         </div>
-
-        <!-- Section des notifications -->
-        <div class="notifications-section mb-4">
-            <?php
-            $notifications = checkMealNotifications($_SESSION['user_id']);
-            foreach ($notifications as $notification): 
-                $alertClass = $notification['priority'] == 2 ? 'alert-danger' : 'alert-warning';
-                $icon = $notification['priority'] == 2 ? 'exclamation-triangle' : 'bell';
-            ?>
-                <div class="alert <?php echo $alertClass; ?> alert-dismissible fade show meal-notification" 
-                     role="alert"
-                     data-start-time="<?php echo $notification['start_time']; ?>"
-                     data-end-time="<?php echo $notification['end_time']; ?>"
-                     data-priority="<?php echo $notification['priority']; ?>"
-                     data-message="<?php echo htmlspecialchars($notification['message']); ?>">
-                    <i class="fas fa-<?php echo $icon; ?> me-2"></i>
-                    <?php echo $notification['message']; ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <?php endforeach; ?>
-        </div>
     </div>
 
     <!-- Scripts JavaScript -->
@@ -912,7 +915,7 @@ $meal_notifications = checkMealNotifications($user_id);
                 });
             }
 
-            // Mettre à jour les notifications toutes les minutes
+            // Mettre à jour les notifications immédiatement et toutes les minutes
             updateNotifications();
             setInterval(updateNotifications, 60000);
         });
