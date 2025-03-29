@@ -925,16 +925,22 @@ function checkMealNotifications($user_id) {
     }
     
     // Récupérer les préférences de notifications
-    $sql = "SELECT * FROM notification_preferences WHERE user_id = ?";
+    $sql = "SELECT * FROM notification_preferences WHERE user_id = ? AND is_active = TRUE";
     $preferences = fetchAll($sql, [$user_id]);
     
     error_log("Préférences de notifications trouvées : " . count($preferences));
+    if (count($preferences) > 0) {
+        error_log("Détail des préférences : " . json_encode($preferences));
+    }
     
     foreach ($preferences as $pref) {
         error_log("=== Vérification de la préférence ===");
         error_log("Type de repas : " . $pref['meal_type']);
         error_log("Heure de début : " . $pref['start_time']);
         error_log("Heure de fin : " . $pref['end_time']);
+        error_log("ID de la préférence : " . $pref['id']);
+        error_log("User ID : " . $pref['user_id']);
+        error_log("Is active : " . $pref['is_active']);
         
         // Convertir les heures en objets DateTime pour la comparaison
         $start_time = DateTime::createFromFormat('H:i:s', $pref['start_time']);
