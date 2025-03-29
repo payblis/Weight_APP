@@ -1106,7 +1106,8 @@ function updateMealTotals($meal_id) {
                                                                 data-meal-id="<?php echo $meal['id']; ?>"
                                                                 data-meal-type="<?php echo $meal['meal_type']; ?>"
                                                                 data-calories="<?php echo $meal['total_calories']; ?>"
-                                                                data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>">
+                                                                data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>"
+                                                                onclick="console.log('Partage de repas:', this.dataset);">
                                                             <i class="fas fa-share-alt me-1"></i>Partager
                                                         </button>
                                                         <a href="food-log.php?action=edit&id=<?php echo $meal['id']; ?>" 
@@ -1202,34 +1203,48 @@ function updateMealTotals($meal_id) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($meal_history as $meal): ?>
+                                    <?php if (empty($meals)): ?>
                                         <tr>
-                                            <td><?php echo getMealTypeName($meal['meal_type']); ?></td>
-                                            <td><?php echo $meal['formatted_date']; ?></td>
-                                            <td><?php echo $meal['food_count']; ?> aliments</td>
-                                            <td class="text-end">
-                                                <div class="btn-group">
-                                                    <a href="food-log.php?action=edit&id=<?php echo $meal['id']; ?>" 
-                                                       class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <a href="food-log.php?action=delete&id=<?php echo $meal['id']; ?>" 
-                                                       class="btn btn-sm btn-outline-danger"
-                                                       onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </a>
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-outline-success share-meal-btn"
-                                                            data-meal-id="<?php echo $meal['id']; ?>"
-                                                            data-meal-type="<?php echo $meal['meal_type']; ?>"
-                                                            data-calories="<?php echo $meal['total_calories']; ?>"
-                                                            data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>">
-                                                        <i class="fas fa-share-alt"></i>
-                                                    </button>
-                                                </div>
+                                            <td colspan="8" class="text-center py-4">
+                                                <p class="text-muted mb-0">Aucun repas enregistré</p>
+                                                <small class="text-muted">Commencez à enregistrer vos repas pour suivre votre alimentation</small>
                                             </td>
                                         </tr>
-                                    <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <?php foreach ($meals as $meal): ?>
+                                            <tr>
+                                                <td><?php echo date('d/m/Y', strtotime($meal['log_date'])); ?></td>
+                                                <td><?php echo getMealTypeName($meal['meal_type']); ?></td>
+                                                <td><?php echo $meal['food_count']; ?> aliment(s)</td>
+                                                <td><?php echo number_format($meal['total_calories']); ?> kcal</td>
+                                                <td><?php echo $meal['notes'] ? htmlspecialchars($meal['notes']) : '—'; ?></td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-outline-primary share-meal-btn" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#shareMealModal"
+                                                                data-meal-id="<?php echo $meal['id']; ?>"
+                                                                data-meal-type="<?php echo $meal['meal_type']; ?>"
+                                                                data-calories="<?php echo $meal['total_calories']; ?>"
+                                                                data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>"
+                                                                onclick="console.log('Partage de repas:', this.dataset);">
+                                                            <i class="fas fa-share-alt me-1"></i>Partager
+                                                        </button>
+                                                        <a href="food-log.php?action=edit&id=<?php echo $meal['id']; ?>" 
+                                                           class="btn btn-sm btn-outline-secondary">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <a href="food-log.php?action=delete&id=<?php echo $meal['id']; ?>" 
+                                                           class="btn btn-sm btn-outline-danger"
+                                                           onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -1358,42 +1373,9 @@ function updateMealTotals($meal_id) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Mise à jour automatique des valeurs nutritionnelles lors de la sélection d'un aliment
         document.addEventListener('DOMContentLoaded', function() {
-            const foodSelect = document.getElementById('food_id');
-            const quantityInput = document.getElementById('quantity');
-            const caloriesInput = document.getElementById('custom_calories');
-            const proteinInput = document.getElementById('custom_protein');
-            const carbsInput = document.getElementById('custom_carbs');
-            const fatInput = document.getElementById('custom_fat');
+            console.log('Page chargée, recherche des boutons de partage...');
             
-            if (foodSelect && quantityInput && caloriesInput) {
-                function updateNutrients() {
-                    const selectedOption = foodSelect.options[foodSelect.selectedIndex];
-                    const quantity = parseFloat(quantityInput.value) || 0;
-                    
-                    if (selectedOption && selectedOption.value) {
-                        const calories = parseFloat(selectedOption.dataset.calories) || 0;
-                        const protein = parseFloat(selectedOption.dataset.protein) || 0;
-                        const carbs = parseFloat(selectedOption.dataset.carbs) || 0;
-                        const fat = parseFloat(selectedOption.dataset.fat) || 0;
-                        
-                        caloriesInput.value = Math.round((calories * quantity) / 100);
-                        proteinInput.value = ((protein * quantity) / 100).toFixed(1);
-                        carbsInput.value = ((carbs * quantity) / 100).toFixed(1);
-                        fatInput.value = ((fat * quantity) / 100).toFixed(1);
-                    }
-                }
-                
-                foodSelect.addEventListener('change', updateNutrients);
-                quantityInput.addEventListener('input', updateNutrients);
-                
-                // Initialiser les valeurs
-                updateNutrients();
-            }
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
             // Gestion de la visibilité du post
             const visibilityInputs = document.querySelectorAll('input[name="visibility"]');
             const groupSelect = document.getElementById('group_select');
@@ -1405,12 +1387,24 @@ function updateMealTotals($meal_id) {
             });
 
             // Gestion du bouton de partage
-            document.querySelectorAll('.share-meal-btn').forEach(btn => {
+            const shareButtons = document.querySelectorAll('.share-meal-btn');
+            console.log('Nombre de boutons de partage trouvés:', shareButtons.length);
+            
+            shareButtons.forEach(btn => {
+                console.log('Configuration du bouton:', btn.dataset);
                 btn.addEventListener('click', function() {
+                    console.log('Clic sur le bouton de partage');
                     const mealId = this.dataset.mealId;
                     const mealType = this.dataset.mealType;
                     const calories = this.dataset.calories;
                     const notes = this.dataset.notes;
+                    
+                    console.log('Données du repas:', {
+                        mealId,
+                        mealType,
+                        calories,
+                        notes
+                    });
                     
                     // Mettre à jour les champs du formulaire
                     document.getElementById('share_meal_id').value = mealId;
@@ -1421,6 +1415,11 @@ function updateMealTotals($meal_id) {
                         content += `\nNote: ${notes}`;
                     }
                     document.getElementById('share_content').value = content;
+                    
+                    console.log('Formulaire mis à jour avec:', {
+                        mealId,
+                        content
+                    });
                 });
             });
         });

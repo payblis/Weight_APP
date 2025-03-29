@@ -376,22 +376,35 @@ $programs = fetchAll($sql, []);
                                             <li><i class="fas fa-cheese me-1"></i>Lipides : <?php echo ($program['fat_ratio'] * 100); ?>%</li>
                                         </ul>
                                         
-                                        <button type="button" 
-                                                class="btn btn-info btn-sm" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#viewProgram<?php echo $program['id']; ?>">
-                                            <i class="fas fa-eye me-1"></i>Voir le détail
-                                        </button>
-                                        
-                                        <?php if (!$active_program): ?>
-                                            <form method="post" action="" class="d-inline">
-                                                <input type="hidden" name="action" value="activate">
-                                                <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
-                                                <button type="submit" class="btn btn-success btn-sm">
-                                                    <i class="fas fa-check me-1"></i>Choisir ce programme
-                                                </button>
-                                            </form>
-                                        <?php endif; ?>
+                                        <div class="btn-group">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-primary share-program-btn" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#shareProgramModal"
+                                                    data-program-id="<?php echo $program['id']; ?>"
+                                                    data-program-name="<?php echo htmlspecialchars($program['name']); ?>"
+                                                    data-program-description="<?php echo htmlspecialchars($program['description']); ?>"
+                                                    data-program-type="<?php echo $program['type']; ?>"
+                                                    data-program-calories="<?php echo $program['calorie_adjustment']; ?>"
+                                                    onclick="console.log('Partage de programme:', this.dataset);">
+                                                <i class="fas fa-share-alt me-1"></i>Partager
+                                            </button>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-info" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#viewProgram<?php echo $program['id']; ?>">
+                                                <i class="fas fa-eye me-1"></i>Voir le détail
+                                            </button>
+                                            <?php if (!$active_program): ?>
+                                                <form method="post" action="" class="d-inline">
+                                                    <input type="hidden" name="action" value="activate">
+                                                    <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
+                                                    <button type="submit" class="btn btn-sm btn-success">
+                                                        <i class="fas fa-check me-1"></i>Choisir ce programme
+                                                    </button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -486,6 +499,8 @@ $programs = fetchAll($sql, []);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Page chargée, recherche des boutons de partage...');
+        
         // Gestion de la visibilité du post
         const visibilityInputs = document.querySelectorAll('input[name="visibility"]');
         const groupSelect = document.getElementById('group_select');
@@ -497,23 +512,41 @@ $programs = fetchAll($sql, []);
         });
 
         // Gestion du bouton de partage
-        document.querySelectorAll('.share-program-btn').forEach(btn => {
+        const shareButtons = document.querySelectorAll('.share-program-btn');
+        console.log('Nombre de boutons de partage trouvés:', shareButtons.length);
+        
+        shareButtons.forEach(btn => {
+            console.log('Configuration du bouton:', btn.dataset);
             btn.addEventListener('click', function() {
+                console.log('Clic sur le bouton de partage');
                 const programId = this.dataset.programId;
                 const programName = this.dataset.programName;
                 const programDescription = this.dataset.programDescription;
-                const programDuration = this.dataset.programDuration;
-                const programGoal = this.dataset.programGoal;
+                const programType = this.dataset.programType;
+                const programCalories = this.dataset.programCalories;
+                
+                console.log('Données du programme:', {
+                    programId,
+                    programName,
+                    programDescription,
+                    programType,
+                    programCalories
+                });
                 
                 // Mettre à jour les champs du formulaire
                 document.getElementById('share_program_id').value = programId;
                 
                 // Pré-remplir le message
                 const content = `Je viens de rejoindre le programme "${programName}"\n` +
-                              `Objectif: ${programGoal}\n` +
-                              `Durée: ${programDuration} jours\n` +
+                              `Type: ${programType}\n` +
+                              `Ajustement calorique: ${programCalories}%\n` +
                               `Description: ${programDescription}`;
                 document.getElementById('share_content').value = content;
+                
+                console.log('Formulaire mis à jour avec:', {
+                    programId,
+                    content
+                });
             });
         });
     });

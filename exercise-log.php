@@ -502,31 +502,28 @@ foreach ($daily_calories as $date => $calories) {
                                             <td><?php echo number_format($log['calories_burned']); ?> cal</td>
                                             <td><?php echo $log['notes'] ? htmlspecialchars($log['notes']) : '—'; ?></td>
                                             <td>
-                                                <a href="exercise-log.php?edit=<?php echo $log['id']; ?>" class="btn btn-sm btn-outline-primary me-1">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal<?php echo $log['id']; ?>">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                                
-                                                <!-- Modal de confirmation de suppression -->
-                                                <div class="modal fade" id="deleteModal<?php echo $log['id']; ?>" tabindex="-1" aria-labelledby="deleteModalLabel<?php echo $log['id']; ?>" aria-hidden="true">
-                                                    <div class="modal-dialog">
-                                                        <div class="modal-content">
-                                                            <div class="modal-header">
-                                                                <h5 class="modal-title" id="deleteModalLabel<?php echo $log['id']; ?>">Confirmer la suppression</h5>
-                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                            </div>
-                                                            <div class="modal-body">
-                                                                <p>Êtes-vous sûr de vouloir supprimer cet exercice du <?php echo date('d/m/Y', strtotime($log['log_date'])); ?> ?</p>
-                                                                <p class="text-danger"><strong>Cette action est irréversible.</strong></p>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                                <a href="exercise-log.php?delete=<?php echo $log['id']; ?>" class="btn btn-danger">Supprimer</a>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                <div class="btn-group">
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-primary share-exercise-btn" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#shareExerciseModal"
+                                                            data-exercise-id="<?php echo $log['id']; ?>"
+                                                            data-exercise-name="<?php echo htmlspecialchars($log['custom_exercise_name'] ?: $log['exercise_name']); ?>"
+                                                            data-duration="<?php echo $log['duration']; ?>"
+                                                            data-calories="<?php echo $log['calories_burned']; ?>"
+                                                            data-notes="<?php echo htmlspecialchars($log['notes'] ?? ''); ?>"
+                                                            onclick="console.log('Partage d\'exercice:', this.dataset);">
+                                                        <i class="fas fa-share-alt me-1"></i>Partager
+                                                    </button>
+                                                    <a href="exercise-log.php?edit=<?php echo $log['id']; ?>" 
+                                                       class="btn btn-sm btn-outline-secondary">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="exercise-log.php?delete=<?php echo $log['id']; ?>" 
+                                                       class="btn btn-sm btn-outline-danger"
+                                                       onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet exercice ?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -693,40 +690,54 @@ foreach ($daily_calories as $date => $calories) {
     </script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Gestion du partage des exercices
-        document.querySelectorAll('.share-exercise-btn').forEach(btn => {
+        console.log('Page chargée, recherche des boutons de partage...');
+        
+        // Gestion de la visibilité du post
+        const visibilityInputs = document.querySelectorAll('input[name="visibility"]');
+        const groupSelect = document.getElementById('group_select');
+        
+        visibilityInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                groupSelect.style.display = this.value === 'group' ? 'block' : 'none';
+            });
+        });
+
+        // Gestion du bouton de partage
+        const shareButtons = document.querySelectorAll('.share-exercise-btn');
+        console.log('Nombre de boutons de partage trouvés:', shareButtons.length);
+        
+        shareButtons.forEach(btn => {
+            console.log('Configuration du bouton:', btn.dataset);
             btn.addEventListener('click', function() {
+                console.log('Clic sur le bouton de partage');
                 const exerciseId = this.dataset.exerciseId;
                 const exerciseName = this.dataset.exerciseName;
-                const exerciseType = this.dataset.exerciseType;
-                const calories = this.dataset.calories;
                 const duration = this.dataset.duration;
+                const calories = this.dataset.calories;
                 const notes = this.dataset.notes;
                 
-                // Créer un formulaire temporaire pour le partage
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = 'create-post.php';
+                console.log('Données de l\'exercice:', {
+                    exerciseId,
+                    exerciseName,
+                    duration,
+                    calories,
+                    notes
+                });
                 
-                // Ajouter les champs cachés
-                const fields = {
-                    'post_type': 'exercise',
-                    'reference_id': exerciseId,
-                    'reference_type': 'exercise_logs',
-                    'content': `J'ai partagé mon exercice de ${exerciseType} : ${duration} minutes, ${calories} calories brûlées${notes ? ' - ' + notes : ''}`
-                };
+                // Mettre à jour les champs du formulaire
+                document.getElementById('share_exercise_id').value = exerciseId;
                 
-                for (const [name, value] of Object.entries(fields)) {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = name;
-                    input.value = value;
-                    form.appendChild(input);
+                // Pré-remplir le message
+                let content = `Je viens de faire ${exerciseName} pendant ${duration} minutes (${calories} calories brûlées)`;
+                if (notes) {
+                    content += `\nNote: ${notes}`;
                 }
+                document.getElementById('share_content').value = content;
                 
-                // Ajouter le formulaire au document et le soumettre
-                document.body.appendChild(form);
-                form.submit();
+                console.log('Formulaire mis à jour avec:', {
+                    exerciseId,
+                    content
+                });
             });
         });
     });
