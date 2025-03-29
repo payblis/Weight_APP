@@ -16,6 +16,13 @@ $user_id = $_SESSION['user_id'];
 $sql = "SELECT * FROM users WHERE id = ?";
 $user = fetchOne($sql, [$user_id]);
 
+// Debug des données utilisateur
+error_log("Données utilisateur pour le calcul d'eau :");
+error_log("Poids : " . ($user['weight'] ?? 'non défini'));
+error_log("Taille : " . ($user['height'] ?? 'non défini'));
+error_log("Niveau d'activité : " . ($user['activity_level'] ?? 'non défini'));
+error_log("Âge : " . ($user['age'] ?? 'non défini'));
+
 // Calculer la recommandation d'hydratation
 $water_goal = calculateWaterGoal($user);
 if (!$user['water_goal']) {

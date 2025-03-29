@@ -871,8 +871,12 @@ function calculateMacroRatios($current_weight, $target_weight, $active_program, 
  * @return float La quantité d'eau recommandée en litres
  */
 function calculateWaterGoal($user) {
+    // Log des données reçues
+    error_log("Calcul de l'objectif d'eau pour l'utilisateur : " . print_r($user, true));
+    
     // Vérifier si l'utilisateur a les données nécessaires
     if (!isset($user['weight']) || !isset($user['height']) || !isset($user['activity_level'])) {
+        error_log("Données manquantes pour le calcul de l'objectif d'eau");
         return 2.5; // Valeur par défaut si les données sont manquantes
     }
     
@@ -883,6 +887,7 @@ function calculateWaterGoal($user) {
     
     // Calcul de base basé sur le poids
     $water_goal = $user['weight'] * $base_factor;
+    error_log("Base (poids) : " . $water_goal . "L");
     
     // Ajout selon le niveau d'activité
     $activity_level = 0;
@@ -906,21 +911,26 @@ function calculateWaterGoal($user) {
             $activity_level = 3; // Valeur par défaut
     }
     $water_goal += $activity_level * $activity_factor;
+    error_log("Après activité (niveau " . $activity_level . ") : " . $water_goal . "L");
     
     // Ajout selon la taille
     $water_goal += $user['height'] * $height_factor;
+    error_log("Après taille : " . $water_goal . "L");
     
     // Ajustement selon l'âge
     if (isset($user['age'])) {
         if ($user['age'] < 18) {
             $water_goal *= 0.9; // 10% moins pour les moins de 18 ans
+            error_log("Ajustement -18 ans : " . $water_goal . "L");
         } elseif ($user['age'] > 65) {
             $water_goal *= 0.95; // 5% moins pour les plus de 65 ans
+            error_log("Ajustement +65 ans : " . $water_goal . "L");
         }
     }
     
     // S'assurer que la valeur est au moins 1.5L et au maximum 4L
     $water_goal = max(1.5, min(4, $water_goal));
+    error_log("Valeur finale après limites : " . $water_goal . "L");
     
     // Arrondir à 1 décimale
     return round($water_goal, 1);
