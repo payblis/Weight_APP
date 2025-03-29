@@ -18,6 +18,7 @@ $user = fetchOne($sql, [$user_id]);
 
 // Initialiser les variables
 $food_name = '';
+$category_id = 7; // Catégorie par défaut : "Autres"
 $calories = '';
 $protein = '';
 $carbs = '';
@@ -34,6 +35,7 @@ $api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_food') {
     // Récupérer et nettoyer les données du formulaire
     $food_name = sanitizeInput($_POST['food_name'] ?? '');
+    $category_id = (int)($_POST['category_id'] ?? 7);
     $calories = sanitizeInput($_POST['calories'] ?? '');
     $protein = sanitizeInput($_POST['protein'] ?? '');
     $carbs = sanitizeInput($_POST['carbs'] ?? '');
@@ -62,9 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     // Si aucune erreur, ajouter l'aliment
     if (empty($errors)) {
-        $sql = "INSERT INTO foods (name, calories, protein, carbs, fat, created_at) 
-                VALUES (?, ?, ?, ?, ?, NOW())";
-        $result = insert($sql, [$food_name, $calories, $protein, $carbs, $fat]);
+        $sql = "INSERT INTO foods (name, category_id, calories, protein, carbs, fat, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, NOW())";
+        $result = insert($sql, [$food_name, $category_id, $calories, $protein, $carbs, $fat]);
         
         if ($result) {
             $success_message = "L'aliment a été ajouté avec succès !";
@@ -93,10 +95,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         if ($nutritional_data) {
             // Ajouter l'aliment à la base de données
-            $sql = "INSERT INTO foods (name, calories, protein, carbs, fat, created_at) 
-                    VALUES (?, ?, ?, ?, ?, NOW())";
+            $sql = "INSERT INTO foods (name, category_id, calories, protein, carbs, fat, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, NOW())";
             $result = insert($sql, [
                 $food_name,
+                7, // Catégorie par défaut : "Autres"
                 $nutritional_data['calories'],
                 $nutritional_data['protein'],
                 $nutritional_data['carbs'],
@@ -380,6 +383,17 @@ function getChatGPTNutritionalData($food_name, $api_key) {
                         <div class="mb-3">
                             <label for="food_name" class="form-label">Nom de l'aliment</label>
                             <input type="text" class="form-control" id="food_name" name="food_name" value="<?php echo htmlspecialchars($food_name); ?>" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="category_id" class="form-label">Catégorie</label>
+                            <select class="form-select" id="category_id" name="category_id">
+                                <?php foreach ($categories as $category): ?>
+                                    <option value="<?php echo $category['id']; ?>" <?php echo $category_id === $category['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($category['name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         
                         <div class="mb-3">
