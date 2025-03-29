@@ -1519,3 +1519,15 @@ function deleteExercise($exercise_id, $user_id) {
         return false;
     }
 }
+
+/**
+ * Vérifie si un utilisateur a déjà liké un post
+ * @param int $post_id ID du post
+ * @param int $user_id ID de l'utilisateur
+ * @return bool True si l'utilisateur a liké le post, false sinon
+ */
+function isPostLiked($post_id, $user_id) {
+    $sql = "SELECT COUNT(*) as count FROM post_likes WHERE post_id = ? AND user_id = ?";
+    $result = fetchOne($sql, [$post_id, $user_id]);
+    return $result['count'] > 0;
+}
