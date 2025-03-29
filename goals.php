@@ -166,7 +166,11 @@ $daily_loss_needed = 0;
 $completion_percentage = 0;
 
 if ($current_goal && $latest_weight) {
-    $start_weight = $latest_weight['weight'];
+    // Récupérer le poids initial (le plus ancien poids enregistré depuis la création de l'objectif)
+    $sql = "SELECT weight FROM weight_logs WHERE user_id = ? AND log_date >= ? ORDER BY log_date ASC LIMIT 1";
+    $start_weight_log = fetchOne($sql, [$user_id, $current_goal['created_at']]);
+    $start_weight = $start_weight_log ? $start_weight_log['weight'] : $latest_weight['weight'];
+    
     $weight_diff = $start_weight - $current_goal['target_weight'];
     $total_days = (strtotime($current_goal['target_date']) - strtotime($current_goal['created_at'])) / (60 * 60 * 24);
     $elapsed_days = (time() - strtotime($current_goal['created_at'])) / (60 * 60 * 24);
