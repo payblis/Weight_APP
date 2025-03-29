@@ -2,6 +2,10 @@
 // Fichier de navigation commun à inclure dans toutes les pages
 // Détermine quelle page est active
 $current_page = basename($_SERVER['PHP_SELF']);
+
+if (!isset($_SESSION)) {
+    session_start();
+}
 ?>
 <!-- Barre de navigation -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -17,14 +21,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <!-- Tableau de bord -->
                 <li class="nav-item">
                     <a class="nav-link <?php echo $current_page === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">
-                        <i class="fas fa-tachometer-alt me-1"></i>Tableau de bord
+                        <i class="fas fa-home me-1"></i>Tableau de bord
                     </a>
                 </li>
                 
                 <!-- Menu Suivi -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?php echo in_array($current_page, ['weight-log.php', 'calorie-history.php', 'reports.php']) ? 'active' : ''; ?>" href="#" id="suiviDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-chart-line me-1"></i>Suivi
+                        <i class="fas fa-weight me-1"></i>Suivi
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="suiviDropdown">
                         <li>
@@ -106,19 +110,26 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         </li>
                     </ul>
                 </li>
+                
+                <!-- Menu Communauté -->
+                <li class="nav-item">
+                    <a class="nav-link" href="community.php">
+                        <i class="fas fa-users me-1"></i>Communauté
+                    </a>
+                </li>
             </ul>
             
             <!-- Menu utilisateur -->
             <ul class="navbar-nav">
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-user-circle me-1"></i><?php echo htmlspecialchars($user['username']); ?>
+                        <i class="fas fa-user-circle me-1"></i><?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                        <li><a class="dropdown-item <?php echo $current_page === 'profile.php' ? 'active' : ''; ?>" href="profile.php"><i class="fas fa-id-card me-1"></i>Profil</a></li>
+                        <li><a class="dropdown-item <?php echo $current_page === 'profile.php' ? 'active' : ''; ?>" href="profile.php"><i class="fas fa-user-edit me-1"></i>Profil</a></li>
                         <li><a class="dropdown-item <?php echo $current_page === 'settings.php' ? 'active' : ''; ?>" href="settings.php"><i class="fas fa-cog me-1"></i>Paramètres</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt me-1"></i>Déconnexion</a></li>
+                        <li><a class="dropdown-item text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-1"></i>Déconnexion</a></li>
                     </ul>
                 </li>
             </ul>

@@ -1180,15 +1180,26 @@ function updateMealTotals($meal_id) {
                                             <td><?php echo getMealTypeName($meal['meal_type']); ?></td>
                                             <td><?php echo $meal['formatted_date']; ?></td>
                                             <td><?php echo $meal['food_count']; ?> aliments</td>
-                                            <td>
-                                                <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" 
-                                                   class="btn btn-sm btn-danger" 
-                                                   onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?');">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
+                                            <td class="text-end">
+                                                <div class="btn-group">
+                                                    <a href="food-log.php?action=edit&id=<?php echo $meal['id']; ?>" 
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="food-log.php?action=delete&id=<?php echo $meal['id']; ?>" 
+                                                       class="btn btn-sm btn-outline-danger"
+                                                       onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-success share-meal-btn"
+                                                            data-meal-id="<?php echo $meal['id']; ?>"
+                                                            data-meal-type="<?php echo $meal['meal_type']; ?>"
+                                                            data-calories="<?php echo $meal['total_calories']; ?>"
+                                                            data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>">
+                                                        <i class="fas fa-share-alt"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -1303,6 +1314,43 @@ function updateMealTotals($meal_id) {
                 // Initialiser les valeurs
                 updateNutrients();
             }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Gestion du partage des repas
+            document.querySelectorAll('.share-meal-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const mealId = this.dataset.mealId;
+                    const mealType = this.dataset.mealType;
+                    const calories = this.dataset.calories;
+                    const notes = this.dataset.notes;
+                    
+                    // Créer un formulaire temporaire pour le partage
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'create-post.php';
+                    
+                    // Ajouter les champs cachés
+                    const fields = {
+                        'post_type': 'meal',
+                        'reference_id': mealId,
+                        'reference_type': 'meals',
+                        'content': `J'ai partagé mon ${mealType} de ${calories} calories${notes ? ' : ' + notes : ''}`
+                    };
+                    
+                    for (const [name, value] of Object.entries(fields)) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = name;
+                        input.value = value;
+                        form.appendChild(input);
+                    }
+                    
+                    // Ajouter le formulaire au document et le soumettre
+                    document.body.appendChild(form);
+                    form.submit();
+                });
+            });
         });
     </script>
 </body>

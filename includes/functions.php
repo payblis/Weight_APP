@@ -1020,3 +1020,295 @@ function getMealTypeLabel($meal_type) {
     
     return $labels[$meal_type] ?? $meal_type;
 }
+
+/**
+ * Crée un post communautaire
+ * @param int $user_id ID de l'utilisateur
+ * @param string $post_type Type de post (meal, exercise, program, goal, message)
+ * @param string $content Contenu du post
+ * @param int|null $reference_id ID de référence (meal_id, exercise_id, etc.)
+ * @param string|null $reference_type Type de référence
+ * @return bool
+ */
+function createCommunityPost($user_id, $post_type, $content, $reference_id = null, $reference_type = null, $visibility = 'public', $group_id = null) {
+    // Vérifier si le post est pour un groupe et si l'utilisateur en est membre
+    if ($visibility === 'group' && $group_id) {
+        if (!isGroupMember($group_id, $user_id)) {
+            return false;
+        }
+    }
+    
+    $sql = "INSERT INTO community_posts (user_id, post_type, content, reference_id, reference_type, visibility, group_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)";
+    return insert($sql, [$user_id, $post_type, $content, $reference_id, $reference_type, $visibility, $group_id]);
+}
+
+/**
+ * Ajoute ou supprime un like sur un post
+ * @param int $post_id ID du post
+ * @param int $user_id ID de l'utilisateur
+ * @return array
+ */
+function togglePostLike($post_id, $user_id) {
+    global $db;
+    
+    try {
+        // Vérifier si l'utilisateur a déjà liké le post
+        $sql = "SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$post_id, $user_id]);
+        
+        if ($stmt->rowCount() > 0) {
+            // Supprimer le like
+            $sql = "DELETE FROM post_likes WHERE post_id = ? AND user_id = ?";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$post_id, $user_id]);
+            
+            // Mettre à jour le compteur de likes
+            $sql = "UPDATE community_posts SET likes_count = likes_count - 1 WHERE id = ?";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$post_id]);
+            
+            return ['success' => true, 'likes_count' => getPostLikesCount($post_id), 'action' => 'unliked'];
+        } else {
+            // Ajouter le like
+            $sql = "INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$post_id, $user_id]);
+            
+            // Mettre à jour le compteur de likes
+            $sql = "UPDATE community_posts SET likes_count = likes_count + 1 WHERE id = ?";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$post_id]);
+            
+            return ['success' => true, 'likes_count' => getPostLikesCount($post_id), 'action' => 'liked'];
+        }
+    } catch (PDOException $e) {
+        error_log("Erreur lors du toggle du like : " . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+/**
+ * Ajoute un commentaire à un post
+ * @param int $post_id ID du post
+ * @param int $user_id ID de l'utilisateur
+ * @param string $content Contenu du commentaire
+ * @return array
+ */
+function addComment($post_id, $user_id, $content) {
+    global $db;
+    
+    try {
+        // Ajouter le commentaire
+        $sql = "INSERT INTO post_comments (post_id, user_id, content) VALUES (?, ?, ?)";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$post_id, $user_id, $content]);
+        
+        // Mettre à jour le compteur de commentaires
+        $sql = "UPDATE community_posts SET comments_count = comments_count + 1 WHERE id = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$post_id]);
+        
+        return ['success' => true, 'comments_count' => getPostCommentsCount($post_id)];
+    } catch (PDOException $e) {
+        error_log("Erreur lors de l'ajout du commentaire : " . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+/**
+ * Ajoute ou supprime un abonnement entre utilisateurs
+ * @param int $following_id ID de l'utilisateur à suivre
+ * @param int $follower_id ID de l'utilisateur qui suit
+ * @return array
+ */
+function toggleFollow($following_id, $follower_id) {
+    global $db;
+    
+    try {
+        // Vérifier si l'utilisateur suit déjà
+        $sql = "SELECT id FROM user_follows WHERE follower_id = ? AND following_id = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$follower_id, $following_id]);
+        
+        if ($stmt->rowCount() > 0) {
+            // Supprimer l'abonnement
+            $sql = "DELETE FROM user_follows WHERE follower_id = ? AND following_id = ?";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$follower_id, $following_id]);
+            return ['success' => true, 'action' => 'unfollowed'];
+        } else {
+            // Ajouter l'abonnement
+            $sql = "INSERT INTO user_follows (follower_id, following_id) VALUES (?, ?)";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$follower_id, $following_id]);
+            return ['success' => true, 'action' => 'followed'];
+        }
+    } catch (PDOException $e) {
+        error_log("Erreur lors du toggle de l'abonnement : " . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+/**
+ * Récupère le nombre de likes d'un post
+ * @param int $post_id ID du post
+ * @return int
+ */
+function getPostLikesCount($post_id) {
+    global $db;
+    
+    $sql = "SELECT likes_count FROM community_posts WHERE id = ?";
+    $stmt = $db->prepare($sql);
+    $stmt->execute([$post_id]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    return $result ? $result['likes_count'] : 0;
+}
+
+/**
+ * Récupère le nombre de commentaires d'un post
+ * @param int $post_id ID du post
+ * @return int
+ */
+function getPostCommentsCount($post_id) {
+    global $db;
+    
+    $sql = "SELECT comments_count FROM community_posts WHERE id = ?";
+    $stmt = $db->prepare($sql);
+    $stmt->execute([$post_id]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    return $result ? $result['comments_count'] : 0;
+}
+
+/**
+ * Crée un nouveau groupe
+ * @param int $user_id ID de l'utilisateur qui crée le groupe
+ * @param string $name Nom du groupe
+ * @param string $description Description du groupe
+ * @return bool|int ID du groupe si succès, false sinon
+ */
+function createGroup($user_id, $name, $description) {
+    $sql = "INSERT INTO community_groups (name, description, created_by) VALUES (?, ?, ?)";
+    $result = insert($sql, [$name, $description, $user_id]);
+    
+    if ($result) {
+        $group_id = getLastInsertId();
+        // Ajouter le créateur comme admin du groupe
+        $sql = "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'admin')";
+        insert($sql, [$group_id, $user_id]);
+        return $group_id;
+    }
+    return false;
+}
+
+/**
+ * Ajoute un membre à un groupe
+ * @param int $group_id ID du groupe
+ * @param int $user_id ID de l'utilisateur à ajouter
+ * @param string $role Rôle dans le groupe (admin ou member)
+ * @return bool
+ */
+function addGroupMember($group_id, $user_id, $role = 'member') {
+    $sql = "INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)";
+    return insert($sql, [$group_id, $user_id, $role]);
+}
+
+/**
+ * Retire un membre d'un groupe
+ * @param int $group_id ID du groupe
+ * @param int $user_id ID de l'utilisateur à retirer
+ * @return bool
+ */
+function removeGroupMember($group_id, $user_id) {
+    $sql = "DELETE FROM group_members WHERE group_id = ? AND user_id = ?";
+    return execute($sql, [$group_id, $user_id]);
+}
+
+/**
+ * Vérifie si un utilisateur est membre d'un groupe
+ * @param int $group_id ID du groupe
+ * @param int $user_id ID de l'utilisateur
+ * @return bool
+ */
+function isGroupMember($group_id, $user_id) {
+    $sql = "SELECT COUNT(*) as count FROM group_members WHERE group_id = ? AND user_id = ?";
+    $result = fetchOne($sql, [$group_id, $user_id]);
+    return $result['count'] > 0;
+}
+
+/**
+ * Vérifie si un utilisateur est admin d'un groupe
+ * @param int $group_id ID du groupe
+ * @param int $user_id ID de l'utilisateur
+ * @return bool
+ */
+function isGroupAdmin($group_id, $user_id) {
+    $sql = "SELECT role FROM group_members WHERE group_id = ? AND user_id = ?";
+    $result = fetchOne($sql, [$group_id, $user_id]);
+    return $result && $result['role'] === 'admin';
+}
+
+/**
+ * Récupère les groupes d'un utilisateur
+ * @param int $user_id ID de l'utilisateur
+ * @return array Liste des groupes
+ */
+function getUserGroups($user_id) {
+    $sql = "SELECT g.*, gm.role 
+            FROM community_groups g 
+            JOIN group_members gm ON g.id = gm.group_id 
+            WHERE gm.user_id = ?";
+    return fetchAll($sql, [$user_id]);
+}
+
+/**
+ * Récupère les membres d'un groupe
+ * @param int $group_id ID du groupe
+ * @return array Liste des membres
+ */
+function getGroupMembers($group_id) {
+    $sql = "SELECT u.*, gm.role, gm.joined_at 
+            FROM users u 
+            JOIN group_members gm ON u.id = gm.user_id 
+            WHERE gm.group_id = ?";
+    return fetchAll($sql, [$group_id]);
+}
+
+/**
+ * Modifie la fonction pour récupérer les posts en tenant compte de la visibilité
+ */
+function getCommunityPosts($user_id, $limit = 20) {
+    $sql = "SELECT cp.*, u.username, u.avatar,
+            CASE 
+                WHEN cp.post_type = 'meal' THEN m.total_calories
+                WHEN cp.post_type = 'exercise' THEN el.calories_burned
+                ELSE NULL
+            END as calories,
+            CASE 
+                WHEN cp.post_type = 'meal' THEN m.notes
+                WHEN cp.post_type = 'exercise' THEN el.notes
+                ELSE NULL
+            END as notes,
+            CASE 
+                WHEN cp.post_type = 'program' THEN p.name
+                WHEN cp.post_type = 'goal' THEN g.target_weight
+                ELSE NULL
+            END as reference_name
+            FROM community_posts cp
+            JOIN users u ON cp.user_id = u.id
+            LEFT JOIN meals m ON cp.reference_id = m.id AND cp.post_type = 'meal'
+            LEFT JOIN exercise_logs el ON cp.reference_id = el.id AND cp.post_type = 'exercise'
+            LEFT JOIN programs p ON cp.reference_id = p.id AND cp.post_type = 'program'
+            LEFT JOIN goals g ON cp.reference_id = g.id AND cp.post_type = 'goal'
+            WHERE cp.visibility = 'public' 
+            OR (cp.visibility = 'group' AND cp.group_id IN (
+                SELECT group_id FROM group_members WHERE user_id = ?
+            ))
+            ORDER BY cp.created_at DESC
+            LIMIT ?";
+    
+    return fetchAll($sql, [$user_id, $limit]);
+}

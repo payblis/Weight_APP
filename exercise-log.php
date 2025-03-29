@@ -691,5 +691,44 @@ foreach ($daily_calories as $date => $calories) {
         });
         <?php endif; ?>
     </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gestion du partage des exercices
+        document.querySelectorAll('.share-exercise-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const exerciseId = this.dataset.exerciseId;
+                const exerciseType = this.dataset.exerciseType;
+                const calories = this.dataset.calories;
+                const duration = this.dataset.duration;
+                const notes = this.dataset.notes;
+                
+                // Créer un formulaire temporaire pour le partage
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'create-post.php';
+                
+                // Ajouter les champs cachés
+                const fields = {
+                    'post_type': 'exercise',
+                    'reference_id': exerciseId,
+                    'reference_type': 'exercise_logs',
+                    'content': `J'ai partagé mon exercice de ${exerciseType} : ${duration} minutes, ${calories} calories brûlées${notes ? ' - ' + notes : ''}`
+                };
+                
+                for (const [name, value] of Object.entries(fields)) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+                
+                // Ajouter le formulaire au document et le soumettre
+                document.body.appendChild(form);
+                form.submit();
+            });
+        });
+    });
+    </script>
 </body>
 </html>
