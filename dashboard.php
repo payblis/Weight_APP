@@ -877,19 +877,23 @@ $meal_notifications = checkMealNotifications($user_id);
                 const currentMinutes = timeToMinutes(currentTime);
                 const startMinutes = timeToMinutes(startTime);
                 
-                console.log("Vérification de l'affichage de la notification");
-                console.log("Heure actuelle : " + currentTime);
+                console.log("=== Vérification de l'affichage de la notification ===");
+                console.log("Heure actuelle (locale) : " + currentTime);
                 console.log("Heure de début : " + startTime);
                 console.log("Minutes actuelles depuis minuit : " + currentMinutes);
                 console.log("Minutes de début depuis minuit : " + startMinutes);
+                console.log("Fuseau horaire : " + Intl.DateTimeFormat().resolvedOptions().timeZone);
                 
                 // Si l'heure actuelle est après l'heure de début, afficher la notification
-                return currentMinutes >= startMinutes;
+                const shouldShow = currentMinutes >= startMinutes;
+                console.log("Notification doit être affichée : " + shouldShow);
+                return shouldShow;
             }
 
             // Fonction pour mettre à jour l'affichage des notifications
             function updateNotifications() {
                 const notifications = document.querySelectorAll('.meal-notification');
+                console.log("=== Mise à jour des notifications ===");
                 console.log("Nombre de notifications trouvées : " + notifications.length);
                 
                 notifications.forEach(notification => {
@@ -898,7 +902,7 @@ $meal_notifications = checkMealNotifications($user_id);
                     const priority = parseInt(notification.dataset.priority);
                     const message = notification.dataset.message;
                     
-                    console.log("Traitement de la notification : " + message);
+                    console.log("\nTraitement de la notification : " + message);
                     console.log("Priorité : " + priority);
                     console.log("Heure de début : " + startTime);
                     console.log("Heure de fin : " + endTime);
