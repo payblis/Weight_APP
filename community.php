@@ -54,8 +54,8 @@ $sql = "SELECT cp.*, u.username, u.avatar,
                 'name', p.name,
                 'type', p.type,
                 'description', p.description,
-                'start_date', up.start_date,
-                'end_date', up.end_date
+                'status', up.status,
+                'created_at', up.created_at
             )
             ELSE NULL
         END as additional_info
@@ -250,12 +250,17 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                                                 <strong>Type:</strong> <?php echo htmlspecialchars($program_info['type']); ?>
                                                             </p>
                                                             <p class="mb-2">
+                                                                <strong>Statut:</strong> 
+                                                                <span class="badge <?php echo $program_info['status'] === 'actif' ? 'bg-success' : 'bg-secondary'; ?>">
+                                                                    <?php echo ucfirst($program_info['status']); ?>
+                                                                </span>
+                                                            </p>
+                                                            <p class="mb-2">
                                                                 <strong>Description:</strong> <?php echo htmlspecialchars($program_info['description']); ?>
                                                             </p>
                                                             <p class="mb-0">
-                                                                <strong>Période:</strong> 
-                                                                <?php echo date('d/m/Y', strtotime($program_info['start_date'])); ?> - 
-                                                                <?php echo date('d/m/Y', strtotime($program_info['end_date'])); ?>
+                                                                <strong>Date d'adhésion:</strong> 
+                                                                <?php echo date('d/m/Y', strtotime($program_info['created_at'])); ?>
                                                             </p>
                                                         </div>
                                                     </div>
