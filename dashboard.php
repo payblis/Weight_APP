@@ -876,16 +876,19 @@ $meal_notifications = checkMealNotifications($user_id);
                 const currentTime = formatTime(now);
                 const currentMinutes = timeToMinutes(currentTime);
                 const startMinutes = timeToMinutes(startTime);
+                const endMinutes = timeToMinutes(endTime);
                 
                 console.log("=== Vérification de l'affichage de la notification ===");
                 console.log("Heure actuelle (locale) : " + currentTime);
                 console.log("Heure de début : " + startTime);
+                console.log("Heure de fin : " + endTime);
                 console.log("Minutes actuelles depuis minuit : " + currentMinutes);
                 console.log("Minutes de début depuis minuit : " + startMinutes);
+                console.log("Minutes de fin depuis minuit : " + endMinutes);
                 console.log("Fuseau horaire : " + Intl.DateTimeFormat().resolvedOptions().timeZone);
                 
-                // Si l'heure actuelle est après l'heure de début, afficher la notification
-                const shouldShow = currentMinutes >= startMinutes;
+                // Si l'heure actuelle est après l'heure de début et avant l'heure de fin
+                const shouldShow = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
                 console.log("Notification doit être affichée : " + shouldShow);
                 return shouldShow;
             }
