@@ -36,30 +36,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Récupérer les posts de la communauté
 $sql = "SELECT cp.*, u.username, u.avatar,
+        (SELECT COUNT(*) FROM post_likes WHERE post_id = cp.id) as likes_count,
+        (SELECT COUNT(*) FROM post_comments WHERE post_id = cp.id) as comments_count,
         CASE 
-            WHEN cp.post_type = 'meal' THEN m.total_calories
-            WHEN cp.post_type = 'exercise' THEN el.calories_burned
+            WHEN cp.post_type = 'meal' THEN JSON_OBJECT(
+                'calories', m.total_calories,
+                'foods', (SELECT GROUP_CONCAT(f.name) FROM meal_foods mf JOIN foods f ON mf.food_id = f.id WHERE mf.meal_id = m.id),
+                'notes', m.notes
+            )
+            WHEN cp.post_type = 'exercise' THEN JSON_OBJECT(
+                'name', el.exercise_name,
+                'duration', el.duration,
+                'calories', el.calories_burned,
+                'notes', el.notes
+            )
+            WHEN cp.post_type = 'program' THEN JSON_OBJECT(
+                'name', p.name,
+                'type', p.type,
+                'description', p.description,
+                'start_date', up.start_date,
+                'end_date', up.end_date
+            )
             ELSE NULL
-        END as calories,
-        CASE 
-            WHEN cp.post_type = 'meal' THEN m.notes
-            WHEN cp.post_type = 'exercise' THEN el.notes
-            ELSE NULL
-        END as notes,
-        CASE 
-            WHEN cp.post_type = 'program' THEN p.name
-            WHEN cp.post_type = 'goal' THEN g.target_weight
-            ELSE NULL
-        END as reference_name
+        END as additional_info
         FROM community_posts cp
         JOIN users u ON cp.user_id = u.id
         LEFT JOIN meals m ON cp.reference_id = m.id AND cp.post_type = 'meal'
         LEFT JOIN exercise_logs el ON cp.reference_id = el.id AND cp.post_type = 'exercise'
         LEFT JOIN programs p ON cp.reference_id = p.id AND cp.post_type = 'program'
-        LEFT JOIN goals g ON cp.reference_id = g.id AND cp.post_type = 'goal'
+        LEFT JOIN user_programs up ON cp.reference_id = up.program_id AND cp.post_type = 'program'
+        WHERE cp.visibility = 'public' 
+        OR (cp.visibility = 'group' AND cp.group_id IN (
+            SELECT group_id FROM group_members WHERE user_id = ?
+        ))
         ORDER BY cp.created_at DESC
         LIMIT 20";
-$posts = fetchAll($sql);
+$posts = fetchAll($sql, [$user_id]);
 
 // Récupérer les groupes de l'utilisateur
 $user_groups = getUserGroups($user_id);
@@ -163,7 +175,7 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                     <div class="post-content">
                                         <?php if ($post['post_type'] === 'meal'): ?>
                                             <?php 
-                                            $meal_info = json_decode($post['additional_info'], true);
+                                            $meal_info = isset($post['additional_info']) ? json_decode($post['additional_info'], true) : null;
                                             if ($meal_info): 
                                             ?>
                                                 <div class="meal-post">
@@ -192,7 +204,7 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                             <?php endif; ?>
                                         <?php elseif ($post['post_type'] === 'exercise'): ?>
                                             <?php 
-                                            $exercise_info = json_decode($post['additional_info'], true);
+                                            $exercise_info = isset($post['additional_info']) ? json_decode($post['additional_info'], true) : null;
                                             if ($exercise_info): 
                                             ?>
                                                 <div class="exercise-post">
@@ -222,7 +234,7 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                             <?php endif; ?>
                                         <?php elseif ($post['post_type'] === 'program'): ?>
                                             <?php 
-                                            $program_info = json_decode($post['additional_info'], true);
+                                            $program_info = isset($post['additional_info']) ? json_decode($post['additional_info'], true) : null;
                                             if ($program_info): 
                                             ?>
                                                 <div class="program-post">
@@ -250,12 +262,6 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                                     </div>
                                                 </div>
                                             <?php endif; ?>
-                                        <?php elseif ($post['post_type'] === 'goal'): ?>
-                                            <div class="goal-post">
-                                                <i class="fas fa-bullseye me-2"></i>
-                                                <strong>Nouvel objectif</strong>
-                                                <p class="mb-0">Objectif de poids : <?php echo number_format($post['reference_name'], 1); ?> kg</p>
-                                            </div>
                                         <?php else: ?>
                                             <p class="mb-0"><?php echo nl2br(htmlspecialchars($post['content'])); ?></p>
                                         <?php endif; ?>
@@ -264,7 +270,7 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
                                     <!-- Actions du post -->
                                     <div class="d-flex justify-content-between align-items-center mt-3">
                                         <div>
-                                            <button class="btn btn-sm btn-outline-primary me-2 like-btn" 
+                                            <button class="btn btn-sm btn-outline-primary me-2 like-btn <?php echo isPostLiked($post['id'], $user_id) ? 'btn-primary' : ''; ?>" 
                                                     data-post-id="<?php echo $post['id']; ?>">
                                                 <i class="fas fa-heart"></i>
                                                 <span class="likes-count"><?php echo $post['likes_count']; ?></span>
