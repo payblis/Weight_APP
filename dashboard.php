@@ -871,25 +871,42 @@ $meal_notifications = checkMealNotifications($user_id);
             }
 
             // Fonction pour vérifier si une notification doit être affichée
-            function shouldShowNotification(startTime, endTime) {
+            function shouldShowNotification(notification) {
                 const now = new Date();
-                const currentTime = formatTime(now);
-                const currentMinutes = timeToMinutes(currentTime);
-                const startMinutes = timeToMinutes(startTime);
-                const endMinutes = timeToMinutes(endTime);
+                const currentHours = now.getHours();
+                const currentMinutes = now.getMinutes();
+                const currentTime = currentHours * 60 + currentMinutes;
                 
-                console.log("=== Vérification de l'affichage de la notification ===");
-                console.log("Heure actuelle (locale) : " + currentTime);
-                console.log("Heure de début : " + startTime);
-                console.log("Heure de fin : " + endTime);
-                console.log("Minutes actuelles depuis minuit : " + currentMinutes);
-                console.log("Minutes de début depuis minuit : " + startMinutes);
-                console.log("Minutes de fin depuis minuit : " + endMinutes);
-                console.log("Fuseau horaire : " + Intl.DateTimeFormat().resolvedOptions().timeZone);
+                const [startHours, startMinutes] = notification.dataset.startTime.split(':').map(Number);
+                const startTime = startHours * 60 + startMinutes;
                 
-                // Si l'heure actuelle est après l'heure de début et avant l'heure de fin
-                const shouldShow = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
-                console.log("Notification doit être affichée : " + shouldShow);
+                const [endHours, endMinutes] = notification.dataset.endTime.split(':').map(Number);
+                const endTime = endHours * 60 + endMinutes;
+                
+                console.log('Vérification de la notification:', {
+                    message: notification.dataset.message,
+                    currentTime: `${currentHours}:${currentMinutes}`,
+                    startTime: notification.dataset.startTime,
+                    endTime: notification.dataset.endTime,
+                    currentMinutes: currentTime,
+                    startMinutes: startTime,
+                    endMinutes: endTime,
+                    priority: notification.dataset.priority
+                });
+                
+                // Afficher la notification si :
+                // 1. L'heure actuelle est après l'heure de début
+                // 2. L'heure actuelle est avant l'heure de fin OU le repas est en retard (plus de 2h après l'heure de début)
+                const isLate = currentTime - startTime > 120; // Plus de 2 heures de retard
+                const shouldShow = currentTime >= startTime && (currentTime <= endTime || isLate);
+                
+                console.log('Décision d\'affichage:', {
+                    message: notification.dataset.message,
+                    shouldShow: shouldShow,
+                    isLate: isLate,
+                    timeDiff: currentTime - startTime
+                });
+                
                 return shouldShow;
             }
 
@@ -900,27 +917,17 @@ $meal_notifications = checkMealNotifications($user_id);
                 console.log("Nombre de notifications trouvées : " + notifications.length);
                 
                 notifications.forEach(notification => {
-                    const startTime = notification.dataset.startTime;
-                    const endTime = notification.dataset.endTime;
-                    const priority = parseInt(notification.dataset.priority);
-                    const message = notification.dataset.message;
-                    
-                    console.log("\nTraitement de la notification : " + message);
-                    console.log("Priorité : " + priority);
-                    console.log("Heure de début : " + startTime);
-                    console.log("Heure de fin : " + endTime);
-                    
-                    if (shouldShowNotification(startTime, endTime)) {
+                    if (shouldShowNotification(notification)) {
                         notification.style.display = 'block';
                         // Mettre à jour la classe d'urgence si nécessaire
-                        if (priority === 2) {
+                        if (notification.dataset.priority === '2') {
                             notification.classList.remove('alert-warning');
                             notification.classList.add('alert-danger');
                         }
-                        console.log("Notification affichée : " + message);
+                        console.log("Notification affichée : " + notification.dataset.message);
                     } else {
                         notification.style.display = 'none';
-                        console.log("Notification masquée : " + message);
+                        console.log("Notification masquée : " + notification.dataset.message);
                     }
                 });
             }
