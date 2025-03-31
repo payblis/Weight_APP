@@ -581,7 +581,30 @@ if ($section === 'delete_program' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Traitement des actions pour la gestion des repas prédéfinis
-if ($section === 'predefined_meals'): ?>
+if ($section === 'predefined_meals') {
+    // Récupérer la liste des repas prédéfinis
+    try {
+        $sql = "SELECT pm.*, 
+                       COALESCE(SUM(f.calories * pmi.quantity / 100), 0) as total_calories,
+                       COALESCE(SUM(f.proteins * pmi.quantity / 100), 0) as total_protein,
+                       COALESCE(SUM(f.carbs * pmi.quantity / 100), 0) as total_carbs,
+                       COALESCE(SUM(f.fats * pmi.quantity / 100), 0) as total_fat
+                FROM predefined_meals pm
+                LEFT JOIN predefined_meal_items pmi ON pm.id = pmi.meal_id
+                LEFT JOIN foods f ON pmi.food_id = f.id
+                GROUP BY pm.id
+                ORDER BY pm.name";
+        $predefined_meals = fetchAll($sql);
+
+        // Récupérer toutes les catégories d'aliments
+        $sql = "SELECT * FROM food_categories ORDER BY name";
+        $categories = fetchAll($sql);
+    } catch (Exception $e) {
+        setError("Erreur lors de la récupération des données : " . $e->getMessage());
+        $predefined_meals = [];
+        $categories = [];
+    }
+?>
     <!-- Predefined meals management -->
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2">Gestion des repas prédéfinis</h1>
