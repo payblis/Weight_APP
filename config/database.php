@@ -121,10 +121,16 @@ function fetchAll($sql, $params = []) {
 // Fonction pour insérer des données et retourner l'ID
 function insert($sql, $params = []) {
     $conn = connectDB();
+    
+    // S'assurer que la connexion utilise UTF-8
+    $conn->set_charset("utf8mb4");
+    
+    // Préparer la requête
     $stmt = $conn->prepare($sql);
     
     if (!$stmt) {
         error_log("Erreur de préparation de la requête: " . $conn->error . " - SQL: " . $sql);
+        $conn->close();
         return 0;
     }
     
@@ -140,6 +146,8 @@ function insert($sql, $params = []) {
                 $types .= 'd';
             } elseif (is_string($param)) {
                 $types .= 's';
+                // Convertir explicitement en UTF-8 si c'est une chaîne
+                $param = mb_convert_encoding($param, 'UTF-8', 'auto');
             } else {
                 $types .= 'b';
             }
@@ -156,13 +164,25 @@ function insert($sql, $params = []) {
         }
         
         // Lier les paramètres dynamiquement
-        call_user_func_array([$stmt, 'bind_param'], $bindParams);
+        if (!call_user_func_array([$stmt, 'bind_param'], $bindParams)) {
+            error_log("Erreur lors du bind_param: " . $stmt->error);
+            $stmt->close();
+            $conn->close();
+            return 0;
+        }
     }
     
     error_log("Exécution de la requête insert : " . $sql);
     error_log("Paramètres : " . print_r($params, true));
     
-    $stmt->execute();
+    // Exécuter la requête
+    if (!$stmt->execute()) {
+        error_log("Erreur lors de l'exécution: " . $stmt->error);
+        $stmt->close();
+        $conn->close();
+        return 0;
+    }
+    
     $lastId = $conn->insert_id;
     
     error_log("Résultat de insert : " . ($lastId ? "Succès" : "Échec") . ", ID : " . $lastId);
