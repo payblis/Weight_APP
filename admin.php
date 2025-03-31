@@ -47,11 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if ($setting) {
                 // Mettre à jour le paramètre existant
-                $sql = "UPDATE settings SET value = ?, updated_at = NOW() WHERE setting_name = 'chatgpt_api_key'";
+                $sql = "UPDATE settings SET setting_value = ?, updated_at = NOW() WHERE setting_name = 'chatgpt_api_key'";
                 $result = update($sql, [$api_key]);
             } else {
                 // Créer un nouveau paramètre
-                $sql = "INSERT INTO settings (setting_name, value, is_public, created_at) VALUES ('chatgpt_api_key', ?, 0, NOW())";
+                $sql = "INSERT INTO settings (setting_name, setting_value, is_public, created_at) VALUES ('chatgpt_api_key', ?, 0, NOW())";
                 $result = insert($sql, [$api_key]);
             }
             
@@ -401,9 +401,9 @@ try {
 // Récupérer la clé API ChatGPT
 $chatgpt_api_key = '';
 try {
-    $sql = "SELECT value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+    $sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
     $result = fetchOne($sql, []);
-    $chatgpt_api_key = $result ? $result['value'] : '';
+    $chatgpt_api_key = $result ? $result['setting_value'] : '';
 } catch (Exception $e) {
     $errors[] = "Erreur lors de la récupération de la clé API: " . $e->getMessage();
 }
