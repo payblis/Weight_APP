@@ -33,7 +33,8 @@ mb_internal_encoding('UTF-8');
 $user_id = $_SESSION['user_id'];
 $sql = "SELECT u.*, p.name as program_name, p.description as program_description 
         FROM users u 
-        LEFT JOIN programs p ON u.program_id = p.id 
+        LEFT JOIN user_programs up ON u.id = up.user_id AND up.status = 'actif'
+        LEFT JOIN programs p ON up.program_id = p.id 
         WHERE u.id = ?";
 $user = fetchOne($sql, [$user_id]);
 error_log("=== Début de la génération de suggestion ===");
@@ -102,11 +103,11 @@ try {
             error_log("=== Début de la génération de suggestion de repas ===");
             // Construire le prompt avec les informations de l'utilisateur
             $prompt = "En tant que coach nutritionnel, génère une suggestion de repas adaptée au profil suivant :
-- Poids : {$user['weight']} kg
-- Taille : {$user['height']} cm
-- Âge : {$user['age']} ans
-- Niveau d'activité : {$user['activity_level']}
-- Programme/Objectif : {$user['program_name']} ({$user['program_description']})
+- Poids : {$profile['weight']} kg
+- Taille : {$profile['height']} cm
+- Âge : " . calculateAge($profile['birth_date']) . " ans
+- Niveau d'activité : {$profile['activity_level']}
+- Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
 
 La suggestion doit être :
 1. Adaptée aux besoins nutritionnels de l'utilisateur en fonction de son profil

@@ -1835,3 +1835,16 @@ function fetchSuggestion($suggestion_id, $user_id) {
     $sql = "SELECT content FROM ai_suggestions WHERE id = ? AND user_id = ?";
     return fetchOne($sql, [$suggestion_id, $user_id]);
 }
+
+/**
+ * Calcule l'âge à partir d'une date de naissance
+ * 
+ * @param string $birth_date Date de naissance au format YYYY-MM-DD
+ * @return int Âge calculé
+ */
+function calculateAge($birth_date) {
+    $birth = new DateTime($birth_date);
+    $today = new DateTime();
+    $age = $today->diff($birth);
+    return $age->y;
+}
