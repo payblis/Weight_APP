@@ -214,7 +214,57 @@ function update($sql, $params = []) {
 
 // Fonction pour supprimer des données et retourner le nombre de lignes affectées
 function delete($sql, $params = []) {
-    return update($sql, $params);
+    // Si $sql est un nom de table et $params est un ID
+    if (is_string($sql) && !strpos($sql, ' ') && count($params) === 1) {
+        $table = $sql;
+        $id = $params[0];
+        $sql = "DELETE FROM $table WHERE id = ?";
+        $params = [$id];
+    }
+    
+    $conn = connectDB();
+    $stmt = $conn->prepare($sql);
+    
+    if (!$stmt) {
+        error_log("Erreur de préparation de la requête: " . $conn->error . " - SQL: " . $sql);
+        return 0;
+    }
+    
+    if (!empty($params)) {
+        $types = '';
+        $bindParams = [];
+        
+        // Déterminer les types de paramètres
+        foreach ($params as $param) {
+            if (is_int($param)) {
+                $types .= 'i';
+            } elseif (is_float($param)) {
+                $types .= 'd';
+            } elseif (is_string($param)) {
+                $types .= 's';
+            } else {
+                $types .= 'b';
+            }
+        }
+        
+        // Créer un tableau de références pour bind_param
+        $bindParams[] = &$types;
+        
+        for ($i = 0; $i < count($params); $i++) {
+            $bindParams[] = &$params[$i];
+        }
+        
+        // Lier les paramètres dynamiquement
+        call_user_func_array([$stmt, 'bind_param'], $bindParams);
+    }
+    
+    $stmt->execute();
+    $affectedRows = $stmt->affected_rows;
+    
+    $stmt->close();
+    $conn->close();
+    
+    return $affectedRows;
 }
 
 // Fonction pour vérifier si une table existe
