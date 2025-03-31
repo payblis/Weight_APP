@@ -169,6 +169,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $pdo->rollBack();
                 $_SESSION['error'] = "Erreur lors de la désactivation du programme.";
             }
+        } elseif ($_POST['action'] === 'create' || $_POST['action'] === 'edit') {
+            $name = sanitizeInput($_POST['name']);
+            $description = sanitizeInput($_POST['description']);
+            $type = sanitizeInput($_POST['type']);
+            $calorie_adjustment = floatval($_POST['calorie_adjustment']);
+            $protein_ratio = floatval($_POST['protein_ratio']);
+            $carbs_ratio = floatval($_POST['carbs_ratio']);
+            $fat_ratio = floatval($_POST['fat_ratio']);
+            $fiber_goal = floatval($_POST['fiber_goal']);
+            $added_sugar_goal = floatval($_POST['added_sugar_goal']);
+            $daily_calories = intval($_POST['daily_calories']);
+
+            // Validation des ratios
+            $total_ratio = $protein_ratio + $carbs_ratio + $fat_ratio;
+            if (abs($total_ratio - 1) > 0.01) {
+                $errors[] = "La somme des ratios doit être égale à 1 (100%)";
+            }
+
+            if (empty($errors)) {
+                try {
+                    if ($_POST['action'] === 'create') {
+                        $sql = "INSERT INTO programs (name, description, type, calorie_adjustment, protein_ratio, carbs_ratio, fat_ratio, fiber_goal, added_sugar_goal, daily_calories) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $result = execute($sql, [$name, $description, $type, $calorie_adjustment, $protein_ratio, $carbs_ratio, $fat_ratio, $fiber_goal, $added_sugar_goal, $daily_calories]);
+                    } else {
+                        $program_id = intval($_POST['program_id']);
+                        $sql = "UPDATE programs SET 
+                                name = ?, description = ?, type = ?, calorie_adjustment = ?, 
+                                protein_ratio = ?, carbs_ratio = ?, fat_ratio = ?, 
+                                fiber_goal = ?, added_sugar_goal = ?, daily_calories = ?
+                                WHERE id = ?";
+                        $result = execute($sql, [$name, $description, $type, $calorie_adjustment, 
+                                               $protein_ratio, $carbs_ratio, $fat_ratio, 
+                                               $fiber_goal, $added_sugar_goal, $daily_calories, $program_id]);
+                    }
+                    
+                    if ($result) {
+                        $success_message = "Programme " . ($_POST['action'] === 'create' ? 'créé' : 'modifié') . " avec succès";
+                    } else {
+                        $errors[] = "Une erreur s'est produite lors de la " . ($_POST['action'] === 'create' ? 'création' : 'modification') . " du programme";
+                    }
+                } catch (Exception $e) {
+                    $errors[] = "Erreur: " . $e->getMessage();
+                }
+            }
         }
         
         error_log("=== Fin de la gestion de l'action POST ===");
