@@ -23,10 +23,17 @@ $is_admin = ($user_role && $user_role['role_id'] == 1);
 
 // Initialiser les variables
 $action = isset($_GET['action']) ? sanitizeInput($_GET['action']) : '';
-$meal_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$meal_id = isset($_GET['meal_id']) ? intval($_GET['meal_id']) : 0;
 $predefined_meal_id = isset($_GET['predefined_meal_id']) ? intval($_GET['predefined_meal_id']) : 0;
 $success_message = '';
 $errors = [];
+
+error_log("=== DÉBUT DU TRAITEMENT ===");
+error_log("Action : " . $action);
+error_log("ID du repas : " . $meal_id);
+error_log("ID du repas prédéfini : " . $predefined_meal_id);
+error_log("GET : " . print_r($_GET, true));
+error_log("=== FIN DU TRAITEMENT ===");
 
 // Traitement des actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -1162,7 +1169,7 @@ function updateMealTotals($meal_id) {
                                                                 onclick="console.log('Partage de repas:', this.dataset);">
                                                             <i class="fas fa-share-alt me-1"></i>Partager
                                                         </button>
-                                                        <a href="food-log.php?action=edit&id=<?php echo $meal['id']; ?>" 
+                                                        <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" 
                                                            class="btn btn-sm btn-outline-secondary">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
@@ -1284,7 +1291,7 @@ function updateMealTotals($meal_id) {
                                                                 onclick="console.log('Partage de repas:', this.dataset);">
                                                             <i class="fas fa-share-alt me-1"></i>Partager
                                                         </button>
-                                                        <a href="food-log.php?action=edit&id=<?php echo $meal['id']; ?>" 
+                                                        <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" 
                                                            class="btn btn-sm btn-outline-secondary">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
