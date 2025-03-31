@@ -119,7 +119,7 @@ $suggestions = fetchAll($sql, [$user_id]);
                     </div>
                     <div class="card-body">
                         <form method="post" action="generate-suggestions.php">
-                            <input type="hidden" name="suggestion_type" value="repas">
+                            <input type="hidden" name="suggestion_type" value="alimentation">
                             <p>Générez une suggestion de repas personnalisée basée sur vos objectifs et préférences.</p>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-robot me-1"></i>Générer une suggestion
