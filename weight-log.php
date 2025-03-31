@@ -67,9 +67,9 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                 if ($current_goal) {
                     $weight_diff = abs($weight - $current_goal['target_weight']);
                     
-                    // Si l'utilisateur est à moins de 1kg de son objectif
-                    if ($weight_diff <= 1 && $weight_diff > 0.1) {
-                        $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
+                    // Si l'utilisateur est à moins de 1,2kg de son objectif
+                    if ($weight_diff <= 1.2 && $weight_diff > 0.1) {
+                        $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1,2kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
                     }
                     
                     // Si l'objectif est atteint (différence de moins de 0.1 kg)
@@ -120,9 +120,9 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                 if ($current_goal) {
                     $weight_diff = abs($weight - $current_goal['target_weight']);
                     
-                    // Si l'utilisateur est à moins de 1kg de son objectif
-                    if ($weight_diff <= 1 && $weight_diff > 0.1) {
-                        $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
+                    // Si l'utilisateur est à moins de 1,2kg de son objectif
+                    if ($weight_diff <= 1.2 && $weight_diff > 0.1) {
+                        $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1,2kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
                     }
                     
                     // Si l'objectif est atteint (différence de moins de 0.1 kg)
@@ -485,6 +485,49 @@ if ($latest_weight) {
 
     <!-- Contenu principal -->
     <div class="container py-4">
+        <?php if (isset($_SESSION['encouragement_message'])): ?>
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <i class="fas fa-star me-2"></i>
+                <?php echo $_SESSION['encouragement_message']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <?php unset($_SESSION['encouragement_message']); ?>
+        <?php endif; ?>
+        
+        <?php if (isset($_SESSION['goal_achieved'])): ?>
+            <script>
+                function createConfetti() {
+                    const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff'];
+                    for (let i = 0; i < 50; i++) {
+                        const confetti = document.createElement('div');
+                        confetti.className = 'confetti';
+                        confetti.style.left = Math.random() * 100 + 'vw';
+                        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                        confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                        document.body.appendChild(confetti);
+                        
+                        // Supprimer le confetti après l'animation
+                        setTimeout(() => {
+                            confetti.remove();
+                        }, 5000);
+                    }
+                }
+                
+                function showGoalAchievedModal() {
+                    document.getElementById('goalAchievedModal').style.display = 'flex';
+                    createConfetti();
+                }
+                
+                function closeGoalAchievedModal() {
+                    document.getElementById('goalAchievedModal').style.display = 'none';
+                }
+                
+                // Afficher le modal et le confetti immédiatement
+                showGoalAchievedModal();
+            </script>
+            <?php unset($_SESSION['goal_achieved']); ?>
+        <?php endif; ?>
+
         <!-- En-tête du tableau de bord -->
         <div class="row mb-4">
             <div class="col-md-8">
@@ -950,38 +993,6 @@ if ($latest_weight) {
                 });
             }
         });
-    </script>
-    <script>
-        function createConfetti() {
-            const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff'];
-            for (let i = 0; i < 50; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
-                document.body.appendChild(confetti);
-                
-                // Supprimer le confetti après l'animation
-                setTimeout(() => {
-                    confetti.remove();
-                }, 5000);
-            }
-        }
-        
-        function showGoalAchievedModal() {
-            document.getElementById('goalAchievedModal').style.display = 'flex';
-            createConfetti();
-        }
-        
-        function closeGoalAchievedModal() {
-            document.getElementById('goalAchievedModal').style.display = 'none';
-        }
-        
-        // Afficher le modal uniquement si l'objectif est atteint
-        <?php if (isset($_SESSION['goal_achieved']) && $_SESSION['goal_achieved']): ?>
-            window.addEventListener('load', showGoalAchievedModal);
-        <?php endif; ?>
     </script>
 </body>
 </html>
