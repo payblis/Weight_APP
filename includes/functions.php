@@ -1615,9 +1615,14 @@ function getMealSuggestions($user_id) {
             // Rechercher la section des ingrédients
             if (preg_match('/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s', $content, $ingredients_match)) {
                 $ingredients_text = $ingredients_match[1];
-                // Extraire chaque ingrédient
-                preg_match_all('/-\s*(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list);
-                $ingredients = $ingredients_list[1];
+                // Extraire chaque ingrédient avec sa quantité
+                preg_match_all('/-\s*(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|unité|tasse|cuillère|pincée)?)\s+(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list, PREG_SET_ORDER);
+                foreach ($ingredients_list as $match) {
+                    $ingredients[] = [
+                        'quantity' => trim($match[1]),
+                        'name' => trim($match[2])
+                    ];
+                }
             }
             
             // Rechercher la section des conseils
@@ -1770,4 +1775,80 @@ function getSetting($setting_name) {
     $result = fetchOne($sql, [$setting_name]);
     
     return $result ? $result['setting_value'] : null;
+}
+
+/**
+ * Ajoute une suggestion de repas comme repas
+ * @param int $user_id ID de l'utilisateur
+ * @param int $suggestion_id ID de la suggestion
+ * @param string $date Date du repas (format Y-m-d)
+ * @return array Résultat de l'opération
+ */
+function addSuggestionAsMeal($user_id, $suggestion_id, $date) {
+    try {
+        // Récupérer la suggestion
+        $sql = "SELECT * FROM ai_suggestions WHERE id = ? AND user_id = ?";
+        $suggestion = fetchOne($sql, [$suggestion_id, $user_id]);
+        
+        if (!$suggestion) {
+            return ['success' => false, 'message' => 'Suggestion non trouvée'];
+        }
+        
+        // Extraire les ingrédients et leurs quantités
+        $content = $suggestion['name'];
+        $ingredients = [];
+        
+        if (preg_match('/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s', $content, $ingredients_match)) {
+            $ingredients_text = $ingredients_match[1];
+            preg_match_all('/-\s*(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|unité|tasse|cuillère|pincée)?)\s+(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list, PREG_SET_ORDER);
+            foreach ($ingredients_list as $match) {
+                $ingredients[] = [
+                    'quantity' => trim($match[1]),
+                    'name' => trim($match[2])
+                ];
+            }
+        }
+        
+        // Démarrer la transaction
+        $GLOBALS['pdo']->beginTransaction();
+        
+        // Créer le repas
+        $sql = "INSERT INTO meals (user_id, name, log_date) VALUES (?, ?, ?)";
+        $meal_id = insert($sql, [$user_id, $suggestion['name'], $date]);
+        
+        if (!$meal_id) {
+            throw new Exception("Erreur lors de la création du repas");
+        }
+        
+        // Créer les aliments et les associations
+        foreach ($ingredients as $ingredient) {
+            // Créer l'aliment
+            $sql = "INSERT INTO foods (name, calories, proteins, carbs, fats, user_id) 
+                    VALUES (?, 0, 0, 0, 0, ?)";
+            $food_id = insert($sql, [$ingredient['name'], $user_id]);
+            
+            if (!$food_id) {
+                throw new Exception("Erreur lors de la création de l'aliment");
+            }
+            
+            // Créer l'association meal_food
+            $sql = "INSERT INTO meal_foods (meal_id, food_id, quantity) VALUES (?, ?, ?)";
+            if (!insert($sql, [$meal_id, $food_id, $ingredient['quantity']])) {
+                throw new Exception("Erreur lors de l'association du repas et de l'aliment");
+            }
+            
+            // Mettre à jour les valeurs nutritionnelles de l'aliment
+            updateFoodNutrition($food_id);
+        }
+        
+        // Valider la transaction
+        $GLOBALS['pdo']->commit();
+        
+        return ['success' => true, 'message' => 'Repas ajouté avec succès'];
+    } catch (Exception $e) {
+        // Annuler la transaction en cas d'erreur
+        $GLOBALS['pdo']->rollBack();
+        error_log("Erreur lors de l'ajout du repas: " . $e->getMessage());
+        return ['success' => false, 'message' => $e->getMessage()];
+    }
 }

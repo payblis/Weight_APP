@@ -1793,6 +1793,43 @@ function updateMealTotals($meal_id) {
                     document.getElementById('view_suggestion_fat').textContent = this.dataset.fat;
                 });
             });
+            
+            // Gestionnaire pour le formulaire d'ajout de suggestion
+            document.querySelector('#addSuggestionModal form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const suggestionId = document.getElementById('suggestion_id').value;
+                const mealType = document.getElementById('meal_type_suggestion').value;
+                const logDate = document.getElementById('log_date_suggestion').value;
+                
+                // Appeler la fonction PHP pour ajouter la suggestion comme repas
+                fetch('add-suggestion.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        suggestion_id: suggestionId,
+                        meal_type: mealType,
+                        log_date: logDate
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Fermer le modal et recharger la page
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('addSuggestionModal'));
+                        modal.hide();
+                        window.location.reload();
+                    } else {
+                        alert('Erreur lors de l\'ajout du repas : ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Une erreur est survenue lors de l\'ajout du repas.');
+                });
+            });
         });
     </script>
 </body>
