@@ -8,7 +8,7 @@ if (!isset($_SESSION)) {
 }
 ?>
 <!-- Barre de navigation -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary d-none d-lg-block">
     <div class="container">
         <a class="navbar-brand" href="dashboard.php">
             <i class="fas fa-weight me-2"></i>Weight Tracker
@@ -194,12 +194,31 @@ if (!isset($_SESSION)) {
                 </a>
             </div>
             <div class="col">
-                <a class="nav-link py-2" href="#" style="position: relative; top: -20px;">
-                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" 
-                         style="width: 50px; height: 50px; margin: 0 auto;">
-                        <i class="fas fa-plus text-white"></i>
-                    </div>
-                </a>
+                <div class="dropup">
+                    <a class="nav-link py-2" href="#" data-bs-toggle="dropdown" style="position: relative; top: -20px;">
+                        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" 
+                             style="width: 50px; height: 50px; margin: 0 auto;">
+                            <i class="fas fa-plus text-white"></i>
+                        </div>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="food-log.php?action=add_meal">
+                                <i class="fas fa-utensils me-2"></i>Ajouter un repas
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="weight-log.php?action=add">
+                                <i class="fas fa-weight me-2"></i>Ajouter un poids
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="exercise-log.php?action=add">
+                                <i class="fas fa-dumbbell me-2"></i>Ajouter un exercice
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </div>
             <div class="col">
                 <a class="nav-link py-2" href="exercise-log.php">
@@ -240,6 +259,18 @@ if (!isset($_SESSION)) {
     
     .navbar.fixed-bottom i {
         font-size: 1.2rem;
+    }
+
+    /* Style pour le menu déroulant du bouton + */
+    .navbar.fixed-bottom .dropup .dropdown-menu {
+        bottom: 100%;
+        margin-bottom: 0.5rem;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+
+    .navbar.fixed-bottom .dropdown-item {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
     }
 }
 </style>
