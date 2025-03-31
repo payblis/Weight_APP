@@ -62,70 +62,37 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                 
                 // Vérifier si un objectif est atteint
                 if ($current_goal) {
-                    // Vérifier et mettre à jour le poids dans le profil
-                    $current_weight = ensureProfileWeight($user_id);
+                    $weight_diff = abs($weight - $current_goal['target_weight']);
                     
-                    if ($current_weight === null) {
-                        $errors[] = "Veuillez d'abord enregistrer votre poids avant de vérifier l'atteinte de l'objectif.";
-                    } else {
-                        $weight_diff = abs($current_weight - $current_goal['target_weight']);
-                        
-                        // Si l'objectif est atteint (différence de moins de 0.1 kg)
-                        if ($weight_diff < 0.1) {
-                            // Marquer l'objectif comme atteint
-                            $sql = "UPDATE goals SET status = 'atteint', updated_at = NOW() WHERE id = ?";
-                            update($sql, [$current_goal['id']]);
-                            
-                            // Calculer le BMR de base
-                            $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
-                            error_log("BMR calculé : " . $bmr);
-                            
-                            // Calculer le TDEE (calories de base)
-                            $tdee = calculateTDEE($bmr, $profile['activity_level']);
-                            error_log("TDEE calculé : " . $tdee);
-                            
-                            // Mettre à jour les objectifs de l'utilisateur pour le maintien
-                            $sql = "UPDATE user_profiles SET 
-                                    daily_calories = ?,
-                                    protein_ratio = 0.3,
-                                    carbs_ratio = 0.4,
-                                    fat_ratio = 0.3,
-                                    updated_at = NOW()
-                                    WHERE user_id = ?";
-                            update($sql, [$tdee, $user_id]);
-                            error_log("Calories mises à jour pour le maintien : " . $tdee);
-                            
-                            $success_message = "Félicitations ! Vous avez atteint votre objectif de poids !";
-                        }
+                    // Si l'utilisateur est à moins de 1kg de son objectif
+                    if ($weight_diff <= 1 && $weight_diff > 0.1) {
+                        $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
                     }
-                }
-                
-                // Recalculer les calories de base
-                $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
-                $profile = fetchOne($sql, [$user_id]);
-                
-                if ($profile) {
-                    // Calculer le BMR de base avec le nouveau poids
-                    $bmr = calculateBMR($weight, $profile['height'], $profile['birth_date'], $profile['gender']);
                     
-                    // Calculer le TDEE (calories de base)
-                    $tdee = calculateTDEE($bmr, $profile['activity_level']);
-                    
-                    // Vérifier si l'utilisateur a un programme actif
-                    $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'actif'";
-                    $active_program = fetchOne($sql, [$user_id]);
-                    
-                    if ($active_program) {
-                        // Si un programme est actif, mettre à jour directement les calories
-                        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
+                    // Si l'objectif est atteint (différence de moins de 0.1 kg)
+                    if ($weight_diff < 0.1) {
+                        // Marquer l'objectif comme atteint
+                        $sql = "UPDATE goals SET status = 'atteint', updated_at = NOW() WHERE id = ?";
+                        update($sql, [$current_goal['id']]);
+                        
+                        // Calculer le BMR de base
+                        $bmr = calculateBMR($weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+                        
+                        // Calculer le TDEE (calories de base)
+                        $tdee = calculateTDEE($bmr, $profile['activity_level']);
+                        
+                        // Mettre à jour les objectifs de l'utilisateur pour le maintien
+                        $sql = "UPDATE user_profiles SET 
+                                daily_calories = ?,
+                                protein_ratio = 0.3,
+                                carbs_ratio = 0.4,
+                                fat_ratio = 0.3,
+                                updated_at = NOW()
+                                WHERE user_id = ?";
                         update($sql, [$tdee, $user_id]);
-                    } else {
-                        // Si pas de programme actif, demander confirmation
-                        $_SESSION['pending_calories_update'] = [
-                            'tdee' => $tdee,
-                            'weight' => $weight
-                        ];
-                        $success_message = "Votre poids a été mis à jour avec succès ! Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau poids ?";
+                        
+                        $_SESSION['goal_achieved'] = true;
+                        $_SESSION['goal_message'] = "Félicitations ! Vous avez atteint votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg !";
                     }
                 }
                 
@@ -145,96 +112,41 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                 
                 // Vérifier si un objectif est atteint
                 if ($current_goal) {
-                    // Vérifier et mettre à jour le poids dans le profil
-                    $current_weight = ensureProfileWeight($user_id);
+                    $weight_diff = abs($weight - $current_goal['target_weight']);
                     
-                    if ($current_weight === null) {
-                        $errors[] = "Veuillez d'abord enregistrer votre poids avant de vérifier l'atteinte de l'objectif.";
-                    } else {
-                        $weight_diff = abs($current_weight - $current_goal['target_weight']);
-                        
-                        // Si l'objectif est atteint (différence de moins de 0.1 kg)
-                        if ($weight_diff < 0.1) {
-                            // Marquer l'objectif comme atteint
-                            $sql = "UPDATE goals SET status = 'atteint', updated_at = NOW() WHERE id = ?";
-                            update($sql, [$current_goal['id']]);
-                            
-                            // Calculer le BMR de base
-                            $bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
-                            error_log("BMR calculé : " . $bmr);
-                            
-                            // Calculer le TDEE (calories de base)
-                            $tdee = calculateTDEE($bmr, $profile['activity_level']);
-                            error_log("TDEE calculé : " . $tdee);
-                            
-                            // Mettre à jour les objectifs de l'utilisateur pour le maintien
-                            $sql = "UPDATE user_profiles SET 
-                                    daily_calories = ?,
-                                    protein_ratio = 0.3,
-                                    carbs_ratio = 0.4,
-                                    fat_ratio = 0.3,
-                                    updated_at = NOW()
-                                    WHERE user_id = ?";
-                            update($sql, [$tdee, $user_id]);
-                            error_log("Calories mises à jour pour le maintien : " . $tdee);
-                            
-                            $success_message = "Félicitations ! Vous avez atteint votre objectif de poids !";
-                        }
+                    // Si l'utilisateur est à moins de 1kg de son objectif
+                    if ($weight_diff <= 1 && $weight_diff > 0.1) {
+                        $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
                     }
-                }
-                
-                // Récupérer le poids initial (le plus ancien poids enregistré)
-                $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date ASC LIMIT 1";
-                $initial_weight = fetchOne($sql, [$user_id]);
-                
-                if ($initial_weight) {
-                    $weight_change = abs($weight - $initial_weight['weight']);
-                    error_log("Variation de poids depuis le début : " . $weight_change . " kg");
                     
-                    // Si la variation de poids est supérieure à 2kg
-                    if ($weight_change > 2) {
-                        // Calculer le BMR de base avec le nouveau poids
+                    // Si l'objectif est atteint (différence de moins de 0.1 kg)
+                    if ($weight_diff < 0.1) {
+                        // Marquer l'objectif comme atteint
+                        $sql = "UPDATE goals SET status = 'atteint', updated_at = NOW() WHERE id = ?";
+                        update($sql, [$current_goal['id']]);
+                        
+                        // Calculer le BMR de base
                         $bmr = calculateBMR($weight, $profile['height'], $profile['birth_date'], $profile['gender']);
                         
                         // Calculer le TDEE (calories de base)
                         $tdee = calculateTDEE($bmr, $profile['activity_level']);
                         
-                        // Vérifier si l'utilisateur a un programme actif
-                        $sql = "SELECT p.* FROM user_programs up 
-                                JOIN programs p ON up.program_id = p.id 
-                                WHERE up.user_id = ? AND up.status = 'actif'";
-                        $active_program = fetchOne($sql, [$user_id]);
+                        // Mettre à jour les objectifs de l'utilisateur pour le maintien
+                        $sql = "UPDATE user_profiles SET 
+                                daily_calories = ?,
+                                protein_ratio = 0.3,
+                                carbs_ratio = 0.4,
+                                fat_ratio = 0.3,
+                                updated_at = NOW()
+                                WHERE user_id = ?";
+                        update($sql, [$tdee, $user_id]);
                         
-                        if ($active_program) {
-                            // Si un programme est actif, calculer les calories finales
-                            $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
-                            $final_calories = $tdee + $program_adjustment;
-                            
-                            // Demander confirmation même avec un programme actif
-                            $_SESSION['pending_calories_update'] = [
-                                'tdee' => $final_calories,
-                                'weight' => $weight,
-                                'weight_change' => $weight_change,
-                                'has_program' => true
-                            ];
-                            $success_message = "Votre poids a été enregistré avec succès ! Une variation de " . number_format($weight_change, 1) . " kg a été détectée depuis le début. Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau poids ?";
-                        } else {
-                            // Si pas de programme actif, demander confirmation
-                            $_SESSION['pending_calories_update'] = [
-                                'tdee' => $tdee,
-                                'weight' => $weight,
-                                'weight_change' => $weight_change,
-                                'has_program' => false
-                            ];
-                            $success_message = "Votre poids a été enregistré avec succès ! Une variation de " . number_format($weight_change, 1) . " kg a été détectée depuis le début. Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau poids ?";
-                        }
-                    } else {
-                        $success_message = "Votre poids a été enregistré avec succès !";
+                        $_SESSION['goal_achieved'] = true;
+                        $_SESSION['goal_message'] = "Félicitations ! Vous avez atteint votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg !";
                     }
                 }
                 
-                $weight = '';
-                $notes = '';
+                $success_message = "Votre poids a été enregistré avec succès !";
             } else {
                 $errors[] = "Une erreur s'est produite lors de l'enregistrement du poids. Veuillez réessayer.";
             }

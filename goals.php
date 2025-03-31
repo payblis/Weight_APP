@@ -38,6 +38,42 @@ if ($current_goal) {
     $notes = $current_goal['notes'];
 }
 
+// Vérifier si l'utilisateur est proche de son objectif ou l'a atteint
+if ($current_goal && $latest_weight) {
+    $weight_diff = abs($latest_weight['weight'] - $current_goal['target_weight']);
+    
+    // Si l'utilisateur est à moins de 1kg de son objectif
+    if ($weight_diff <= 1 && $weight_diff > 0.1) {
+        $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
+    }
+    
+    // Si l'objectif est atteint (différence de moins de 0.1 kg)
+    if ($weight_diff < 0.1) {
+        // Marquer l'objectif comme atteint
+        $sql = "UPDATE goals SET status = 'atteint', updated_at = NOW() WHERE id = ?";
+        update($sql, [$current_goal['id']]);
+        
+        // Calculer le BMR de base
+        $bmr = calculateBMR($latest_weight['weight'], $profile['height'], $profile['birth_date'], $profile['gender']);
+        
+        // Calculer le TDEE (calories de base)
+        $tdee = calculateTDEE($bmr, $profile['activity_level']);
+        
+        // Mettre à jour les objectifs de l'utilisateur pour le maintien
+        $sql = "UPDATE user_profiles SET 
+                daily_calories = ?,
+                protein_ratio = 0.3,
+                carbs_ratio = 0.4,
+                fat_ratio = 0.3,
+                updated_at = NOW()
+                WHERE user_id = ?";
+        update($sql, [$tdee, $user_id]);
+        
+        $_SESSION['goal_achieved'] = true;
+        $_SESSION['goal_message'] = "Félicitations ! Vous avez atteint votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg !";
+    }
+}
+
 // Traitement du formulaire d'ajout/modification d'objectif
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_goal') {
     // Récupérer et nettoyer les données du formulaire
@@ -362,12 +398,106 @@ if (isset($_GET['action']) && $_GET['action'] === 'leave_program' && isset($_GET
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(360deg); }
+        }
+        
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            animation: confetti 3s linear forwards;
+            z-index: 9999;
+        }
+        
+        .goal-achieved-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .goal-achieved-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            animation: scaleIn 0.5s ease-out;
+        }
+        
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+    </style>
 </head>
 <body>
     <?php include 'navigation.php'; ?>
 
+    <!-- Modal de félicitations -->
+    <div id="goalAchievedModal" class="goal-achieved-modal">
+        <div class="goal-achieved-content">
+            <i class="fas fa-trophy fa-3x text-warning mb-3"></i>
+            <h2 class="mb-3">Félicitations !</h2>
+            <p class="mb-4"><?php echo $_SESSION['goal_message'] ?? ''; ?></p>
+            <button class="btn btn-primary" onclick="closeGoalAchievedModal()">Continuer</button>
+        </div>
+    </div>
+
     <!-- Contenu principal -->
     <div class="container py-4">
+        <?php if (isset($_SESSION['encouragement_message'])): ?>
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <i class="fas fa-star me-2"></i>
+                <?php echo $_SESSION['encouragement_message']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <?php unset($_SESSION['encouragement_message']); ?>
+        <?php endif; ?>
+        
+        <?php if (isset($_SESSION['goal_achieved'])): ?>
+            <script>
+                function createConfetti() {
+                    const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff'];
+                    for (let i = 0; i < 50; i++) {
+                        const confetti = document.createElement('div');
+                        confetti.className = 'confetti';
+                        confetti.style.left = Math.random() * 100 + 'vw';
+                        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                        confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                        document.body.appendChild(confetti);
+                        
+                        // Supprimer le confetti après l'animation
+                        setTimeout(() => {
+                            confetti.remove();
+                        }, 5000);
+                    }
+                }
+                
+                function showGoalAchievedModal() {
+                    document.getElementById('goalAchievedModal').style.display = 'flex';
+                    createConfetti();
+                }
+                
+                function closeGoalAchievedModal() {
+                    document.getElementById('goalAchievedModal').style.display = 'none';
+                }
+                
+                // Afficher le modal au chargement de la page
+                window.addEventListener('load', showGoalAchievedModal);
+            </script>
+            <?php unset($_SESSION['goal_achieved']); ?>
+        <?php endif; ?>
+
         <div class="row mb-4">
             <div class="col-md-8">
                 <h1 class="mb-4">Objectifs de poids et programmes</h1>
@@ -535,9 +665,28 @@ if (isset($_GET['action']) && $_GET['action'] === 'leave_program' && isset($_GET
                                             <p class="small mb-0">glucides</p>
                                         </div>
                                     </div>
+                                    <hr class="my-2">
+                                    <div class="row">
+                                        <div class="col-md-6 text-center">
+                                            <h5 class="mb-0"><?php echo number_format($active_program['fat_ratio'], 1); ?>%</h5>
+                                            <p class="small mb-0">lipides</p>
+                                        </div>
+                                        <div class="col-md-6 text-center">
+                                            <h5 class="mb-0"><?php echo number_format($active_program['daily_calories']); ?></h5>
+                                            <p class="small mb-0">calories/jour</p>
+                                        </div>
+                                    </div>
                                 </div>
                                 
-                                <p><?php echo nl2br(htmlspecialchars($active_program['description'])); ?></p>
+                                <p><?php 
+                                    $description = nl2br(htmlspecialchars($active_program['description']));
+                                    $lines = explode('<br />', $description);
+                                    $limited_lines = array_slice($lines, 0, 6);
+                                    echo implode('<br />', $limited_lines);
+                                    if (count($lines) > 6) {
+                                        echo '...';
+                                    }
+                                ?></p>
                             </div>
                         <?php else: ?>
                             <div class="alert alert-info">
@@ -609,6 +758,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'leave_program' && isset($_GET
                                                     break;
                                                 case 'termine':
                                                     echo '<span class="badge bg-success">Terminé</span>';
+                                                    break;
+                                                case 'atteint':
+                                                    echo '<span class="badge bg-warning">Atteint</span>';
                                                     break;
                                                 case 'annule':
                                                     echo '<span class="badge bg-danger">Annulé</span>';
