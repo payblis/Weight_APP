@@ -31,6 +31,11 @@ mb_internal_encoding('UTF-8');
 
 // Récupérer les informations de l'utilisateur
 $user_id = $_SESSION['user_id'];
+$sql = "SELECT u.*, p.name as program_name, p.description as program_description 
+        FROM users u 
+        LEFT JOIN programs p ON u.program_id = p.id 
+        WHERE u.id = ?";
+$user = fetchOne($sql, [$user_id]);
 error_log("=== Début de la génération de suggestion ===");
 error_log("User ID: " . $user_id);
 error_log("Type de suggestion: " . $suggestion_type);
@@ -95,48 +100,36 @@ try {
         case 'repas':
         case 'alimentation':
             error_log("=== Début de la génération de suggestion de repas ===");
-            // Construire le prompt pour ChatGPT
-            $prompt = "En tant que nutritionniste expert, génère une suggestion de repas équilibré en tenant compte des informations suivantes :\n\n";
-            
-            if ($profile) {
-                $prompt .= "Profil : " . ($profile['gender'] === 'homme' ? 'Homme' : 'Femme') . ", " . 
-                          (date('Y') - date('Y', strtotime($profile['birth_date']))) . " ans\n";
-            }
-            
-            if ($latest_weight) {
-                $prompt .= "Poids actuel : " . number_format($latest_weight['weight'], 1) . " kg\n";
-            }
-            
-            if ($current_goal) {
-                $prompt .= "Objectif de poids : " . number_format($current_goal['target_weight'], 1) . " kg\n";
-            }
-            
-            if ($active_program) {
-                $prompt .= "Programme actif : " . $active_program['name'] . "\n";
-            }
-            
-            if (!empty($favorite_foods)) {
-                $prompt .= "Aliments préférés : " . implode(", ", $favorite_foods) . "\n";
-            }
-            
-            if (!empty($blacklisted_foods)) {
-                $prompt .= "Aliments à éviter : " . implode(", ", $blacklisted_foods) . "\n";
-            }
-            
-            $prompt .= "\nVeuillez fournir une réponse au format JSON avec la structure suivante :\n";
-            $prompt .= "{\n";
-            $prompt .= "  \"nom_du_repas\": \"Nom du repas\",\n";
-            $prompt .= "  \"ingredients\": [\n";
-            $prompt .= "    {\n";
-            $prompt .= "      \"nom\": \"Nom de l'ingrédient\",\n";
-            $prompt .= "      \"quantite\": \"Quantité\",\n";
-            $prompt .= "      \"calories\": 0,  // Calories pour la quantité spécifiée\n";
-            $prompt .= "      \"proteines\": 0, // Protéines pour la quantité spécifiée\n";
-            $prompt .= "      \"glucides\": 0,  // Glucides pour la quantité spécifiée\n";
-            $prompt .= "      \"lipides\": 0    // Lipides pour la quantité spécifiée\n";
-            $prompt .= "    }\n";
-            $prompt .= "  ]\n";
-            $prompt .= "}\n";
+            // Construire le prompt avec les informations de l'utilisateur
+            $prompt = "En tant que coach nutritionnel, génère une suggestion de repas adaptée au profil suivant :
+- Poids : {$user['weight']} kg
+- Taille : {$user['height']} cm
+- Âge : {$user['age']} ans
+- Niveau d'activité : {$user['activity_level']}
+- Programme/Objectif : {$user['program_name']} ({$user['program_description']})
+
+La suggestion doit être :
+1. Adaptée aux besoins nutritionnels de l'utilisateur en fonction de son profil
+2. Respecter les objectifs du programme choisi
+3. Être équilibrée en macronutriments
+4. Être réaliste et facile à préparer
+
+Réponds uniquement avec un objet JSON contenant les champs suivants :
+{
+    \"nom_du_repas\": \"Nom du repas\",
+    \"ingredients\": [
+        {
+            \"nom\": \"Nom de l'ingrédient\",
+            \"quantite\": \"Quantité avec unité (ex: 200g, 1 tasse)\",
+            \"calories\": nombre entier,
+            \"proteines\": nombre décimal,
+            \"glucides\": nombre décimal,
+            \"lipides\": nombre décimal
+        }
+    ]
+}
+
+Les valeurs nutritionnelles doivent correspondre à la quantité exacte spécifiée pour chaque ingrédient.";
             
             error_log("Prompt généré : " . mb_convert_encoding($prompt, 'UTF-8', 'auto'));
             
