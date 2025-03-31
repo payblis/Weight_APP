@@ -34,27 +34,108 @@ if (!$data || !isset($data['ingredients'])) {
     redirect('my-coach.php');
 }
 
+// Liste des ingrédients à exclure
+$excluded_ingredients = [
+    'sel', 'poivre', 'huile d\'olive', 'huile', 'vinaigre', 'jus de citron',
+    'herbes', 'épices', 'assaisonnement', 'condiment'
+];
+
+// Fonction pour vérifier si un ingrédient doit être exclu
+function shouldExcludeIngredient($ingredient) {
+    global $excluded_ingredients;
+    $name = strtolower($ingredient['nom']);
+    foreach ($excluded_ingredients as $excluded) {
+        if (strpos($name, $excluded) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Fonction pour calculer les macronutriments par ingrédient
+function calculateIngredientMacros($ingredient, $total_calories, $total_proteins, $total_carbs, $total_fats) {
+    // Si l'ingrédient a déjà ses propres valeurs nutritionnelles pour 100g, les utiliser
+    if (isset($ingredient['calories']) && isset($ingredient['proteines']) && 
+        isset($ingredient['glucides']) && isset($ingredient['lipides'])) {
+        return [
+            'calories' => $ingredient['calories'],
+            'proteins' => $ingredient['proteines'],
+            'carbs' => $ingredient['glucides'],
+            'fats' => $ingredient['lipides']
+        ];
+    }
+    
+    // Sinon, répartir les totaux proportionnellement
+    $total_weight = 0;
+    foreach ($ingredients as $ing) {
+        if (!shouldExcludeIngredient($ing)) {
+            $weight = (float) str_replace(['g', 'kg', 'ml', 'l'], '', $ing['quantité']);
+            $total_weight += $weight;
+        }
+    }
+    
+    if ($total_weight > 0) {
+        $weight = (float) str_replace(['g', 'kg', 'ml', 'l'], '', $ingredient['quantité']);
+        $ratio = $weight / $total_weight;
+        
+        // Calculer les valeurs pour 100g
+        $calories_per_100g = round(($total_calories * $ratio) * (100 / $weight));
+        $proteins_per_100g = round(($total_proteins * $ratio) * (100 / $weight));
+        $carbs_per_100g = round(($total_carbs * $ratio) * (100 / $weight));
+        $fats_per_100g = round(($total_fats * $ratio) * (100 / $weight));
+        
+        return [
+            'calories' => $calories_per_100g,
+            'proteins' => $proteins_per_100g,
+            'carbs' => $carbs_per_100g,
+            'fats' => $fats_per_100g
+        ];
+    }
+    
+    return [
+        'calories' => 0,
+        'proteins' => 0,
+        'carbs' => 0,
+        'fats' => 0
+    ];
+}
+
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // Récupérer les catégories d'aliments
-        $sql = "SELECT id, name FROM food_categories ORDER BY name";
+        $sql = "SELECT * FROM food_categories ORDER BY name";
         $categories = fetchAll($sql);
 
         // Insérer chaque aliment
         foreach ($data['ingredients'] as $ingredient) {
-            $sql = "INSERT INTO foods (name, description, calories, protein, carbs, fat, serving_size, category_id, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            // Vérifier si l'ingrédient doit être exclu
+            if (shouldExcludeIngredient($ingredient)) {
+                continue;
+            }
+            
+            $name = $ingredient['nom'];
+            
+            // Calculer les macronutriments pour cet ingrédient
+            $macros = calculateIngredientMacros(
+                $ingredient,
+                $data['valeurs_nutritionnelles']['calories'],
+                $data['valeurs_nutritionnelles']['proteines'],
+                $data['valeurs_nutritionnelles']['glucides'],
+                $data['valeurs_nutritionnelles']['lipides']
+            );
+            
+            $sql = "INSERT INTO foods (name, description, calories, protein, carbs, fat, category_id, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
             
             $params = [
-                $ingredient['nom'],
+                $name,
                 "Ingrédient de {$data['nom_du_repas']}",
-                $ingredient['calories'],
-                $ingredient['proteines'],
-                $ingredient['glucides'],
-                $ingredient['lipides'],
-                $ingredient['quantite'],
-                $_POST['category_id'][$ingredient['nom']] ?? null
+                $macros['calories'],
+                $macros['proteins'],
+                $macros['carbs'],
+                $macros['fats'],
+                $_POST['category_id'][$name] ?? null
             ];
             
             insert($sql, $params);
@@ -111,35 +192,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <thead>
                                 <tr>
                                     <th>Nom</th>
-                                    <th>Quantité</th>
-                                    <th>Calories</th>
-                                    <th>Protéines</th>
-                                    <th>Glucides</th>
-                                    <th>Lipides</th>
+                                    <th>Calories (100g)</th>
+                                    <th>Protéines (100g)</th>
+                                    <th>Glucides (100g)</th>
+                                    <th>Lipides (100g)</th>
                                     <th>Catégorie</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($data['ingredients'] as $ingredient): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($ingredient['nom']); ?></td>
-                                        <td><?php echo htmlspecialchars($ingredient['quantite']); ?></td>
-                                        <td><?php echo $ingredient['calories']; ?></td>
-                                        <td><?php echo $ingredient['proteines']; ?>g</td>
-                                        <td><?php echo $ingredient['glucides']; ?>g</td>
-                                        <td><?php echo $ingredient['lipides']; ?>g</td>
-                                        <td>
-                                            <select name="category_id[<?php echo htmlspecialchars($ingredient['nom']); ?>]" 
-                                                    class="form-select">
-                                                <option value="">Sélectionner une catégorie</option>
-                                                <?php foreach ($categories as $category): ?>
-                                                    <option value="<?php echo $category['id']; ?>">
-                                                        <?php echo htmlspecialchars($category['name']); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </td>
-                                    </tr>
+                                    <?php if (!shouldExcludeIngredient($ingredient)): ?>
+                                        <?php 
+                                        $macros = calculateIngredientMacros(
+                                            $ingredient,
+                                            $data['valeurs_nutritionnelles']['calories'],
+                                            $data['valeurs_nutritionnelles']['proteines'],
+                                            $data['valeurs_nutritionnelles']['glucides'],
+                                            $data['valeurs_nutritionnelles']['lipides']
+                                        );
+                                        ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($ingredient['nom']); ?></td>
+                                            <td><?php echo $macros['calories']; ?></td>
+                                            <td><?php echo $macros['proteins']; ?>g</td>
+                                            <td><?php echo $macros['carbs']; ?>g</td>
+                                            <td><?php echo $macros['fats']; ?>g</td>
+                                            <td>
+                                                <select name="category_id[<?php echo htmlspecialchars($ingredient['nom']); ?>]" 
+                                                        class="form-select">
+                                                    <option value="">Sélectionner une catégorie</option>
+                                                    <?php foreach ($categories as $category): ?>
+                                                        <option value="<?php echo $category['id']; ?>">
+                                                            <?php echo htmlspecialchars($category['name']); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>

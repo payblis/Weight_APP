@@ -136,10 +136,10 @@ try {
             $prompt .= "    {\n";
             $prompt .= "      \"nom\": \"Nom de l'ingrédient\",\n";
             $prompt .= "      \"quantite\": \"Quantité\",\n";
-            $prompt .= "      \"calories\": 0,\n";
-            $prompt .= "      \"proteines\": 0,\n";
-            $prompt .= "      \"glucides\": 0,\n";
-            $prompt .= "      \"lipides\": 0\n";
+            $prompt .= "      \"calories\": 0,  // Calories pour 100g\n";
+            $prompt .= "      \"proteines\": 0, // Protéines pour 100g\n";
+            $prompt .= "      \"glucides\": 0,  // Glucides pour 100g\n";
+            $prompt .= "      \"lipides\": 0    // Lipides pour 100g\n";
             $prompt .= "    }\n";
             $prompt .= "  ]\n";
             $prompt .= "}\n";

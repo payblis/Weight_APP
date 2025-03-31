@@ -1663,36 +1663,30 @@ function getSetting($setting_name) {
 function callChatGPTAPI($prompt, $api_key) {
     $url = 'https://api.openai.com/v1/chat/completions';
     
+    // Ajouter des instructions spécifiques pour les macronutriments
+    $prompt .= "\n\nIMPORTANT : Pour chaque ingrédient, vous devez fournir les valeurs nutritionnelles pour la quantité exacte spécifiée :\n";
+    $prompt .= "- calories : nombre de calories pour la quantité spécifiée\n";
+    $prompt .= "- proteines : grammes de protéines pour la quantité spécifiée\n";
+    $prompt .= "- glucides : grammes de glucides pour la quantité spécifiée\n";
+    $prompt .= "- lipides : grammes de lipides pour la quantité spécifiée\n\n";
+    $prompt .= "Ces valeurs doivent être réalistes et cohérentes avec les aliments courants.\n";
+    $prompt .= "La somme des calories des ingrédients doit correspondre aux calories totales du repas.\n";
+    $prompt .= "Exemple de format pour un ingrédient :\n";
+    $prompt .= "{\n";
+    $prompt .= "  \"nom\": \"Poulet\",\n";
+    $prompt .= "  \"quantité\": \"200g\",\n";
+    $prompt .= "  \"calories\": 330,  // Calories pour 200g de poulet\n";
+    $prompt .= "  \"proteines\": 62,  // Protéines pour 200g de poulet\n";
+    $prompt .= "  \"glucides\": 0,    // Glucides pour 200g de poulet\n";
+    $prompt .= "  \"lipides\": 8      // Lipides pour 200g de poulet\n";
+    $prompt .= "}\n";
+    
     $data = [
-        'model' => 'gpt-4-turbo',
+        'model' => 'gpt-4',
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'Tu es un nutritionniste expert. Donne-moi une suggestion de repas sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
-
-{
-  "nom_du_repas": "...",
-  "ingredients": [
-    {"quantité": "...", "nom": "..."},
-    ...
-  ],
-  "valeurs_nutritionnelles": {
-    "calories": ...,
-    "proteines": ...,
-    "glucides": ...,
-    "lipides": ...
-  }
-}
-
-RÈGLES STRICTES :
-1. Ne rien ajouter avant ou après le JSON
-2. Ne pas inclure de conseils ou d\'instructions de préparation
-3. Ne pas ajouter de commentaires ou d\'explications
-4. Utiliser exactement les mêmes clés que dans le format ci-dessus
-5. Les valeurs nutritionnelles doivent être des nombres (pas de texte)
-6. Les unités doivent être incluses dans les quantités des ingrédients
-7. Ne pas ajouter de champs supplémentaires
-8. Ne pas modifier la structure ou l\'ordre des champs'
+                'content' => 'Vous êtes un nutritionniste expert qui fournit des suggestions de repas avec des valeurs nutritionnelles précises pour chaque ingrédient dans la quantité exacte spécifiée.'
             ],
             [
                 'role' => 'user',
@@ -1700,35 +1694,32 @@ RÈGLES STRICTES :
             ]
         ],
         'temperature' => 0.7,
-        'max_tokens' => 1000
+        'max_tokens' => 2000
     ];
     
-    $options = [
-        'http' => [
-            'method' => 'POST',
-            'header' => [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $api_key
-            ],
-            'content' => json_encode($data)
-        ]
-    ];
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $api_key
+    ]);
     
-    $context = stream_context_create($options);
-    $response = file_get_contents($url, false, $context);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
     
-    if ($response === false) {
+    if ($http_code !== 200) {
+        error_log("❌ Erreur API ChatGPT - Code HTTP: " . $http_code);
+        error_log("Réponse: " . $response);
         throw new Exception("Erreur lors de l'appel à l'API ChatGPT");
     }
     
     $result = json_decode($response, true);
-    
-    if (isset($result['error'])) {
-        throw new Exception("Erreur API ChatGPT : " . $result['error']['message']);
-    }
-    
     if (!isset($result['choices'][0]['message']['content'])) {
-        throw new Exception("Format de réponse invalide de l'API ChatGPT");
+        error_log("❌ Réponse API invalide: " . print_r($result, true));
+        throw new Exception("Réponse invalide de l'API ChatGPT");
     }
     
     return $result['choices'][0]['message']['content'];
