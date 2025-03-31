@@ -23,10 +23,6 @@ $calories = '';
 $protein = '';
 $carbs = '';
 $fat = '';
-$fiber = '';
-$added_sugar = '';
-$serving_size = '';
-$is_public = 0;
 $success_message = '';
 $errors = [];
 
@@ -44,10 +40,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $protein = sanitizeInput($_POST['protein'] ?? '');
     $carbs = sanitizeInput($_POST['carbs'] ?? '');
     $fat = sanitizeInput($_POST['fat'] ?? '');
-    $fiber = floatval($_POST['fiber'] ?? '');
-    $added_sugar = floatval($_POST['added_sugar'] ?? '');
-    $serving_size = sanitizeInput($_POST['serving_size'] ?? '');
-    $is_public = isset($_POST['is_public']) ? 1 : 0;
     
     // Validation des données
     if (empty($food_name)) {
@@ -70,23 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $errors[] = "Les lipides doivent être un nombre positif ou zéro";
     }
     
-    if (empty($fiber) || !is_numeric($fiber) || $fiber < 0) {
-        $errors[] = "Les fibres doivent être un nombre positif ou zéro";
-    }
-    
-    if (empty($added_sugar) || !is_numeric($added_sugar) || $added_sugar < 0) {
-        $errors[] = "Les sucres ajoutés doivent être un nombre positif ou zéro";
-    }
-    
-    if (empty($serving_size)) {
-        $errors[] = "La taille de la portion est requise";
-    }
-    
     // Si aucune erreur, ajouter l'aliment
     if (empty($errors)) {
-        $sql = "INSERT INTO foods (name, category_id, calories, protein, carbs, fat, fiber, added_sugar, serving_size, is_public, created_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-        $result = insert($sql, [$food_name, $category_id, $calories, $protein, $carbs, $fat, $fiber, $added_sugar, $serving_size, $is_public]);
+        $sql = "INSERT INTO foods (name, category_id, calories, protein, carbs, fat, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, NOW())";
+        $result = insert($sql, [$food_name, $category_id, $calories, $protein, $carbs, $fat]);
         
         if ($result) {
             $success_message = "L'aliment a été ajouté avec succès !";
@@ -95,10 +75,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $protein = '';
             $carbs = '';
             $fat = '';
-            $fiber = '';
-            $added_sugar = '';
-            $serving_size = '';
-            $is_public = 0;
         } else {
             $errors[] = "Une erreur s'est produite lors de l'ajout de l'aliment. Veuillez réessayer.";
         }
@@ -119,19 +95,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         if ($nutritional_data) {
             // Ajouter l'aliment à la base de données
-            $sql = "INSERT INTO foods (name, category_id, calories, protein, carbs, fat, fiber, added_sugar, serving_size, is_public, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $sql = "INSERT INTO foods (name, category_id, calories, protein, carbs, fat, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, NOW())";
             $result = insert($sql, [
                 $food_name,
                 7, // Catégorie par défaut : "Autres"
                 $nutritional_data['calories'],
                 $nutritional_data['protein'],
                 $nutritional_data['carbs'],
-                $nutritional_data['fat'],
-                $nutritional_data['fiber'],
-                $nutritional_data['added_sugar'],
-                $nutritional_data['serving_size'],
-                0,
+                $nutritional_data['fat']
             ]);
             
             if ($result) {
@@ -202,7 +174,7 @@ function getChatGPTNutritionalData($food_name, $api_key) {
     $url = 'https://api.openai.com/v1/chat/completions';
     
     // Construire le prompt
-    $prompt = "Donne-moi les informations nutritionnelles pour 100g de $food_name. Réponds uniquement avec un objet JSON contenant les champs suivants : calories (nombre entier), protein (nombre décimal), carbs (nombre décimal), fat (nombre décimal), fiber (nombre décimal), added_sugar (nombre décimal), serving_size (nombre décimal). N'inclus pas d'autres informations.";
+    $prompt = "Donne-moi les informations nutritionnelles pour 100g de $food_name. Réponds uniquement avec un objet JSON contenant les champs suivants : calories (nombre entier), protein (nombre décimal), carbs (nombre décimal), fat (nombre décimal). N'inclus pas d'autres informations.";
     
     // Préparer les données de la requête
     $data = [
@@ -251,19 +223,13 @@ function getChatGPTNutritionalData($food_name, $api_key) {
                 isset($nutritional_data['calories']) && 
                 isset($nutritional_data['protein']) && 
                 isset($nutritional_data['carbs']) && 
-                isset($nutritional_data['fat']) &&
-                isset($nutritional_data['fiber']) &&
-                isset($nutritional_data['added_sugar']) &&
-                isset($nutritional_data['serving_size'])) {
+                isset($nutritional_data['fat'])) {
                 
                 return [
                     'calories' => (int)$nutritional_data['calories'],
                     'protein' => (float)$nutritional_data['protein'],
                     'carbs' => (float)$nutritional_data['carbs'],
-                    'fat' => (float)$nutritional_data['fat'],
-                    'fiber' => (float)$nutritional_data['fiber'],
-                    'added_sugar' => (float)$nutritional_data['added_sugar'],
-                    'serving_size' => (float)$nutritional_data['serving_size']
+                    'fat' => (float)$nutritional_data['fat']
                 ];
             }
         }
@@ -275,10 +241,7 @@ function getChatGPTNutritionalData($food_name, $api_key) {
         'calories' => 100,
         'protein' => 5,
         'carbs' => 15,
-        'fat' => 2,
-        'fiber' => 0,
-        'added_sugar' => 0,
-        'serving_size' => 100
+        'fat' => 2
     ];
 }
 ?>
@@ -378,9 +341,6 @@ function getChatGPTNutritionalData($food_name, $api_key) {
                                     <th>Protéines (g)</th>
                                     <th>Glucides (g)</th>
                                     <th>Lipides (g)</th>
-                                    <th>Fibres (g)</th>
-                                    <th>Sucres ajoutés (g)</th>
-                                    <th>Taille de la portion (g)</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -393,9 +353,6 @@ function getChatGPTNutritionalData($food_name, $api_key) {
                                         <td><?php echo htmlspecialchars($food['protein']); ?></td>
                                         <td><?php echo htmlspecialchars($food['carbs']); ?></td>
                                         <td><?php echo htmlspecialchars($food['fat']); ?></td>
-                                        <td><?php echo htmlspecialchars($food['fiber']); ?></td>
-                                        <td><?php echo htmlspecialchars($food['added_sugar']); ?></td>
-                                        <td><?php echo htmlspecialchars($food['serving_size']); ?></td>
                                         <td>
                                             <a href="food-management.php?action=delete&id=<?php echo $food['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?');">
                                                 <i class="fas fa-trash"></i>
@@ -457,21 +414,6 @@ function getChatGPTNutritionalData($food_name, $api_key) {
                                 <label for="fat" class="form-label">Lipides (g)</label>
                                 <input type="number" class="form-control" id="fat" name="fat" value="<?php echo htmlspecialchars($fat); ?>" min="0" step="0.1" required>
                             </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="fiber">Fibres (g)</label>
-                            <input type="number" step="0.1" class="form-control" id="fiber" name="fiber" value="<?php echo htmlspecialchars($fiber); ?>" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="added_sugar">Sucres ajoutés (g)</label>
-                            <input type="number" step="0.1" class="form-control" id="added_sugar" name="added_sugar" value="<?php echo htmlspecialchars($added_sugar); ?>" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="serving_size" class="form-label">Taille de la portion (g)</label>
-                            <input type="number" class="form-control" id="serving_size" name="serving_size" value="<?php echo htmlspecialchars($serving_size); ?>" min="0" required>
                         </div>
                         
                         <div class="d-grid">

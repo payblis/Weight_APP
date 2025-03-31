@@ -31,21 +31,20 @@ if (!validateDate($start_date) || !validateDate($end_date)) {
 
 // Récupérer les données caloriques pour la période sélectionnée
 $sql = "SELECT 
-            DATE(m.log_date) as date,
-            SUM(f.calories * mf.quantity) as total_calories,
-            SUM(f.protein * mf.quantity) as total_protein,
-            SUM(f.carbs * mf.quantity) as total_carbs,
-            SUM(f.fat * mf.quantity) as total_fat,
-            SUM(f.fiber * mf.quantity) as total_fiber,
-            SUM(f.added_sugar * mf.quantity) as total_added_sugar
-        FROM meals m
-        JOIN meal_foods mf ON m.id = mf.meal_id
-        JOIN foods f ON mf.food_id = f.id
-        WHERE m.user_id = ?
-        GROUP BY DATE(m.log_date)
-        ORDER BY date DESC";
+            m.log_date,
+            SUM(m.total_calories) as calories_in,
+            (SELECT SUM(el.calories_burned) FROM exercise_logs el WHERE el.user_id = ? AND el.log_date = m.log_date) as calories_out
+        FROM 
+            meals m
+        WHERE 
+            m.user_id = ? AND 
+            m.log_date BETWEEN ? AND ?
+        GROUP BY 
+            m.log_date
+        ORDER BY 
+            m.log_date";
 
-$calorie_history = fetchAll($sql, [$user_id]);
+$calorie_data = fetchAll($sql, [$user_id, $user_id, $start_date, $end_date]);
 
 // Récupérer les données IMC pour la période sélectionnée
 $sql = "SELECT 
@@ -73,11 +72,11 @@ $net_calories = [];
 $bmi_dates = [];
 $bmi_values = [];
 
-foreach ($calorie_history as $data) {
-    $dates[] = date('d/m', strtotime($data['date']));
-    $calories_in[] = round($data['total_calories'] ?? 0);
-    $calories_out[] = 0;
-    $net_calories[] = round($data['total_calories'] ?? 0);
+foreach ($calorie_data as $data) {
+    $dates[] = date('d/m', strtotime($data['log_date']));
+    $calories_in[] = round($data['calories_in'] ?? 0);
+    $calories_out[] = round($data['calories_out'] ?? 0);
+    $net_calories[] = round(($data['calories_in'] ?? 0) - ($data['calories_out'] ?? 0));
 }
 
 foreach ($bmi_data as $data) {
@@ -180,6 +179,27 @@ $sql = "SELECT *, DATE_FORMAT(log_date, '%d/%m/%Y') as formatted_date
         ORDER BY log_date DESC 
         LIMIT 100";
 $bmi_history = fetchAll($sql, [$user_id]);
+
+// Récupérer l'historique calorique détaillé
+$sql = "SELECT 
+            m.log_date, 
+            DATE_FORMAT(m.log_date, '%d/%m/%Y') as formatted_date,
+            SUM(m.total_calories) as calories_in,
+            (SELECT SUM(el.calories_burned) FROM exercise_logs el WHERE el.user_id = ? AND el.log_date = m.log_date) as calories_out,
+            SUM(m.total_protein) as protein,
+            SUM(m.total_carbs) as carbs,
+            SUM(m.total_fat) as fat
+        FROM 
+            meals m
+        WHERE 
+            m.user_id = ? 
+        GROUP BY 
+            m.log_date
+        ORDER BY 
+            m.log_date DESC
+        LIMIT 30";
+
+$calorie_history = fetchAll($sql, [$user_id, $user_id]);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -332,29 +352,36 @@ $bmi_history = fetchAll($sql, [$user_id]);
                     </div>
                 <?php else: ?>
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table class="table table-striped table-hover">
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Calories</th>
-                                    <th>Protéines</th>
-                                    <th>Glucides</th>
-                                    <th>Lipides</th>
-                                    <th>Fibres</th>
-                                    <th>Sucres ajoutés</th>
+                                    <th>Calories consommées</th>
+                                    <th>Calories brûlées</th>
+                                    <th>Bilan calorique</th>
+                                    <th>Protéines (g)</th>
+                                    <th>Glucides (g)</th>
+                                    <th>Lipides (g)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($calorie_history as $day): ?>
-                                <tr>
-                                    <td><?php echo date('d/m/Y', strtotime($day['date'])); ?></td>
-                                    <td><?php echo round($day['total_calories']); ?></td>
-                                    <td><?php echo round($day['total_protein'], 1); ?>g</td>
-                                    <td><?php echo round($day['total_carbs'], 1); ?>g</td>
-                                    <td><?php echo round($day['total_fat'], 1); ?>g</td>
-                                    <td><?php echo round($day['total_fiber'], 1); ?>g</td>
-                                    <td><?php echo round($day['total_added_sugar'], 1); ?>g</td>
-                                </tr>
+                                <?php foreach ($calorie_history as $entry): ?>
+                                    <?php 
+                                    $calories_in = round($entry['calories_in'] ?? 0);
+                                    $calories_out = round($entry['calories_out'] ?? 0);
+                                    $net_calories = $calories_in - $calories_out;
+                                    ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($entry['formatted_date']); ?></td>
+                                        <td><?php echo htmlspecialchars($calories_in); ?></td>
+                                        <td><?php echo htmlspecialchars($calories_out); ?></td>
+                                        <td class="<?php echo $net_calories <= 0 ? 'text-success' : 'text-danger'; ?>">
+                                            <?php echo htmlspecialchars($net_calories); ?>
+                                        </td>
+                                        <td><?php echo htmlspecialchars(round($entry['protein'] ?? 0, 1)); ?></td>
+                                        <td><?php echo htmlspecialchars(round($entry['carbs'] ?? 0, 1)); ?></td>
+                                        <td><?php echo htmlspecialchars(round($entry['fat'] ?? 0, 1)); ?></td>
+                                    </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>

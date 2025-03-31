@@ -567,16 +567,7 @@ function updateMealTotals($meal_id) {
     ]);
     
     // Debug: Vérifier les totaux après la mise à jour
-    $sql = "SELECT 
-            SUM(f.calories * mf.quantity) as total_calories,
-            SUM(f.protein * mf.quantity) as total_protein,
-            SUM(f.carbs * mf.quantity) as total_carbs,
-            SUM(f.fat * mf.quantity) as total_fat,
-            SUM(f.fiber * mf.quantity) as total_fiber,
-            SUM(f.added_sugar * mf.quantity) as total_added_sugar
-        FROM meal_foods mf 
-        JOIN foods f ON mf.food_id = f.id 
-        WHERE mf.meal_id = ?";
+    $sql = "SELECT total_calories, total_protein, total_carbs, total_fat FROM meals WHERE id = ?";
     $totals = fetchOne($sql, [$meal_id]);
     error_log("Totaux après mise à jour: " . print_r($totals, true));
     

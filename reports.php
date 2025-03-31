@@ -53,18 +53,13 @@ $sql = "SELECT * FROM weight_logs WHERE user_id = ? AND log_date BETWEEN ? AND ?
 $weight_logs = fetchAll($sql, [$user_id, $start_date, $end_date]);
 
 // Récupérer les entrées alimentaires pour la période
-$sql = "SELECT 
-            AVG(f.calories * mf.quantity) as avg_calories,
-            AVG(f.protein * mf.quantity) as avg_protein,
-            AVG(f.carbs * mf.quantity) as avg_carbs,
-            AVG(f.fat * mf.quantity) as avg_fat,
-            AVG(f.fiber * mf.quantity) as avg_fiber,
-            AVG(f.added_sugar * mf.quantity) as avg_added_sugar
-        FROM meals m
-        JOIN meal_foods mf ON m.id = mf.meal_id
-        JOIN foods f ON mf.food_id = f.id
-        WHERE m.user_id = ? AND m.log_date BETWEEN ? AND ?";
-$food_stats = fetchOne($sql, [$user_id, $start_date, $end_date]);
+$sql = "SELECT m.*, COUNT(fl.id) as food_count 
+        FROM meals m 
+        LEFT JOIN food_logs fl ON m.id = fl.meal_id 
+        WHERE m.user_id = ? AND m.log_date BETWEEN ? AND ? 
+        GROUP BY m.id 
+        ORDER BY m.log_date";
+$food_logs = fetchAll($sql, [$user_id, $start_date, $end_date]);
 
 // Récupérer les entrées d'exercices pour la période
 $sql = "SELECT el.*, e.name as exercise_name 

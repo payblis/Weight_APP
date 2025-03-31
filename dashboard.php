@@ -801,43 +801,6 @@ if (!empty($pending_invitations)):
                 </div>
             </div>
         </div>
-
-        <!-- Objectifs quotidiens -->
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Objectifs quotidiens</h5>
-                        <ul class="list-group">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Calories
-                                <span class="badge bg-primary rounded-pill"><?php echo $nutrition_goals['daily_calories']; ?> kcal</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Protéines
-                                <span class="badge bg-primary rounded-pill"><?php echo round($nutrition_goals['daily_calories'] * $nutrition_goals['protein_ratio'] / 4); ?>g</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Glucides
-                                <span class="badge bg-primary rounded-pill"><?php echo round($nutrition_goals['daily_calories'] * $nutrition_goals['carbs_ratio'] / 4); ?>g</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Lipides
-                                <span class="badge bg-primary rounded-pill"><?php echo round($nutrition_goals['daily_calories'] * $nutrition_goals['fat_ratio'] / 9); ?>g</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Fibres
-                                <span class="badge bg-primary rounded-pill"><?php echo $nutrition_goals['fiber_goal']; ?>g</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Sucres ajoutés
-                                <span class="badge bg-primary rounded-pill"><?php echo $nutrition_goals['added_sugar_goal']; ?>g</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Scripts JavaScript -->
