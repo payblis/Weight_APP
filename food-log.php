@@ -1535,8 +1535,34 @@ function updateMealTotals($meal_id) {
                     // Désactiver le bouton pendant le chargement
                     this.disabled = true;
                     
-                    // Recharger la page pour obtenir de nouvelles suggestions
-                    window.location.reload();
+                    // Appeler l'API pour générer les suggestions
+                    fetch('generate-suggestions.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            type: 'repas'
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Recharger la page pour afficher les nouvelles suggestions
+                            window.location.reload();
+                        } else {
+                            alert('Erreur lors de la génération des suggestions : ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert('Une erreur est survenue lors de la génération des suggestions');
+                    })
+                    .finally(() => {
+                        // Réactiver le bouton et arrêter la rotation de l'icône
+                        this.disabled = false;
+                        icon.classList.remove('fa-spin');
+                    });
                 });
             }
             
