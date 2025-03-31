@@ -106,9 +106,9 @@ unset($_SESSION['error_message']);
                                                     onclick="showSuggestionDetails(<?php echo htmlspecialchars(json_encode($data)); ?>)">
                                                 <i class="fas fa-eye"></i> Voir les détails
                                             </button>
-                                            <a href="create-foods-from-suggestion.php?id=<?php echo $suggestion['id']; ?>" 
+                                            <a href="create-meal-from-suggestion.php?id=<?php echo $suggestion['id']; ?>" 
                                                class="btn btn-sm btn-success me-2">
-                                                <i class="fas fa-plus"></i> Ajouter à mon journal
+                                                <i class="fas fa-plus"></i> Créer un repas
                                             </a>
                                             <button type="button" class="btn btn-sm btn-danger" 
                                                     onclick="deleteSuggestion(<?php echo $suggestion['id']; ?>)">

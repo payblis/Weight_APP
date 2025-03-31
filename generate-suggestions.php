@@ -201,14 +201,23 @@ Les valeurs nutritionnelles doivent correspondre à la quantité exacte spécifi
         error_log("SQL Query: " . $sql);
         error_log("Paramètres: " . print_r([$user_id, $suggestion_type, $suggestion_content], true));
         
-        $result = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
+        $suggestion_id = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
         
-        if ($result) {
-            error_log("✅ Suggestion insérée avec succès. ID: " . getLastInsertId());
+        if ($suggestion_id) {
+            error_log("✅ Suggestion insérée avec succès. ID: " . $suggestion_id);
             // Vérifier que la suggestion a bien été insérée
             $check_sql = "SELECT * FROM ai_suggestions WHERE id = ?";
-            $check_result = fetchOne($check_sql, [getLastInsertId()]);
+            $check_result = fetchOne($check_sql, [$suggestion_id]);
             error_log("Vérification de l'insertion: " . print_r($check_result, true));
+            
+            // Insérer les aliments de la suggestion
+            $suggestion_data = json_decode($suggestion_content, true);
+            if (isset($suggestion_data['ingredients'])) {
+                if (!insertSuggestionFoods($suggestion_data['ingredients'], $suggestion_id)) {
+                    error_log("Erreur lors de l'insertion des aliments de la suggestion");
+                    // On continue même si l'insertion des aliments échoue
+                }
+            }
             
             // Rediriger vers my-coach.php avec un message de succès
             $_SESSION['success_message'] = "Suggestion générée avec succès";

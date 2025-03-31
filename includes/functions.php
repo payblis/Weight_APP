@@ -1848,3 +1848,67 @@ function calculateAge($birth_date) {
     $age = $today->diff($birth);
     return $age->y;
 }
+
+/**
+ * Insère les aliments d'une suggestion dans la base de données
+ * 
+ * @param array $ingredients Liste des ingrédients de la suggestion
+ * @param int $suggestion_id ID de la suggestion
+ * @return bool True si succès, false sinon
+ */
+function insertSuggestionFoods($ingredients, $suggestion_id) {
+    try {
+        error_log("=== Début de l'insertion des aliments de la suggestion ===");
+        error_log("Suggestion ID: " . $suggestion_id);
+        error_log("Nombre d'ingrédients: " . count($ingredients));
+        
+        foreach ($ingredients as $ingredient) {
+            // Vérifier si l'aliment existe déjà
+            $sql = "SELECT id FROM foods WHERE name = ?";
+            $existing_food = fetchOne($sql, [$ingredient['nom']]);
+            
+            if (!$existing_food) {
+                // Insérer le nouvel aliment
+                $sql = "INSERT INTO foods (name, calories, protein, carbs, fat, serving_size) 
+                        VALUES (?, ?, ?, ?, ?, ?)";
+                $food_id = insert($sql, [
+                    $ingredient['nom'],
+                    $ingredient['calories'],
+                    $ingredient['proteines'],
+                    $ingredient['glucides'],
+                    $ingredient['lipides'],
+                    $ingredient['quantite']
+                ]);
+                
+                if (!$food_id) {
+                    throw new Exception("Erreur lors de l'insertion de l'aliment: " . $ingredient['nom']);
+                }
+            } else {
+                $food_id = $existing_food['id'];
+            }
+            
+            // Lier l'aliment à la suggestion
+            $sql = "INSERT INTO suggestion_foods (suggestion_id, food_id, quantity, calories, protein, carbs, fat) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $result = insert($sql, [
+                $suggestion_id,
+                $food_id,
+                $ingredient['quantite'],
+                $ingredient['calories'],
+                $ingredient['proteines'],
+                $ingredient['glucides'],
+                $ingredient['lipides']
+            ]);
+            
+            if (!$result) {
+                throw new Exception("Erreur lors de la liaison de l'aliment à la suggestion: " . $ingredient['nom']);
+            }
+        }
+        
+        error_log("=== Fin de l'insertion des aliments de la suggestion ===");
+        return true;
+    } catch (Exception $e) {
+        error_log("Erreur dans insertSuggestionFoods: " . $e->getMessage());
+        return false;
+    }
+}
