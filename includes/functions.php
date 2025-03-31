@@ -1580,25 +1580,37 @@ function getExerciseStats($user_id) {
 // Fonction pour obtenir les suggestions de repas
 function getMealSuggestions($user_id) {
     try {
+        error_log("=== Début de getMealSuggestions ===");
+        error_log("User ID: " . $user_id);
+        
         // Récupérer l'objectif de l'utilisateur
         $sql = "SELECT g.* FROM goals g WHERE g.user_id = ? AND g.status = 'active'";
         $goal = fetchOne($sql, [$user_id]);
+        error_log("Objectif trouvé : " . ($goal ? "Oui" : "Non"));
         
         // Récupérer les suggestions d'IA
         $sql = "SELECT id, content as name, created_at FROM ai_suggestions 
                 WHERE user_id = ? AND suggestion_type IN ('repas', 'alimentation') 
                 ORDER BY created_at DESC LIMIT 5";
         $suggestions = fetchAll($sql, [$user_id]);
+        error_log("Nombre de suggestions trouvées : " . count($suggestions));
         
         // Ajouter les informations nutritionnelles pour chaque suggestion
         foreach ($suggestions as &$suggestion) {
+            error_log("=== Traitement de la suggestion " . $suggestion['id'] . " ===");
             $content = $suggestion['name'];
+            error_log("Contenu brut : " . substr($content, 0, 200) . "...");
             
             // Rechercher les valeurs nutritionnelles dans le contenu
             preg_match('/calories?\s*:?\s*environ\s*(\d+)\s*kcal/i', $content, $calories_match);
             preg_match('/prot[ée]ines?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match);
             preg_match('/glucides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $carbs_match);
             preg_match('/lipides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $fat_match);
+            
+            error_log("Calories match : " . print_r($calories_match, true));
+            error_log("Protéines match : " . print_r($protein_match, true));
+            error_log("Glucides match : " . print_r($carbs_match, true));
+            error_log("Lipides match : " . print_r($fat_match, true));
             
             // Stocker les valeurs nutritionnelles
             $suggestion['totals'] = [
@@ -1607,6 +1619,7 @@ function getMealSuggestions($user_id) {
                 'carbs' => isset($carbs_match[1]) ? floatval($carbs_match[1]) : 0,
                 'fat' => isset($fat_match[1]) ? floatval($fat_match[1]) : 0
             ];
+            error_log("Totaux nutritionnels : " . print_r($suggestion['totals'], true));
             
             // Extraire les ingrédients et les conseils
             $ingredients = [];
@@ -1614,9 +1627,14 @@ function getMealSuggestions($user_id) {
             
             // Rechercher la section des ingrédients
             if (preg_match('/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s', $content, $ingredients_match)) {
+                error_log("Section ingrédients trouvée");
                 $ingredients_text = $ingredients_match[1];
+                error_log("Texte des ingrédients : " . $ingredients_text);
+                
                 // Extraire chaque ingrédient avec sa quantité
                 preg_match_all('/-\s*(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|unité|tasse|cuillère|pincée)?)?\s*(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list, PREG_SET_ORDER);
+                error_log("Ingrédients extraits : " . print_r($ingredients_list, true));
+                
                 foreach ($ingredients_list as $match) {
                     $quantity = isset($match[1]) ? trim($match[1]) : '';
                     $name = trim($match[2]);
@@ -1627,14 +1645,22 @@ function getMealSuggestions($user_id) {
                         ];
                     }
                 }
+            } else {
+                error_log("Section ingrédients non trouvée");
             }
             
             // Rechercher la section des conseils
             if (preg_match('/4\.\s*Conseils\s*:(.*?)$/s', $content, $conseils_match)) {
+                error_log("Section conseils trouvée");
                 $conseils_text = $conseils_match[1];
+                error_log("Texte des conseils : " . $conseils_text);
+                
                 // Extraire chaque conseil
                 preg_match_all('/-\s*(.*?)(?=\n|$)/', $conseils_text, $conseils_list);
+                error_log("Conseils extraits : " . print_r($conseils_list, true));
                 $conseils = array_map('trim', $conseils_list[1]);
+            } else {
+                error_log("Section conseils non trouvée");
             }
             
             // Formater la description pour l'affichage
@@ -1642,13 +1668,16 @@ function getMealSuggestions($user_id) {
                 'ingredients' => $ingredients,
                 'conseils' => $conseils
             ];
+            error_log("Description finale : " . print_r($suggestion['description'], true));
             
             // Ajouter des informations sur la compatibilité avec l'objectif
             if ($goal) {
                 $suggestion['goal_compatibility'] = calculateGoalCompatibility($suggestion['totals'], $goal);
+                error_log("Compatibilité avec l'objectif : " . $suggestion['goal_compatibility']);
             }
         }
         
+        error_log("=== Fin de getMealSuggestions ===");
         return $suggestions;
     } catch (Exception $e) {
         error_log("Erreur dans getMealSuggestions: " . $e->getMessage());
