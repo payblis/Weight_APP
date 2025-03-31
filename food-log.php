@@ -32,6 +32,10 @@ $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $post_action = isset($_POST['action']) ? sanitizeInput($_POST['action']) : '';
     
+    error_log("=== DÉBUT DU TRAITEMENT POST ===");
+    error_log("Action POST détectée : " . $post_action);
+    error_log("Données POST reçues : " . print_r($_POST, true));
+    
     // Ajouter un repas
     if ($post_action === 'add_meal') {
         $meal_type = sanitizeInput($_POST['meal_type'] ?? '');
@@ -326,10 +330,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Supprimer un repas
     elseif ($post_action === 'delete_meal') {
+        error_log("=== DÉBUT DE LA SUPPRESSION DE REPAS ===");
         $meal_id = intval($_POST['meal_id'] ?? 0);
+        error_log("ID du repas à supprimer : " . $meal_id);
         
         // Validation
         if ($meal_id <= 0) {
+            error_log("Erreur : ID de repas invalide");
             $errors[] = "ID de repas invalide";
         }
         
@@ -337,73 +344,117 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 // Vérifier si le repas existe et appartient à l'utilisateur
                 $sql = "SELECT id FROM meals WHERE id = ? AND user_id = ?";
+                error_log("SQL de vérification : " . $sql);
+                error_log("Paramètres : meal_id=" . $meal_id . ", user_id=" . $user_id);
                 $meal = fetchOne($sql, [$meal_id, $user_id]);
                 
                 if (!$meal) {
+                    error_log("Erreur : Repas introuvable ou non autorisé");
                     $errors[] = "Repas introuvable ou vous n'avez pas les droits pour le supprimer";
                 } else {
+                    error_log("Repas trouvé, début de la suppression");
+                    
                     // Supprimer tous les aliments du repas
                     $sql = "DELETE FROM food_logs WHERE meal_id = ?";
-                    update($sql, [$meal_id]);
+                    error_log("SQL de suppression des aliments : " . $sql);
+                    error_log("Paramètres : meal_id=" . $meal_id);
+                    $food_delete_result = update($sql, [$meal_id]);
+                    error_log("Résultat de la suppression des aliments : " . ($food_delete_result ? "Succès" : "Échec"));
                     
                     // Supprimer le repas
                     $sql = "DELETE FROM meals WHERE id = ?";
+                    error_log("SQL de suppression du repas : " . $sql);
+                    error_log("Paramètres : meal_id=" . $meal_id);
                     $result = update($sql, [$meal_id]);
+                    error_log("Résultat de la suppression du repas : " . ($result ? "Succès" : "Échec"));
                     
                     if ($result) {
+                        error_log("Suppression réussie, redirection vers food-log.php");
                         $success_message = "Repas supprimé avec succès";
                         redirect("food-log.php");
                     } else {
+                        error_log("Erreur lors de la suppression du repas");
                         $errors[] = "Une erreur s'est produite lors de la suppression du repas";
                     }
                 }
             } catch (Exception $e) {
+                error_log("Exception lors de la suppression : " . $e->getMessage());
                 $errors[] = "Erreur: " . $e->getMessage();
             }
         }
+        error_log("=== FIN DE LA SUPPRESSION DE REPAS ===");
     }
 }
 
 // Traitement des actions GET
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    error_log("=== DÉBUT DU TRAITEMENT GET ===");
+    error_log("Action GET : " . $action);
+    error_log("ID du repas : " . $meal_id);
+    
     if ($action === 'delete_meal' && $meal_id > 0) {
+        error_log("=== DÉBUT DE LA SUPPRESSION DE REPAS VIA GET ===");
         try {
             // Vérifier si le repas existe et appartient à l'utilisateur
             $sql = "SELECT id, meal_type FROM meals WHERE id = ? AND user_id = ?";
+            error_log("SQL de vérification : " . $sql);
+            error_log("Paramètres : meal_id=" . $meal_id . ", user_id=" . $user_id);
             $meal = fetchOne($sql, [$meal_id, $user_id]);
             
             if (!$meal) {
+                error_log("Erreur : Repas introuvable ou non autorisé");
                 $errors[] = "Repas introuvable ou vous n'avez pas les droits pour le supprimer";
             } else {
+                error_log("Repas trouvé, début de la suppression");
+                
                 // Supprimer tous les aliments du repas
                 $sql = "DELETE FROM food_logs WHERE meal_id = ?";
-                update($sql, [$meal_id]);
+                error_log("SQL de suppression des aliments : " . $sql);
+                error_log("Paramètres : meal_id=" . $meal_id);
+                $food_delete_result = update($sql, [$meal_id]);
+                error_log("Résultat de la suppression des aliments : " . ($food_delete_result ? "Succès" : "Échec"));
                 
                 // Supprimer le repas
                 $sql = "DELETE FROM meals WHERE id = ?";
+                error_log("SQL de suppression du repas : " . $sql);
+                error_log("Paramètres : meal_id=" . $meal_id);
                 $result = update($sql, [$meal_id]);
+                error_log("Résultat de la suppression du repas : " . ($result ? "Succès" : "Échec"));
                 
                 if ($result) {
+                    error_log("Suppression réussie, redirection vers food-log.php");
                     $success_message = "Repas supprimé avec succès";
                     redirect("food-log.php");
                 } else {
+                    error_log("Erreur lors de la suppression du repas");
                     $errors[] = "Une erreur s'est produite lors de la suppression du repas";
                 }
             }
         } catch (Exception $e) {
+            error_log("Exception lors de la suppression : " . $e->getMessage());
             $errors[] = "Erreur: " . $e->getMessage();
         }
+        error_log("=== FIN DE LA SUPPRESSION DE REPAS VIA GET ===");
     }
 }
 
 // Récupérer les repas de l'utilisateur
 $date_filter = isset($_GET['date']) ? sanitizeInput($_GET['date']) : date('Y-m-d');
+error_log("=== RÉCUPÉRATION DES REPAS ===");
+error_log("Date filtrée : " . $date_filter);
+error_log("User ID : " . $user_id);
+
 $sql = "SELECT m.*, 
         (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count
         FROM meals m 
         WHERE m.user_id = ? AND m.log_date = ? 
         ORDER BY FIELD(m.meal_type, 'petit_dejeuner', 'dejeuner', 'diner', 'collation', 'autre')";
+error_log("SQL de récupération des repas : " . $sql);
+error_log("Paramètres : user_id=" . $user_id . ", date=" . $date_filter);
 $meals = fetchAll($sql, [$user_id, $date_filter]);
+error_log("Nombre de repas trouvés : " . count($meals));
+error_log("Données des repas : " . print_r($meals, true));
+error_log("=== FIN DE LA RÉCUPÉRATION DES REPAS ===");
 
 // Récupérer les repas prédéfinis
 $sql = "SELECT * FROM predefined_meals 
@@ -1080,6 +1131,7 @@ function updateMealTotals($meal_id) {
                             <?php else: ?>
                                 <div class="list-group">
                                     <?php foreach ($meals as $meal): ?>
+                                        <?php error_log("Affichage du repas : " . print_r($meal, true)); ?>
                                         <div class="card mb-3">
                                             <div class="card-body">
                                                 <div class="d-flex justify-content-between align-items-start">
@@ -1212,6 +1264,7 @@ function updateMealTotals($meal_id) {
                                         </tr>
                                     <?php else: ?>
                                         <?php foreach ($meals as $meal): ?>
+                                            <?php error_log("Affichage du repas : " . print_r($meal, true)); ?>
                                             <tr>
                                                 <td><?php echo date('d/m/Y', strtotime($meal['log_date'])); ?></td>
                                                 <td><?php echo getMealTypeName($meal['meal_type']); ?></td>
