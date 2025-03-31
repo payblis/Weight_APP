@@ -1074,28 +1074,6 @@ try {
                                                     </div>
                                                 </td>
                                             </tr>
-                                            
-                                            <!-- Delete Program Modal -->
-                                            <div class="modal fade" id="deleteProgramModal<?php echo $program['id']; ?>" tabindex="-1">
-                                                <div class="modal-dialog">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Supprimer le programme</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <p>Êtes-vous sûr de vouloir supprimer ce programme ? Cette action est irréversible.</p>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <form action="admin.php?section=delete_program" method="POST">
-                                                                <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
-                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                                <button type="submit" class="btn btn-danger">Supprimer</button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         <?php endforeach; ?>
                                         <?php if (empty($programs)): ?>
                                             <tr>
@@ -1107,6 +1085,31 @@ try {
                             </div>
                         </div>
                     </div>
+
+                    <!-- Modals de suppression -->
+                    <?php foreach ($programs as $program): ?>
+                    <div class="modal fade" id="deleteProgramModal<?php echo $program['id']; ?>" tabindex="-1" aria-labelledby="deleteProgramModalLabel<?php echo $program['id']; ?>" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="deleteProgramModalLabel<?php echo $program['id']; ?>">Supprimer le programme</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Êtes-vous sûr de vouloir supprimer le programme "<?php echo htmlspecialchars($program['name']); ?>" ?</p>
+                                    <p class="text-danger">Cette action est irréversible.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <form action="admin.php?section=delete_program" method="POST">
+                                        <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                        <button type="submit" class="btn btn-danger">Supprimer</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
                     
                 <?php elseif ($section === 'program_management'): ?>
                     <!-- Program management form -->
@@ -1189,18 +1192,6 @@ try {
                                                 <div id="macros-warning" class="text-danger mt-2"></div>
                                             </div>
 
-                                            <!-- ChatGPT Integration -->
-                                            <div class="mb-3">
-                                                <label class="form-label">Génération avec ChatGPT</label>
-                                                <div class="input-group">
-                                                    <input type="text" class="form-control" id="chatgpt_prompt" placeholder="Décrivez le type de programme que vous souhaitez créer...">
-                                                    <button type="button" class="btn btn-outline-primary" id="generateWithChatGPT">
-                                                        <i class="fas fa-magic"></i> Générer
-                                                    </button>
-                                                </div>
-                                                <div id="chatgpt-response" class="mt-2"></div>
-                                            </div>
-
                                             <div class="d-flex justify-content-between">
                                                 <a href="admin.php?section=programs" class="btn btn-secondary">Annuler</a>
                                                 <button type="submit" class="btn btn-primary">
@@ -1241,54 +1232,6 @@ try {
                             
                             // Initial validation
                             validateMacros();
-
-                            // ChatGPT Integration
-                            const generateButton = document.getElementById('generateWithChatGPT');
-                            const promptInput = document.getElementById('chatgpt_prompt');
-                            const responseDiv = document.getElementById('chatgpt-response');
-
-                            generateButton.addEventListener('click', async function() {
-                                const prompt = promptInput.value;
-                                if (!prompt) {
-                                    responseDiv.innerHTML = '<div class="alert alert-warning">Veuillez entrer une description pour le programme.</div>';
-                                    return;
-                                }
-
-                                generateButton.disabled = true;
-                                responseDiv.innerHTML = '<div class="alert alert-info">Génération en cours...</div>';
-
-                                try {
-                                    const response = await fetch('includes/generate_program.php', {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                        },
-                                        body: JSON.stringify({ prompt })
-                                    });
-
-                                    const data = await response.json();
-                                    
-                                    if (data.success) {
-                                        // Remplir le formulaire avec les données générées
-                                        document.getElementById('name').value = data.program.name;
-                                        document.getElementById('description').value = data.program.description;
-                                        document.getElementById('type').value = data.program.type;
-                                        document.getElementById('calorie_adjustment').value = data.program.calorie_adjustment;
-                                        document.getElementById('protein_ratio').value = data.program.protein_ratio * 100;
-                                        document.getElementById('carbs_ratio').value = data.program.carbs_ratio * 100;
-                                        document.getElementById('fat_ratio').value = data.program.fat_ratio * 100;
-                                        
-                                        responseDiv.innerHTML = '<div class="alert alert-success">Programme généré avec succès !</div>';
-                                        validateMacros();
-                                    } else {
-                                        responseDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${data.error}</div>`;
-                                    }
-                                } catch (error) {
-                                    responseDiv.innerHTML = `<div class="alert alert-danger">Erreur: ${error.message}</div>`;
-                                } finally {
-                                    generateButton.disabled = false;
-                                }
-                            });
                         });
                     </script>
                     
