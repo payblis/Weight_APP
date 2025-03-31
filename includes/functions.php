@@ -1655,3 +1655,17 @@ function getMealSuggestions($user_id) {
         return [];
     }
 }
+
+/**
+ * Récupère un paramètre de l'application
+ * @param string $setting_name Le nom du paramètre
+ * @return string|null La valeur du paramètre ou null si non trouvé
+ */
+function getSetting($setting_name) {
+    global $db;
+    
+    $sql = "SELECT setting_value FROM settings WHERE setting_name = ?";
+    $result = fetchOne($sql, [$setting_name]);
+    
+    return $result ? $result['setting_value'] : null;
+}
