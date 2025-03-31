@@ -23,7 +23,7 @@ $is_admin = ($user_role && $user_role['role_id'] == 1);
 
 // Initialiser les variables
 $action = isset($_GET['action']) ? sanitizeInput($_GET['action']) : '';
-$meal_id = isset($_GET['meal_id']) ? intval($_GET['meal_id']) : 0;
+$meal_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $predefined_meal_id = isset($_GET['predefined_meal_id']) ? intval($_GET['predefined_meal_id']) : 0;
 $success_message = '';
 $errors = [];
@@ -392,7 +392,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     error_log("Action GET : " . $action);
     error_log("ID du repas : " . $meal_id);
     
-    if ($action === 'delete_meal' && $meal_id > 0) {
+    if ($action === 'delete' && $meal_id > 0) {
         error_log("=== DÉBUT DE LA SUPPRESSION DE REPAS VIA GET ===");
         try {
             // Vérifier si le repas existe et appartient à l'utilisateur
