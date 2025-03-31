@@ -1616,9 +1616,16 @@ function getMealSuggestions($user_id) {
             if (preg_match('/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s', $content, $ingredients_match)) {
                 $ingredients_text = $ingredients_match[1];
                 // Extraire chaque ingrédient avec sa quantité
-                preg_match_all('/-\s*(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|unité|tasse|cuillère|pincée)?)\s+(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list, PREG_SET_ORDER);
+                preg_match_all('/-\s*(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|unité|tasse|cuillère|pincée)?)?\s*(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list, PREG_SET_ORDER);
                 foreach ($ingredients_list as $match) {
-                    $ingredients[] = trim($match[1] . ' ' . $match[2]);
+                    $quantity = isset($match[1]) ? trim($match[1]) : '';
+                    $name = trim($match[2]);
+                    if (!empty($name)) {
+                        $ingredients[] = [
+                            'quantity' => $quantity,
+                            'name' => $name
+                        ];
+                    }
                 }
             }
             
@@ -1627,7 +1634,7 @@ function getMealSuggestions($user_id) {
                 $conseils_text = $conseils_match[1];
                 // Extraire chaque conseil
                 preg_match_all('/-\s*(.*?)(?=\n|$)/', $conseils_text, $conseils_list);
-                $conseils = $conseils_list[1];
+                $conseils = array_map('trim', $conseils_list[1]);
             }
             
             // Formater la description pour l'affichage
@@ -1646,206 +1653,5 @@ function getMealSuggestions($user_id) {
     } catch (Exception $e) {
         error_log("Erreur dans getMealSuggestions: " . $e->getMessage());
         return [];
-    }
-}
-
-// Fonction pour calculer la compatibilité avec l'objectif
-function calculateGoalCompatibility($meal_totals, $goal) {
-    $compatibility = 0;
-    $max_compatibility = 100;
-    
-    // Récupérer les besoins caloriques et macronutriments de l'utilisateur
-    $sql = "SELECT * FROM user_calorie_needs WHERE user_id = ?";
-    $calorie_needs = fetchOne($sql, [$goal['user_id']]);
-    
-    if ($calorie_needs) {
-        // Calculer la compatibilité calorique (40 points max)
-        $calorie_target = $calorie_needs['goal_calories'];
-        $calorie_diff = abs($meal_totals['calories'] - $calorie_target);
-        $calorie_compatibility = max(0, 40 - ($calorie_diff / ($calorie_target * 0.1)));
-        $compatibility += $calorie_compatibility;
-        
-        // Calculer la compatibilité des macronutriments (60 points max)
-        $total_macros = $meal_totals['protein'] + $meal_totals['carbs'] + $meal_totals['fat'];
-        if ($total_macros > 0) {
-            $protein_ratio = ($meal_totals['protein'] * 4) / $meal_totals['calories'];
-            $carbs_ratio = ($meal_totals['carbs'] * 4) / $meal_totals['calories'];
-            $fat_ratio = ($meal_totals['fat'] * 9) / $meal_totals['calories'];
-            
-            $target_protein_ratio = $calorie_needs['protein_ratio'] / 100;
-            $target_carbs_ratio = $calorie_needs['carbs_ratio'] / 100;
-            $target_fat_ratio = $calorie_needs['fat_ratio'] / 100;
-            
-            // Calculer les différences de ratios
-            $protein_diff = abs($protein_ratio - $target_protein_ratio);
-            $carbs_diff = abs($carbs_ratio - $target_carbs_ratio);
-            $fat_diff = abs($fat_ratio - $target_fat_ratio);
-            
-            // Attribuer des points pour chaque macronutriment (20 points chacun)
-            $protein_compatibility = max(0, 20 - ($protein_diff * 100));
-            $carbs_compatibility = max(0, 20 - ($carbs_diff * 100));
-            $fat_compatibility = max(0, 20 - ($fat_diff * 100));
-            
-            $compatibility += $protein_compatibility + $carbs_compatibility + $fat_compatibility;
-        }
-    } else {
-        // Si pas de besoins caloriques définis, utiliser une logique simplifiée
-        // Vérifier que les calories sont raisonnables
-        if ($meal_totals['calories'] > 800) {
-            $compatibility += 20; // Pénalité pour trop de calories
-        }
-        // Vérifier le ratio protéines/calories
-        $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
-        if ($protein_ratio > 0.3) {
-            $compatibility += 30; // Bonus pour un bon ratio protéines
-        }
-    }
-    
-    return min($max_compatibility, $compatibility);
-}
-
-/**
- * Appelle l'API ChatGPT pour générer une suggestion
- * @param string $prompt Le prompt à envoyer à l'API
- * @param string $api_key La clé API ChatGPT
- * @return string La réponse de l'API
- */
-function callChatGPTAPI($prompt, $api_key) {
-    $url = 'https://api.openai.com/v1/chat/completions';
-    
-    $data = [
-        'model' => 'gpt-3.5-turbo',
-        'messages' => [
-            [
-                'role' => 'system',
-                'content' => 'Tu es un nutritionniste expert qui fournit des suggestions de repas personnalisées et équilibrées.'
-            ],
-            [
-                'role' => 'user',
-                'content' => $prompt
-            ]
-        ],
-        'temperature' => 0.7,
-        'max_tokens' => 1000
-    ];
-    
-    $options = [
-        'http' => [
-            'method' => 'POST',
-            'header' => [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $api_key
-            ],
-            'content' => json_encode($data)
-        ]
-    ];
-    
-    $context = stream_context_create($options);
-    $response = file_get_contents($url, false, $context);
-    
-    if ($response === false) {
-        throw new Exception("Erreur lors de l'appel à l'API ChatGPT");
-    }
-    
-    $result = json_decode($response, true);
-    
-    if (isset($result['error'])) {
-        throw new Exception("Erreur API ChatGPT : " . $result['error']['message']);
-    }
-    
-    if (!isset($result['choices'][0]['message']['content'])) {
-        throw new Exception("Format de réponse invalide de l'API ChatGPT");
-    }
-    
-    return $result['choices'][0]['message']['content'];
-}
-
-/**
- * Récupère un paramètre de l'application
- * @param string $setting_name Le nom du paramètre
- * @return string|null La valeur du paramètre ou null si non trouvé
- */
-function getSetting($setting_name) {
-    global $db;
-    
-    $sql = "SELECT setting_value FROM settings WHERE setting_name = ?";
-    $result = fetchOne($sql, [$setting_name]);
-    
-    return $result ? $result['setting_value'] : null;
-}
-
-/**
- * Ajoute une suggestion de repas comme repas
- * @param int $user_id ID de l'utilisateur
- * @param int $suggestion_id ID de la suggestion
- * @param string $date Date du repas (format Y-m-d)
- * @return array Résultat de l'opération
- */
-function addSuggestionAsMeal($user_id, $suggestion_id, $date) {
-    try {
-        // Récupérer la suggestion
-        $sql = "SELECT * FROM ai_suggestions WHERE id = ? AND user_id = ?";
-        $suggestion = fetchOne($sql, [$suggestion_id, $user_id]);
-        
-        if (!$suggestion) {
-            return ['success' => false, 'message' => 'Suggestion non trouvée'];
-        }
-        
-        // Extraire les ingrédients et leurs quantités
-        $content = $suggestion['name'];
-        $ingredients = [];
-        
-        if (preg_match('/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s', $content, $ingredients_match)) {
-            $ingredients_text = $ingredients_match[1];
-            preg_match_all('/-\s*(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|unité|tasse|cuillère|pincée)?)\s+(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list, PREG_SET_ORDER);
-            foreach ($ingredients_list as $match) {
-                $ingredients[] = [
-                    'quantity' => trim($match[1]),
-                    'name' => trim($match[2])
-                ];
-            }
-        }
-        
-        // Démarrer la transaction
-        $GLOBALS['pdo']->beginTransaction();
-        
-        // Créer le repas
-        $sql = "INSERT INTO meals (user_id, name, log_date) VALUES (?, ?, ?)";
-        $meal_id = insert($sql, [$user_id, $suggestion['name'], $date]);
-        
-        if (!$meal_id) {
-            throw new Exception("Erreur lors de la création du repas");
-        }
-        
-        // Créer les aliments et les associations
-        foreach ($ingredients as $ingredient) {
-            // Créer l'aliment
-            $sql = "INSERT INTO foods (name, calories, proteins, carbs, fats, user_id) 
-                    VALUES (?, 0, 0, 0, 0, ?)";
-            $food_id = insert($sql, [$ingredient['name'], $user_id]);
-            
-            if (!$food_id) {
-                throw new Exception("Erreur lors de la création de l'aliment");
-            }
-            
-            // Créer l'association meal_food
-            $sql = "INSERT INTO meal_foods (meal_id, food_id, quantity) VALUES (?, ?, ?)";
-            if (!insert($sql, [$meal_id, $food_id, $ingredient['quantity']])) {
-                throw new Exception("Erreur lors de l'association du repas et de l'aliment");
-            }
-            
-            // Mettre à jour les valeurs nutritionnelles de l'aliment
-            updateFoodNutrition($food_id);
-        }
-        
-        // Valider la transaction
-        $GLOBALS['pdo']->commit();
-        
-        return ['success' => true, 'message' => 'Repas ajouté avec succès'];
-    } catch (Exception $e) {
-        // Annuler la transaction en cas d'erreur
-        $GLOBALS['pdo']->rollBack();
-        error_log("Erreur lors de l'ajout du repas: " . $e->getMessage());
-        return ['success' => false, 'message' => $e->getMessage()];
     }
 }
