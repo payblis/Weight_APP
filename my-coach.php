@@ -8,8 +8,13 @@ if (!isLoggedIn()) {
 }
 
 $user_id = $_SESSION['user_id'];
-$success_message = '';
+$success_message = isset($_SESSION['success_message']) ? $_SESSION['success_message'] : '';
+$error_message = isset($_SESSION['error_message']) ? $_SESSION['error_message'] : '';
 $errors = [];
+
+// Nettoyer les messages de la session
+unset($_SESSION['success_message']);
+unset($_SESSION['error_message']);
 
 // Récupérer les suggestions de repas
 $sql = "SELECT id, content, created_at FROM ai_suggestions 
@@ -41,6 +46,12 @@ $suggestions = fetchAll($sql, [$user_id]);
                         <li><?php echo $error; ?></li>
                     <?php endforeach; ?>
                 </ul>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($error_message)): ?>
+            <div class="alert alert-danger">
+                <?php echo $error_message; ?>
             </div>
         <?php endif; ?>
 

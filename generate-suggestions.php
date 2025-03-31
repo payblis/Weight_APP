@@ -81,6 +81,7 @@ try {
     switch ($suggestion_type) {
         case 'repas':
         case 'alimentation':
+            error_log("=== Début de la génération de suggestion de repas ===");
             // Construire le prompt pour ChatGPT
             $prompt = "En tant que nutritionniste expert, génère une suggestion de repas équilibré en tenant compte des informations suivantes :\n\n";
             
@@ -109,11 +110,32 @@ try {
                 $prompt .= "Aliments à éviter : " . implode(", ", $blacklisted_foods) . "\n";
             }
             
-            $prompt .= "\nVeuillez fournir :\n";
-            $prompt .= "1. Une liste d'ingrédients avec leurs quantités\n";
-            $prompt .= "2. Les étapes de préparation\n";
-            $prompt .= "3. Les valeurs nutritionnelles approximatives (calories, protéines, glucides, lipides)\n";
-            $prompt .= "4. Des conseils pour personnaliser le repas selon les préférences\n";
+            $prompt .= "\nVeuillez fournir une réponse au format JSON avec la structure suivante :\n";
+            $prompt .= "{\n";
+            $prompt .= "  \"nom_du_repas\": \"Nom du repas\",\n";
+            $prompt .= "  \"valeurs_nutritionnelles\": {\n";
+            $prompt .= "    \"calories\": 0,\n";
+            $prompt .= "    \"proteines\": 0,\n";
+            $prompt .= "    \"glucides\": 0,\n";
+            $prompt .= "    \"lipides\": 0\n";
+            $prompt .= "  },\n";
+            $prompt .= "  \"ingredients\": [\n";
+            $prompt .= "    {\n";
+            $prompt .= "      \"nom\": \"Nom de l'ingrédient\",\n";
+            $prompt .= "      \"quantite\": \"Quantité\",\n";
+            $prompt .= "      \"calories\": 0,\n";
+            $prompt .= "      \"proteines\": 0,\n";
+            $prompt .= "      \"glucides\": 0,\n";
+            $prompt .= "      \"lipides\": 0\n";
+            $prompt .= "    }\n";
+            $prompt .= "  ],\n";
+            $prompt .= "  \"instructions\": [\n";
+            $prompt .= "    \"Instruction 1\",\n";
+            $prompt .= "    \"Instruction 2\"\n";
+            $prompt .= "  ]\n";
+            $prompt .= "}\n";
+            
+            error_log("Prompt généré : " . $prompt);
             
             // Appeler l'API ChatGPT
             $api_key = getSetting('chatgpt_api_key');
@@ -122,6 +144,14 @@ try {
             }
             
             $suggestion_content = callChatGPTAPI($prompt, $api_key);
+            error_log("Réponse de l'API : " . $suggestion_content);
+            
+            // Vérifier que le contenu est un JSON valide
+            $json_data = json_decode($suggestion_content, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log("Erreur de parsing JSON : " . json_last_error_msg());
+                throw new Exception("La réponse de l'API n'est pas un JSON valide");
+            }
             break;
             
         default:
@@ -130,20 +160,28 @@ try {
     
     // Stocker la suggestion dans la base de données
     if (!empty($suggestion_content)) {
+        error_log("Insertion de la suggestion dans la base de données");
         $sql = "INSERT INTO ai_suggestions (user_id, suggestion_type, content, created_at) VALUES (?, ?, ?, NOW())";
         $result = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
         
         if ($result) {
-            echo json_encode(['success' => true, 'message' => 'Suggestion générée avec succès']);
+            error_log("Suggestion insérée avec succès");
+            // Rediriger vers my-coach.php avec un message de succès
+            $_SESSION['success_message'] = "Suggestion générée avec succès";
+            header('Location: my-coach.php');
+            exit;
         } else {
+            error_log("Erreur lors de l'insertion de la suggestion");
             throw new Exception("Erreur lors de l'enregistrement de la suggestion");
         }
     } else {
+        error_log("Aucune suggestion générée");
         throw new Exception("Aucune suggestion générée");
     }
     
 } catch (Exception $e) {
     error_log("Erreur dans generate-suggestions.php: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    $_SESSION['error_message'] = $e->getMessage();
+    header('Location: my-coach.php');
+    exit;
 } 
