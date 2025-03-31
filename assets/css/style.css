@@ -524,3 +524,57 @@ footer h5 {
         max-width: 100% !important;
     }
 }
+
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(45deg, #0d6efd, #0dcaf0);
+    padding: 100px 0;
+}
+
+/* Icons */
+.fa-3x {
+    color: #0d6efd;
+}
+
+/* Success Stories */
+.blockquote-footer {
+    color: #6c757d;
+}
+
+/* CTA Section */
+.cta-section {
+    background: linear-gradient(45deg, #0d6efd, #0dcaf0);
+}
+
+/* Footer */
+footer {
+    background-color: #1a1a1a;
+}
+
+footer a:hover {
+    color: #0d6efd !important;
+}
+
+.social-links a {
+    font-size: 1.5rem;
+    transition: color 0.3s ease;
+}
+
+.social-links a:hover {
+    color: #0d6efd !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 50px 0;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .lead {
+        font-size: 1.1rem;
+    }
+}
