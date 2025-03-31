@@ -1599,25 +1599,35 @@ function getMealSuggestions($user_id) {
         foreach ($suggestions as &$suggestion) {
             error_log("=== Traitement de la suggestion " . $suggestion['id'] . " ===");
             $content = $suggestion['name'];
+            
+            // Forcer l'encodage UTF-8
+            $content = mb_convert_encoding($content, 'UTF-8', 'auto');
+            
             error_log("Contenu brut : " . substr($content, 0, 200) . "...");
+            error_log("Contenu brut UTF-8 décodé : " . mb_convert_encoding($content, 'UTF-8', 'auto'));
+            error_log("Contenu complet : " . $content);
             
             // Rechercher les valeurs nutritionnelles dans le contenu
             preg_match('/calories?\s*:?\s*environ\s*(\d+)\s*kcal/i', $content, $calories_match);
-            preg_match('/prot[ée]ines?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match);
-            preg_match('/prot[ée]ines?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match_alt);
+            preg_match('/prot.*?:\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match);
+            preg_match('/prot.*?:\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match_alt);
+            preg_match('/prot.*?:\s*(\d+(?:\.\d+)?)\s*g(?:\s*\/\s*100g)?/i', $content, $protein_match_alt2);
             preg_match('/glucides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $carbs_match);
             preg_match('/lipides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $fat_match);
             
             error_log("Calories match : " . print_r($calories_match, true));
             error_log("Protéines match : " . print_r($protein_match, true));
-            error_log("Protéines match alternatif : " . print_r($protein_match_alt, true));
+            error_log("Protéines match alternatif 1 : " . print_r($protein_match_alt, true));
+            error_log("Protéines match alternatif 2 : " . print_r($protein_match_alt2, true));
             error_log("Glucides match : " . print_r($carbs_match, true));
             error_log("Lipides match : " . print_r($fat_match, true));
             
             // Stocker les valeurs nutritionnelles
             $suggestion['totals'] = [
                 'calories' => isset($calories_match[1]) ? intval($calories_match[1]) : 0,
-                'protein' => isset($protein_match[1]) ? floatval($protein_match[1]) : (isset($protein_match_alt[1]) ? floatval($protein_match_alt[1]) : 0),
+                'protein' => isset($protein_match[1]) ? floatval($protein_match[1]) : 
+                           (isset($protein_match_alt[1]) ? floatval($protein_match_alt[1]) : 
+                           (isset($protein_match_alt2[1]) ? floatval($protein_match_alt2[1]) : 0)),
                 'carbs' => isset($carbs_match[1]) ? floatval($carbs_match[1]) : 0,
                 'fat' => isset($fat_match[1]) ? floatval($fat_match[1]) : 0
             ];
@@ -1627,17 +1637,9 @@ function getMealSuggestions($user_id) {
             $ingredients = [];
             $conseils = [];
             
-            // Rechercher la section des ingrédients avec différents formats possibles
+            // Rechercher la section des ingrédients avec un pattern plus robuste
             $ingredients_patterns = [
-                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s',
-                '/Ingr[ée]dients\s*:(.*?)(?=\n\n|$)/s',
-                '/\*\*Ingr[ée]dients\s*:\*\*(.*?)(?=\n\n|$)/s',
-                '/Ingr[ée]dients\s*:(.*?)(?=Calories|$)/s',
-                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=Calories|$)/s',
-                '/Ingr[ée]dients\s*:(.*?)(?=Pr[ée]paration|$)/s',
-                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=Pr[ée]paration|$)/s',
-                '/Ingr[ée]dients\s*:(.*?)(?=Conseils|$)/s',
-                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=Conseils|$)/s'
+                '/Ingr.?:\s*(.*?)(?=\n(?:\w|V|P|C|$)|Valeurs|Calories)/si'
             ];
             
             $ingredients_text = '';
@@ -1672,15 +1674,9 @@ function getMealSuggestions($user_id) {
             
             // Rechercher la section des conseils avec différents formats possibles
             $conseils_patterns = [
-                '/4\.\s*Conseils\s*:(.*?)$/s',
                 '/Conseils\s*:(.*?)$/s',
-                '/\*\*Conseils\s*:\*\*(.*?)$/s',
-                '/Conseils\s*:(.*?)(?=Calories|$)/s',
-                '/4\.\s*Conseils\s*:(.*?)(?=Calories|$)/s',
-                '/Conseils\s*:(.*?)(?=Pr[ée]paration|$)/s',
-                '/4\.\s*Conseils\s*:(.*?)(?=Pr[ée]paration|$)/s',
-                '/Conseils\s*:(.*?)(?=Ingr[ée]dients|$)/s',
-                '/4\.\s*Conseils\s*:(.*?)(?=Ingr[ée]dients|$)/s'
+                '/4\.\s*Conseils\s*:(.*?)$/s',
+                '/\*\*Conseils\s*:\*\*(.*?)$/s'
             ];
             
             $conseils_text = '';
