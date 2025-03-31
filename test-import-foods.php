@@ -2,7 +2,7 @@
 require_once 'includes/functions.php';
 
 // Définir le chemin du fichier CSV
-$csv_file = __DIR__ . 'aliments.csv';
+$csv_file = __DIR__ . '/aliments.csv';
 
 // Fonction pour lire le fichier CSV
 function readCSV($file, $lines = null) {
