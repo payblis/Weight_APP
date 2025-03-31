@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/includes/init.php';
 require_once 'includes/functions.php';
 
 // Vérifier que l'utilisateur est connecté
