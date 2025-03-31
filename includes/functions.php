@@ -1631,7 +1631,9 @@ function getMealSuggestions($user_id) {
             $ingredients_patterns = [
                 '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s',
                 '/Ingr[ée]dients\s*:(.*?)(?=\n\n|$)/s',
-                '/\*\*Ingr[ée]dients\s*:\*\*(.*?)(?=\n\n|$)/s'
+                '/\*\*Ingr[ée]dients\s*:\*\*(.*?)(?=\n\n|$)/s',
+                '/Ingr[ée]dients\s*:(.*?)(?=Calories|$)/s',
+                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=Calories|$)/s'
             ];
             
             $ingredients_text = '';
@@ -1668,7 +1670,9 @@ function getMealSuggestions($user_id) {
             $conseils_patterns = [
                 '/4\.\s*Conseils\s*:(.*?)$/s',
                 '/Conseils\s*:(.*?)$/s',
-                '/\*\*Conseils\s*:\*\*(.*?)$/s'
+                '/\*\*Conseils\s*:\*\*(.*?)$/s',
+                '/Conseils\s*:(.*?)(?=Calories|$)/s',
+                '/4\.\s*Conseils\s*:(.*?)(?=Calories|$)/s'
             ];
             
             $conseils_text = '';
