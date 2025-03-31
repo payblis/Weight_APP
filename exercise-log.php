@@ -77,7 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $exercise = fetchOne($sql, [$exercise_id, $user_id]);
         
         if ($exercise) {
-            $result = delete('exercise_logs', $exercise_id);
+            $sql = "DELETE FROM exercise_logs WHERE id = ? AND user_id = ?";
+            $result = update($sql, [$exercise_id, $user_id]);
             error_log("Résultat de la suppression de l'exercice: " . ($result ? "succès" : "échec"));
             if ($result) {
                 $_SESSION['success_message'] = "Exercice supprimé avec succès.";
