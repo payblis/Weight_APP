@@ -139,6 +139,51 @@ unset($_SESSION['error_message']);
                 </div>
                 <div class="modal-body">
                     <div id="suggestionDetailsContent"></div>
+                    
+                    <!-- Étape 1 : Création des aliments -->
+                    <div id="createFoodsStep" class="mt-4" style="display: none;">
+                        <h5>Création des aliments</h5>
+                        <p class="text-muted">Vérifiez et ajustez les informations des aliments avant de les créer.</p>
+                        <form id="createFoodsForm">
+                            <div id="foodsList" class="list-group mb-3"></div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check"></i> Valider et continuer
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Étape 2 : Création du repas -->
+                    <div id="createMealStep" class="mt-4" style="display: none;">
+                        <h5>Création du repas</h5>
+                        <p class="text-muted">Sélectionnez les aliments à inclure dans votre repas.</p>
+                        <form id="createMealForm">
+                            <div class="mb-3">
+                                <label class="form-label">Nom du repas</label>
+                                <input type="text" class="form-control" name="meal_name" required>
+                            </div>
+                            <div id="mealFoodsList" class="list-group mb-3"></div>
+                            <div class="nutrition-totals mb-3">
+                                <h6>Valeurs nutritionnelles totales</h6>
+                                <div class="row">
+                                    <div class="col">
+                                        <p>Calories: <span id="totalCalories">0</span></p>
+                                    </div>
+                                    <div class="col">
+                                        <p>Protéines: <span id="totalProteins">0</span>g</p>
+                                    </div>
+                                    <div class="col">
+                                        <p>Glucides: <span id="totalCarbs">0</span>g</p>
+                                    </div>
+                                    <div class="col">
+                                        <p>Lipides: <span id="totalFats">0</span>g</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus"></i> Créer le repas
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -146,8 +191,12 @@ unset($_SESSION['error_message']);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        let currentSuggestionData = null;
+        let createdFoods = [];
+
         // Fonction pour afficher les détails d'une suggestion
         function showSuggestionDetails(data) {
+            currentSuggestionData = data;
             const modal = new bootstrap.Modal(document.getElementById('suggestionDetailsModal'));
             const content = document.getElementById('suggestionDetailsContent');
             
@@ -187,11 +236,208 @@ unset($_SESSION['error_message']);
                         </li>
                     </ul>
                 </div>
+                <div class="mt-3">
+                    <button type="button" class="btn btn-primary" onclick="startCreateFoods()">
+                        <i class="fas fa-plus"></i> Créer un repas à partir de cette suggestion
+                    </button>
+                </div>
             `;
             
             content.innerHTML = html;
             modal.show();
         }
+
+        // Fonction pour démarrer la création des aliments
+        function startCreateFoods() {
+            document.getElementById('suggestionDetailsContent').style.display = 'none';
+            document.getElementById('createFoodsStep').style.display = 'block';
+            
+            const foodsList = document.getElementById('foodsList');
+            foodsList.innerHTML = currentSuggestionData.ingredients.map(ing => `
+                <div class="list-group-item">
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" checked>
+                        <label class="form-check-label">
+                            <strong>${ing.nom}</strong>
+                        </label>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Calories</label>
+                            <input type="number" class="form-control" value="${ing.calories}" min="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Protéines (g)</label>
+                            <input type="number" class="form-control" value="${ing.proteines}" min="0" step="0.1">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Glucides (g)</label>
+                            <input type="number" class="form-control" value="${ing.glucides}" min="0" step="0.1">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Lipides (g)</label>
+                            <input type="number" class="form-control" value="${ing.lipides}" min="0" step="0.1">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Gestionnaire du formulaire de création des aliments
+        document.getElementById('createFoodsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const foods = [];
+            const foodItems = this.querySelectorAll('.list-group-item');
+            
+            foodItems.forEach(item => {
+                if (item.querySelector('input[type="checkbox"]').checked) {
+                    const inputs = item.querySelectorAll('input[type="number"]');
+                    foods.push({
+                        name: item.querySelector('strong').textContent,
+                        calories: inputs[0].value,
+                        protein: inputs[1].value,
+                        carbs: inputs[2].value,
+                        fat: inputs[3].value
+                    });
+                }
+            });
+            
+            // Créer les aliments
+            fetch('create-foods-from-suggestion.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    foods: foods
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    createdFoods = data.foods;
+                    // Passer à l'étape de création du repas
+                    document.getElementById('createFoodsStep').style.display = 'none';
+                    document.getElementById('createMealStep').style.display = 'block';
+                    startCreateMeal();
+                } else {
+                    throw new Error(data.message || 'Erreur lors de la création des aliments');
+                }
+            })
+            .catch(error => {
+                alert('Erreur: ' + error.message);
+            });
+        });
+
+        // Fonction pour démarrer la création du repas
+        function startCreateMeal() {
+            const mealNameInput = document.querySelector('#createMealForm input[name="meal_name"]');
+            mealNameInput.value = currentSuggestionData.nom_du_repas;
+            
+            const mealFoodsList = document.getElementById('mealFoodsList');
+            mealFoodsList.innerHTML = createdFoods.map(food => `
+                <div class="list-group-item">
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" checked>
+                        <label class="form-check-label">
+                            <strong>${food.name}</strong>
+                        </label>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Quantité (g)</label>
+                            <input type="number" class="form-control quantity-input" value="100" min="0">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Valeurs nutritionnelles</label>
+                            <div class="nutrition-values">
+                                Calories: ${food.calories} | 
+                                Protéines: ${food.protein}g | 
+                                Glucides: ${food.carbs}g | 
+                                Lipides: ${food.fat}g
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            updateNutritionTotals();
+        }
+
+        // Fonction pour mettre à jour les totaux nutritionnels
+        function updateNutritionTotals() {
+            const selectedFoods = document.querySelectorAll('#mealFoodsList .list-group-item');
+            let totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+            
+            selectedFoods.forEach(item => {
+                if (item.querySelector('input[type="checkbox"]').checked) {
+                    const quantity = parseFloat(item.querySelector('.quantity-input').value) / 100;
+                    const food = createdFoods.find(f => f.name === item.querySelector('strong').textContent);
+                    
+                    totals.calories += food.calories * quantity;
+                    totals.protein += food.protein * quantity;
+                    totals.carbs += food.carbs * quantity;
+                    totals.fat += food.fat * quantity;
+                }
+            });
+            
+            document.getElementById('totalCalories').textContent = Math.round(totals.calories);
+            document.getElementById('totalProteins').textContent = totals.protein.toFixed(1);
+            document.getElementById('totalCarbs').textContent = totals.carbs.toFixed(1);
+            document.getElementById('totalFats').textContent = totals.fat.toFixed(1);
+        }
+
+        // Écouter les changements de quantité et de sélection
+        document.getElementById('mealFoodsList').addEventListener('change', function(e) {
+            if (e.target.type === 'checkbox' || e.target.classList.contains('quantity-input')) {
+                updateNutritionTotals();
+            }
+        });
+
+        // Gestionnaire du formulaire de création du repas
+        document.getElementById('createMealForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const selectedFoods = [];
+            const foodItems = this.querySelectorAll('.list-group-item');
+            
+            foodItems.forEach(item => {
+                if (item.querySelector('input[type="checkbox"]').checked) {
+                    const quantity = item.querySelector('.quantity-input').value;
+                    const foodName = item.querySelector('strong').textContent;
+                    const food = createdFoods.find(f => f.name === foodName);
+                    
+                    selectedFoods.push({
+                        food_id: food.id,
+                        quantity: quantity
+                    });
+                }
+            });
+            
+            // Créer le repas
+            fetch('create-meal-from-suggestion.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: this.querySelector('input[name="meal_name"]').value,
+                    foods: selectedFoods
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = 'food-log.php';
+                } else {
+                    throw new Error(data.message || 'Erreur lors de la création du repas');
+                }
+            })
+            .catch(error => {
+                alert('Erreur: ' + error.message);
+            });
+        });
 
         // Fonction pour supprimer une suggestion
         function deleteSuggestion(suggestionId) {
