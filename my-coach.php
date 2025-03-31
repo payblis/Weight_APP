@@ -82,6 +82,7 @@ unset($_SESSION['error_message']);
                     </div>
                     <div class="card-body">
                         <form id="generateSuggestionForm" class="mb-3">
+                            <input type="hidden" name="type" value="alimentation">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-magic"></i> Générer une suggestion
                             </button>
@@ -221,7 +222,7 @@ unset($_SESSION['error_message']);
 
         document.addEventListener('DOMContentLoaded', function() {
             // Gestion du formulaire de génération de suggestion
-            const generateForm = document.getElementById('generate-suggestion-form');
+            const generateForm = document.getElementById('generateSuggestionForm');
             if (generateForm) {
                 generateForm.addEventListener('submit', function(e) {
                     e.preventDefault();
@@ -233,7 +234,7 @@ unset($_SESSION['error_message']);
                     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Génération en cours...';
                     
                     // Récupérer le type de suggestion
-                    const suggestionType = this.querySelector('select[name="type"]').value;
+                    const suggestionType = this.querySelector('input[name="type"]').value;
                     
                     // Préparer les données à envoyer
                     const data = {
