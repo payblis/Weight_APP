@@ -241,11 +241,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 
-                $sql = "INSERT INTO predefined_meals (name, description, total_calories, total_protein, total_carbs, total_fat, is_public, created_by_admin, created_at) 
+                $sql = "INSERT INTO predefined_meals (name, description, total_calories, total_protein, total_carbs, total_fat, is_public, user_id, created_at) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
                 $result = insert($sql, [$name, $description, $total_calories, $total_protein, $total_carbs, $total_fat, $is_public, $user_id]);
                 
                 if ($result) {
+                    $meal_id = lastInsertId();
+                    
+                    // Ajouter les aliments au repas
+                    foreach ($foods as $food) {
+                        $sql = "INSERT INTO predefined_meal_foods (predefined_meal_id, food_id, quantity, created_at) 
+                                VALUES (?, ?, ?, NOW())";
+                        insert($sql, [$meal_id, $food['food_id'], $food['quantity']]);
+                    }
+                    
                     $success_message = "Repas prédéfini créé avec succès";
                 } else {
                     $errors[] = "Une erreur s'est produite lors de la création du repas";
@@ -299,11 +308,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $sql = "UPDATE predefined_meals 
-                        SET name = ?, description = ?, total_calories = ?, total_protein = ?, total_carbs = ?, total_fat = ?, is_public = ?, updated_at = NOW() 
+                        SET name = ?, description = ?, total_calories = ?, total_protein = ?, total_carbs = ?, total_fat = ?, is_public = ?, notes = ?, updated_at = NOW() 
                         WHERE id = ?";
-                $result = update($sql, [$name, $description, $total_calories, $total_protein, $total_carbs, $total_fat, $is_public, $meal_id]);
+                $result = update($sql, [$name, $description, $total_calories, $total_protein, $total_carbs, $total_fat, $is_public, $notes, $meal_id]);
                 
                 if ($result) {
+                    // Supprimer les anciens aliments
+                    $sql = "DELETE FROM predefined_meal_foods WHERE predefined_meal_id = ?";
+                    delete($sql, [$meal_id]);
+                    
+                    // Ajouter les nouveaux aliments
+                    foreach ($foods as $food) {
+                        $sql = "INSERT INTO predefined_meal_foods (predefined_meal_id, food_id, quantity, created_at) 
+                                VALUES (?, ?, ?, NOW())";
+                        insert($sql, [$meal_id, $food['food_id'], $food['quantity']]);
+                    }
+                    
                     $success_message = "Repas prédéfini mis à jour avec succès";
                 } else {
                     $errors[] = "Une erreur s'est produite lors de la mise à jour du repas";
@@ -322,6 +342,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "ID de repas invalide";
         } else {
             try {
+                // Supprimer d'abord les aliments associés
+                $sql = "DELETE FROM predefined_meal_foods WHERE predefined_meal_id = ?";
+                delete($sql, [$meal_id]);
+                
+                // Puis supprimer le repas
                 $sql = "DELETE FROM predefined_meals WHERE id = ?";
                 $result = delete($sql, [$meal_id]);
                 
@@ -525,7 +550,8 @@ if ($section === 'predefined_meals') {
                                 <th>Protéines</th>
                                 <th>Glucides</th>
                                 <th>Lipides</th>
-                                <th>Public</th>
+                                <th>Statut</th>
+                                <th>Créé par</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -533,8 +559,12 @@ if ($section === 'predefined_meals') {
                             <?php foreach ($predefined_meals as $meal): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($meal['name']); ?></td>
-                                <td><?php echo htmlspecialchars($meal['description']); ?></td>
-                                <td><?php echo $meal['total_calories']; ?></td>
+                                <td>
+                                    <div style="max-height: 3em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                        <?php echo htmlspecialchars($meal['description'] ?? ''); ?>
+                                    </div>
+                                </td>
+                                <td><?php echo $meal['total_calories']; ?> kcal</td>
                                 <td><?php echo $meal['total_protein']; ?>g</td>
                                 <td><?php echo $meal['total_carbs']; ?>g</td>
                                 <td><?php echo $meal['total_fat']; ?>g</td>
@@ -543,22 +573,24 @@ if ($section === 'predefined_meals') {
                                         <?php echo $meal['is_public'] ? 'Public' : 'Privé'; ?>
                                     </span>
                                 </td>
+                                <td><?php echo htmlspecialchars($meal['creator_name'] ?? 'N/A'); ?></td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-info" 
-                                            onclick="viewMealDetails(<?php echo $meal['id']; ?>)">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-warning" 
-                                            onclick="editMeal(<?php echo $meal['id']; ?>)">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-danger" 
-                                            onclick="deleteMeal(<?php echo $meal['id']; ?>)">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <div class="btn-group">
+                                        <a href="admin.php?section=meal_management&action=edit&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteMealModal<?php echo $meal['id']; ?>">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
+                            <?php if (empty($predefined_meals)): ?>
+                                <tr>
+                                    <td colspan="8" class="text-center">Aucun repas prédéfini trouvé</td>
+                                </tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -860,14 +892,36 @@ if ($section === 'programs' && $action === 'edit' && isset($_GET['program_id']))
 $predefined_meals = [];
 try {
     $sql = "SELECT pm.*, 
-            (SELECT COUNT(*) FROM predefined_meal_items pmf WHERE pmf.predefined_meal_id = pm.id) as food_count,
-            DATE_FORMAT(pm.created_at, '%d/%m/%Y') as formatted_date
+            (SELECT COUNT(*) FROM predefined_meal_foods pmf WHERE pmf.predefined_meal_id = pm.id) as food_count,
+            DATE_FORMAT(pm.created_at, '%d/%m/%Y') as formatted_date,
+            u.username as creator_name
             FROM predefined_meals pm 
-            WHERE pm.created_by_admin = 1
+            LEFT JOIN users u ON pm.user_id = u.id
             ORDER BY pm.created_at DESC";
     $predefined_meals = fetchAll($sql, []);
 } catch (Exception $e) {
     $errors[] = "Erreur lors de la récupération des repas prédéfinis: " . $e->getMessage();
+}
+
+// Récupérer les aliments disponibles
+$foods = [];
+try {
+    $sql = "SELECT f.*, fc.name as category_name 
+            FROM foods f 
+            LEFT JOIN food_categories fc ON f.category_id = fc.id 
+            ORDER BY fc.name, f.name";
+    $foods = fetchAll($sql, []);
+} catch (Exception $e) {
+    $errors[] = "Erreur lors de la récupération des aliments: " . $e->getMessage();
+}
+
+// Récupérer les catégories d'aliments
+$categories = [];
+try {
+    $sql = "SELECT * FROM food_categories ORDER BY name";
+    $categories = fetchAll($sql, []);
+} catch (Exception $e) {
+    $errors[] = "Erreur lors de la récupération des catégories d'aliments: " . $e->getMessage();
 }
 
 // Récupérer les détails d'un repas prédéfini spécifique si demandé
@@ -923,15 +977,6 @@ try {
     $user_roles = fetchAll($sql, []);
 } catch (Exception $e) {
     $errors[] = "Erreur lors de la récupération des rôles: " . $e->getMessage();
-}
-
-// Récupérer les aliments disponibles
-$foods = [];
-try {
-    $sql = "SELECT * FROM foods ORDER BY name";
-    $foods = fetchAll($sql, []);
-} catch (Exception $e) {
-    $errors[] = "Erreur lors de la récupération des aliments: " . $e->getMessage();
 }
 
 // Fonction pour calculer les macronutriments d'un aliment
@@ -1882,6 +1927,11 @@ try {
                                             <div class="mb-3">
                                                 <label for="description" class="form-label">Description</label>
                                                 <textarea class="form-control" id="description" name="description" rows="3"><?php echo htmlspecialchars($predefined_meal_details['description'] ?? ''); ?></textarea>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="notes" class="form-label">Notes</label>
+                                                <textarea class="form-control" id="notes" name="notes" rows="2"><?php echo htmlspecialchars($predefined_meal_details['notes'] ?? ''); ?></textarea>
                                             </div>
 
                                             <div class="mb-3">
