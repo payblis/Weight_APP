@@ -1325,7 +1325,7 @@ function updateMealTotals($meal_id) {
                                                                 <strong>Ingrédients :</strong>
                                                                 <ul class="list-unstyled mb-0">
                                                                     <?php foreach ($suggestion['description']['ingredients'] as $ingredient): ?>
-                                                                        <li><i class="fas fa-check text-success"></i> <?php echo htmlspecialchars($ingredient); ?></li>
+                                                                        <li><i class="fas fa-check text-success"></i> <?php echo htmlspecialchars($ingredient['quantité'] . ' ' . $ingredient['nom']); ?></li>
                                                                     <?php endforeach; ?>
                                                                 </ul>
                                                             </h6>
