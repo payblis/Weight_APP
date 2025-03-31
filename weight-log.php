@@ -978,8 +978,10 @@ if ($latest_weight) {
             document.getElementById('goalAchievedModal').style.display = 'none';
         }
         
-        // Afficher le modal au chargement de la page
-        window.addEventListener('load', showGoalAchievedModal);
+        // Afficher le modal uniquement si l'objectif est atteint
+        <?php if (isset($_SESSION['goal_achieved']) && $_SESSION['goal_achieved']): ?>
+            window.addEventListener('load', showGoalAchievedModal);
+        <?php endif; ?>
     </script>
 </body>
 </html>
