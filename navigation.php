@@ -108,11 +108,6 @@ if (!isset($_SESSION)) {
                                 <i class="fas fa-robot me-1"></i>Mon Coach
                             </a>
                         </li>
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'ai-suggestions.php' ? 'active' : ''; ?>" href="ai-suggestions.php">
-                                <i class="fas fa-lightbulb me-1"></i>Suggestions IA
-                            </a>
-                        </li>
                     </ul>
                 </li>
                 
