@@ -16,12 +16,12 @@ include 'header.php';
 
 <main>
     <!-- Hero Section -->
-    <section class="hero text-white">
+    <section class="hero">
         <div class="container">
             <div class="row">
                 <div class="col-lg-7">
-                    <h1 class="display-4 mb-4">Une bonne santé, c'est d'abord une bonne alimentation.</h1>
-                    <p class="lead mb-5">Vous voulez faire plus attention à ce que vous mangez ? Faites un suivi de vos repas, apprenez-en plus sur vos habitudes et atteignez vos objectifs avec MyFity.</p>
+                    <h1 class="text-white mb-4">Une bonne santé, c'est d'abord une bonne alimentation.</h1>
+                    <p class="lead text-white-50 mb-5">Suivez vos repas, atteignez vos objectifs et vivez une vie plus saine avec MyFity. Simple, efficace et gratuit.</p>
                     <a href="register.php" class="btn btn-light btn-lg">Démarrez gratuitement</a>
                 </div>
             </div>
