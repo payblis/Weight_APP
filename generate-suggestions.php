@@ -210,15 +210,6 @@ Les valeurs nutritionnelles doivent correspondre à la quantité exacte spécifi
             $check_result = fetchOne($check_sql, [$suggestion_id]);
             error_log("Vérification de l'insertion: " . print_r($check_result, true));
             
-            // Insérer les aliments de la suggestion
-            $suggestion_data = json_decode($suggestion_content, true);
-            if (isset($suggestion_data['ingredients'])) {
-                if (!insertSuggestionFoods($suggestion_data['ingredients'], $suggestion_id)) {
-                    error_log("Erreur lors de l'insertion des aliments de la suggestion");
-                    // On continue même si l'insertion des aliments échoue
-                }
-            }
-            
             // Rediriger vers my-coach.php avec un message de succès
             $_SESSION['success_message'] = "Suggestion générée avec succès";
             header('Location: my-coach.php');
