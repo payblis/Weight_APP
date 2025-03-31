@@ -81,30 +81,103 @@ function calculateIngredientMacros($ingredient) {
             }
         }
         
-        // Pour les autres unités (tasse, cuillère à soupe, etc.), utiliser des valeurs standard
-        $standard_values = [
-            'tasse' => [
-                'quinoa' => ['calories' => 220, 'proteins' => 8, 'glucides' => 39, 'lipides' => 3.5],
-                'laitue' => ['calories' => 5, 'proteins' => 0.5, 'glucides' => 1, 'lipides' => 0.1]
-            ],
+        // Facteurs de conversion pour les unités courantes
+        $conversion_factors = [
+            'petit œuf' => 40,
+            'gros œuf' => 50,
+            'très gros œuf' => 60,
             'cuillère à soupe' => [
-                'huile' => ['calories' => 119, 'proteins' => 0, 'glucides' => 0, 'lipides' => 13.5]
-            ]
+                'huile' => 15,
+                'sucre' => 12,
+                'farine' => 8,
+                'miel' => 21
+            ],
+            'cuillère à café' => [
+                'huile' => 5,
+                'sucre' => 4,
+                'sel' => 6
+            ],
+            'tasse' => [
+                'épinards' => 30,
+                'feuilles' => 30,
+                'flocons d\'avoine' => 90,
+                'riz cuit' => 195,
+                'riz cru' => 180,
+                'lait' => 240,
+                'farine' => 120,
+                'sucre' => 200,
+                'fruits rouges' => 150
+            ],
+            'tranche' => [
+                'pain complet' => 30
+            ],
+            'baguette française' => 250,
+            'pita moyenne' => 60,
+            'tortilla de blé' => 45,
+            'tomate moyenne' => 100,
+            'carotte moyenne' => 60,
+            'pomme moyenne' => 180,
+            'banane moyenne' => 120,
+            'avocat moyen' => 150,
+            'poivron moyen' => 120,
+            'oignon moyen' => 110,
+            'pomme de terre moyenne' => 150,
+            'portion de fromage' => 30,
+            'yaourt nature' => 125,
+            'verre de lait' => 240
         ];
         
-        foreach ($standard_values as $unit => $foods) {
-            if (strpos($ingredient['quantite'], $unit) !== false) {
-                foreach ($foods as $food => $values) {
-                    if (strpos(strtolower($ingredient['nom']), $food) !== false) {
-                        return [
-                            'calories' => round($values['calories']),
-                            'proteins' => round($values['proteins'], 1),
-                            'carbs' => round($values['glucides'], 1),
-                            'fats' => round($values['lipides'], 1)
-                        ];
-                    }
+        // Chercher le facteur de conversion approprié
+        $factor = null;
+        $quantity = $ingredient['quantite'];
+        
+        // Vérifier les unités avec sous-catégories
+        if (strpos($quantity, 'cuillère à soupe') !== false) {
+            foreach ($conversion_factors['cuillère à soupe'] as $subtype => $value) {
+                if (strpos(strtolower($ingredient['nom']), $subtype) !== false) {
+                    $factor = $value;
+                    break;
                 }
             }
+        } elseif (strpos($quantity, 'cuillère à café') !== false) {
+            foreach ($conversion_factors['cuillère à café'] as $subtype => $value) {
+                if (strpos(strtolower($ingredient['nom']), $subtype) !== false) {
+                    $factor = $value;
+                    break;
+                }
+            }
+        } elseif (strpos($quantity, 'tasse') !== false) {
+            foreach ($conversion_factors['tasse'] as $subtype => $value) {
+                if (strpos(strtolower($ingredient['nom']), $subtype) !== false) {
+                    $factor = $value;
+                    break;
+                }
+            }
+        } elseif (strpos($quantity, 'tranche') !== false) {
+            foreach ($conversion_factors['tranche'] as $subtype => $value) {
+                if (strpos(strtolower($ingredient['nom']), $subtype) !== false) {
+                    $factor = $value;
+                    break;
+                }
+            }
+        } else {
+            // Vérifier les unités simples
+            foreach ($conversion_factors as $unit => $value) {
+                if (is_numeric($value) && strpos($quantity, $unit) !== false) {
+                    $factor = $value;
+                    break;
+                }
+            }
+        }
+        
+        // Si un facteur de conversion a été trouvé, calculer les valeurs pour 100g
+        if ($factor !== null) {
+            return [
+                'calories' => round(($ingredient['calories'] * 100) / $factor),
+                'proteins' => round(($ingredient['proteines'] * 100) / $factor, 1),
+                'carbs' => round(($ingredient['glucides'] * 100) / $factor, 1),
+                'fats' => round(($ingredient['lipides'] * 100) / $factor, 1)
+            ];
         }
     }
     
