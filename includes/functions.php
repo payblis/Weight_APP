@@ -1600,6 +1600,7 @@ function getMealSuggestions($user_id) {
             preg_match('/glucides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $carbs_match);
             preg_match('/lipides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $fat_match);
             
+            // Stocker les valeurs nutritionnelles
             $suggestion['totals'] = [
                 'calories' => isset($calories_match[1]) ? intval($calories_match[1]) : 0,
                 'protein' => isset($protein_match[1]) ? floatval($protein_match[1]) : 0,
@@ -1607,9 +1608,31 @@ function getMealSuggestions($user_id) {
                 'fat' => isset($fat_match[1]) ? floatval($fat_match[1]) : 0
             ];
             
-            // Extraire une description courte (première ligne ou premiers caractères)
-            $lines = explode("\n", $content);
-            $suggestion['description'] = trim($lines[0]);
+            // Extraire les ingrédients et les conseils
+            $ingredients = [];
+            $conseils = [];
+            
+            // Rechercher la section des ingrédients
+            if (preg_match('/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s', $content, $ingredients_match)) {
+                $ingredients_text = $ingredients_match[1];
+                // Extraire chaque ingrédient
+                preg_match_all('/-\s*(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list);
+                $ingredients = $ingredients_list[1];
+            }
+            
+            // Rechercher la section des conseils
+            if (preg_match('/4\.\s*Conseils\s*:(.*?)$/s', $content, $conseils_match)) {
+                $conseils_text = $conseils_match[1];
+                // Extraire chaque conseil
+                preg_match_all('/-\s*(.*?)(?=\n|$)/', $conseils_text, $conseils_list);
+                $conseils = $conseils_list[1];
+            }
+            
+            // Formater la description pour l'affichage
+            $suggestion['description'] = [
+                'ingredients' => $ingredients,
+                'conseils' => $conseils
+            ];
             
             // Ajouter des informations sur la compatibilité avec l'objectif
             if ($goal) {

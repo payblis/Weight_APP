@@ -65,8 +65,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $meal_id = insert($sql, [$user_id, $meal_type, $log_date, $notes]);
                 
                 if ($meal_id) {
-                    $success_message = "Repas ajouté avec succès. Vous pouvez maintenant ajouter des aliments à ce repas.";
-                    redirect("food-log.php?action=edit_meal&meal_id={$meal_id}");
+                    // Si c'est une suggestion d'IA, ajouter les valeurs nutritionnelles
+                    if ($suggestion_id > 0) {
+                        $sql = "SELECT content FROM ai_suggestions WHERE id = ? AND user_id = ?";
+                        $suggestion = fetchOne($sql, [$suggestion_id, $user_id]);
+                        
+                        if ($suggestion) {
+                            // Extraire les valeurs nutritionnelles
+                            preg_match('/calories?\s*:?\s*(\d+)\s*kcal/i', $suggestion['content'], $calories_match);
+                            preg_match('/prot[ée]ines?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $suggestion['content'], $protein_match);
+                            preg_match('/glucides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $suggestion['content'], $carbs_match);
+                            preg_match('/lipides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $suggestion['content'], $fat_match);
+                            
+                            // Ajouter l'aliment avec les valeurs nutritionnelles
+                            $sql = "INSERT INTO food_logs (user_id, custom_food_name, quantity, custom_calories, custom_protein, custom_carbs, custom_fat, log_date, meal_id, is_part_of_meal, created_at) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
+                            insert($sql, [
+                                $user_id,
+                                "Suggestion IA #" . $suggestion_id,
+                                100, // Quantité par défaut
+                                isset($calories_match[1]) ? intval($calories_match[1]) : 0,
+                                isset($protein_match[1]) ? floatval($protein_match[1]) : 0,
+                                isset($carbs_match[1]) ? floatval($carbs_match[1]) : 0,
+                                isset($fat_match[1]) ? floatval($fat_match[1]) : 0,
+                                $log_date,
+                                $meal_id
+                            ]);
+                            
+                            // Mettre à jour les totaux du repas
+                            updateMealTotals($meal_id);
+                        }
+                    }
+                    
+                    $success_message = "Repas ajouté avec succès";
+                    redirect("food-log.php");
                 } else {
                     $errors[] = "Une erreur s'est produite lors de l'ajout du repas";
                 }
@@ -390,6 +422,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         error_log("=== FIN DE LA SUPPRESSION DE REPAS ===");
+    }
+    
+    // Supprimer une suggestion
+    elseif ($post_action === 'delete_suggestion') {
+        $suggestion_id = intval($_POST['suggestion_id'] ?? 0);
+        
+        // Validation
+        if ($suggestion_id <= 0) {
+            $errors[] = "ID de suggestion invalide";
+        }
+        
+        if (empty($errors)) {
+            try {
+                // Vérifier si la suggestion existe et appartient à l'utilisateur
+                $sql = "SELECT id FROM ai_suggestions WHERE id = ? AND user_id = ?";
+                $suggestion = fetchOne($sql, [$suggestion_id, $user_id]);
+                
+                if (!$suggestion) {
+                    $errors[] = "Suggestion introuvable ou vous n'avez pas les droits pour la supprimer";
+                } else {
+                    // Supprimer la suggestion
+                    $sql = "DELETE FROM ai_suggestions WHERE id = ?";
+                    $result = update($sql, [$suggestion_id]);
+                    
+                    if ($result) {
+                        $success_message = "Suggestion supprimée avec succès";
+                        redirect("food-log.php");
+                    } else {
+                        $errors[] = "Une erreur s'est produite lors de la suppression de la suggestion";
+                    }
+                }
+            } catch (Exception $e) {
+                $errors[] = "Erreur: " . $e->getMessage();
+            }
+        }
     }
 }
 
@@ -1252,35 +1319,73 @@ function updateMealTotals($meal_id) {
                                         <div class="card mb-3">
                                             <div class="card-body">
                                                 <div class="d-flex justify-content-between align-items-start">
-                                                    <div>
-                                                        <h6 class="card-title mb-1">
-                                                            <?php echo htmlspecialchars($suggestion['name']); ?>
-                                                            <?php if ($suggestion['goal_compatibility']): ?>
-                                                                <span class="badge bg-<?php echo $suggestion['goal_compatibility'] >= 70 ? 'success' : ($suggestion['goal_compatibility'] >= 40 ? 'warning' : 'danger'); ?>">
-                                                                    <?php echo $suggestion['goal_compatibility']; ?>% compatible
-                                                                </span>
-                                                            <?php endif; ?>
-                                                        </h6>
-                                                        <p class="card-text mb-1">
-                                                            <strong>Calories:</strong> <?php echo number_format($suggestion['totals']['calories']); ?> kcal
-                                                        </p>
-                                                        <p class="card-text mb-1">
-                                                            <strong>Protéines:</strong> <?php echo $suggestion['totals']['protein']; ?>g
-                                                            <strong>Glucides:</strong> <?php echo $suggestion['totals']['carbs']; ?>g
-                                                            <strong>Lipides:</strong> <?php echo $suggestion['totals']['fat']; ?>g
-                                                        </p>
-                                                        <?php if ($suggestion['description']): ?>
-                                                            <p class="card-text small text-muted mb-1">
-                                                                <?php echo htmlspecialchars($suggestion['description']); ?>
-                                                            </p>
+                                                    <div class="flex-grow-1">
+                                                        <?php if (!empty($suggestion['description']['ingredients'])): ?>
+                                                            <h6 class="card-title mb-2">
+                                                                <strong>Ingrédients :</strong>
+                                                                <ul class="list-unstyled mb-0">
+                                                                    <?php foreach ($suggestion['description']['ingredients'] as $ingredient): ?>
+                                                                        <li><i class="fas fa-check text-success"></i> <?php echo htmlspecialchars($ingredient); ?></li>
+                                                                    <?php endforeach; ?>
+                                                                </ul>
+                                                            </h6>
                                                         <?php endif; ?>
+                                                        
+                                                        <?php if (!empty($suggestion['description']['conseils'])): ?>
+                                                            <div class="mb-2">
+                                                                <strong>Conseils :</strong>
+                                                                <ul class="list-unstyled mb-0">
+                                                                    <?php foreach ($suggestion['description']['conseils'] as $conseil): ?>
+                                                                        <li><i class="fas fa-lightbulb text-warning"></i> <?php echo htmlspecialchars($conseil); ?></li>
+                                                                    <?php endforeach; ?>
+                                                                </ul>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        
+                                                        <div class="nutrition-info small text-muted">
+                                                            <div class="d-flex justify-content-between">
+                                                                <span>Calories: <?php echo number_format($suggestion['totals']['calories']); ?> kcal</span>
+                                                                <span>Protéines: <?php echo $suggestion['totals']['protein']; ?>g</span>
+                                                                <span>Glucides: <?php echo $suggestion['totals']['carbs']; ?>g</span>
+                                                                <span>Lipides: <?php echo $suggestion['totals']['fat']; ?>g</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-outline-primary add-suggestion-btn"
-                                                            data-suggestion-id="<?php echo $suggestion['id']; ?>"
-                                                            data-suggestion-name="<?php echo htmlspecialchars($suggestion['name']); ?>">
-                                                        <i class="fas fa-plus me-1"></i>Ajouter
-                                                    </button>
+                                                    <div class="ms-3">
+                                                        <div class="btn-group">
+                                                            <button type="button" 
+                                                                    class="btn btn-sm btn-outline-primary add-suggestion-btn"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#addSuggestionModal"
+                                                                    data-suggestion-id="<?php echo $suggestion['id']; ?>"
+                                                                    data-calories="<?php echo $suggestion['totals']['calories']; ?>"
+                                                                    data-protein="<?php echo $suggestion['totals']['protein']; ?>"
+                                                                    data-carbs="<?php echo $suggestion['totals']['carbs']; ?>"
+                                                                    data-fat="<?php echo $suggestion['totals']['fat']; ?>">
+                                                                <i class="fas fa-plus me-1"></i>Ajouter
+                                                            </button>
+                                                            <button type="button"
+                                                                    class="btn btn-sm btn-outline-info view-suggestion-btn"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#viewSuggestionModal"
+                                                                    data-suggestion-id="<?php echo $suggestion['id']; ?>"
+                                                                    data-ingredients='<?php echo json_encode($suggestion['description']['ingredients']); ?>'
+                                                                    data-conseils='<?php echo json_encode($suggestion['description']['conseils']); ?>'
+                                                                    data-calories="<?php echo $suggestion['totals']['calories']; ?>"
+                                                                    data-protein="<?php echo $suggestion['totals']['protein']; ?>"
+                                                                    data-carbs="<?php echo $suggestion['totals']['carbs']; ?>"
+                                                                    data-fat="<?php echo $suggestion['totals']['fat']; ?>">
+                                                                <i class="fas fa-eye"></i>
+                                                            </button>
+                                                            <form action="food-log.php" method="POST" class="d-inline">
+                                                                <input type="hidden" name="action" value="delete_suggestion">
+                                                                <input type="hidden" name="suggestion_id" value="<?php echo $suggestion['id']; ?>">
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette suggestion ?')">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1518,8 +1623,8 @@ function updateMealTotals($meal_id) {
         </div>
     </div>
 
-    <!-- Modal de confirmation d'ajout de suggestion -->
-    <div class="modal fade" id="confirmSuggestionModal" tabindex="-1">
+    <!-- Modal d'ajout de suggestion -->
+    <div class="modal fade" id="addSuggestionModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -1527,12 +1632,10 @@ function updateMealTotals($meal_id) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form action="food-log.php" method="POST">
-                    <input type="hidden" name="action" value="use_predefined_meal">
-                    <input type="hidden" name="predefined_meal_id" id="confirm_suggestion_id">
+                    <input type="hidden" name="action" value="add_meal">
+                    <input type="hidden" name="suggestion_id" id="suggestion_id">
                     
                     <div class="modal-body">
-                        <p>Voulez-vous ajouter <strong id="confirm_suggestion_name"></strong> à votre journal alimentaire ?</p>
-                        
                         <div class="mb-3">
                             <label for="meal_type_suggestion" class="form-label">Type de repas</label>
                             <select class="form-select" id="meal_type_suggestion" name="meal_type" required>
@@ -1549,6 +1652,15 @@ function updateMealTotals($meal_id) {
                             <label for="log_date_suggestion" class="form-label">Date</label>
                             <input type="date" class="form-control" id="log_date_suggestion" name="log_date" value="<?php echo date('Y-m-d'); ?>" required>
                         </div>
+                        
+                        <div class="nutrition-info small text-muted">
+                            <div class="d-flex justify-content-between">
+                                <span>Calories: <span id="suggestion_calories"></span> kcal</span>
+                                <span>Protéines: <span id="suggestion_protein"></span>g</span>
+                                <span>Glucides: <span id="suggestion_carbs"></span>g</span>
+                                <span>Lipides: <span id="suggestion_fat"></span>g</span>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="modal-footer">
@@ -1560,24 +1672,56 @@ function updateMealTotals($meal_id) {
         </div>
     </div>
     
+    <!-- Modal de détails de suggestion -->
+    <div class="modal fade" id="viewSuggestionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails de la suggestion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <h6 class="mb-2">Ingrédients :</h6>
+                        <ul class="list-unstyled mb-0" id="suggestion_ingredients">
+                            <!-- Les ingrédients seront ajoutés ici via JavaScript -->
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="mb-2">Conseils :</h6>
+                        <ul class="list-unstyled mb-0" id="suggestion_conseils">
+                            <!-- Les conseils seront ajoutés ici via JavaScript -->
+                        </ul>
+                    </div>
+                    
+                    <div class="nutrition-info small text-muted">
+                        <div class="d-flex justify-content-between">
+                            <span>Calories: <span id="view_suggestion_calories"></span> kcal</span>
+                            <span>Protéines: <span id="view_suggestion_protein"></span>g</span>
+                            <span>Glucides: <span id="view_suggestion_carbs"></span>g</span>
+                            <span>Lipides: <span id="view_suggestion_fat"></span>g</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Gestion du partage
-            const shareModal = new bootstrap.Modal(document.getElementById('shareMealModal'));
-            
-            // Gestion de la génération des suggestions
+            // Gestionnaire pour le bouton de génération de suggestions
             const generateSuggestionsBtn = document.getElementById('generateSuggestionsBtn');
             if (generateSuggestionsBtn) {
                 generateSuggestionsBtn.addEventListener('click', function() {
-                    // Ajouter une classe de rotation à l'icône
                     const icon = this.querySelector('i');
                     icon.classList.add('fa-spin');
-                    
-                    // Désactiver le bouton pendant le chargement
                     this.disabled = true;
                     
-                    // Appeler l'API pour générer les suggestions
                     fetch('generate-suggestions.php', {
                         method: 'POST',
                         headers: {
@@ -1590,7 +1734,6 @@ function updateMealTotals($meal_id) {
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            // Recharger la page pour afficher les nouvelles suggestions
                             window.location.reload();
                         } else {
                             alert('Erreur lors de la génération des suggestions : ' + data.message);
@@ -1598,112 +1741,56 @@ function updateMealTotals($meal_id) {
                     })
                     .catch(error => {
                         console.error('Erreur:', error);
-                        alert('Une erreur est survenue lors de la génération des suggestions');
+                        alert('Une erreur est survenue lors de la génération des suggestions.');
                     })
                     .finally(() => {
-                        // Réactiver le bouton et arrêter la rotation de l'icône
-                        this.disabled = false;
                         icon.classList.remove('fa-spin');
+                        this.disabled = false;
                     });
                 });
             }
             
-            document.querySelectorAll('.share-meal-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const mealId = this.dataset.mealId;
-                    const mealType = this.dataset.mealType;
+            // Gestionnaire pour les boutons d'ajout de suggestion
+            document.querySelectorAll('.add-suggestion-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const suggestionId = this.dataset.suggestionId;
                     const calories = this.dataset.calories;
-                    const notes = this.dataset.notes;
+                    const protein = this.dataset.protein;
+                    const carbs = this.dataset.carbs;
+                    const fat = this.dataset.fat;
                     
-                    console.log('Données du repas:', { mealId, mealType, calories, notes });
-                    
-                    document.getElementById('share_meal_id').value = mealId;
-                    document.getElementById('share_meal_type').textContent = mealType.charAt(0).toUpperCase() + mealType.slice(1);
-                    document.getElementById('share_meal_calories').textContent = calories;
-                    document.getElementById('share_meal_notes').textContent = notes || 'Aucune note';
-                    
-                    shareModal.show();
+                    // Mettre à jour les champs du modal
+                    document.getElementById('suggestion_id').value = suggestionId;
+                    document.getElementById('suggestion_calories').textContent = calories;
+                    document.getElementById('suggestion_protein').textContent = protein;
+                    document.getElementById('suggestion_carbs').textContent = carbs;
+                    document.getElementById('suggestion_fat').textContent = fat;
                 });
             });
-
-            // Gestion du remplissage automatique des nutriments
-            const foodSelect = document.getElementById('food_id');
-            const customFoodName = document.getElementById('custom_food_name');
-            const quantityInput = document.getElementById('quantity');
-            const customCaloriesInput = document.getElementById('custom_calories');
-            const customProteinInput = document.getElementById('custom_protein');
-            const customCarbsInput = document.getElementById('custom_carbs');
-            const customFatInput = document.getElementById('custom_fat');
-
-            if (foodSelect) {
-                foodSelect.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    if (selectedOption.value) {
-                        // Un aliment prédéfini est sélectionné
-                        const calories = parseFloat(selectedOption.dataset.calories);
-                        const protein = parseFloat(selectedOption.dataset.protein);
-                        const carbs = parseFloat(selectedOption.dataset.carbs);
-                        const fat = parseFloat(selectedOption.dataset.fat);
-                        const quantity = parseFloat(quantityInput.value) || 100;
-
-                        // Calculer les valeurs pour la quantité donnée
-                        const calculatedCalories = (calories * quantity) / 100;
-                        const calculatedProtein = (protein * quantity) / 100;
-                        const calculatedCarbs = (carbs * quantity) / 100;
-                        const calculatedFat = (fat * quantity) / 100;
-
-                        // Remplir les champs
-                        customCaloriesInput.value = Math.round(calculatedCalories);
-                        customProteinInput.value = calculatedProtein.toFixed(1);
-                        customCarbsInput.value = calculatedCarbs.toFixed(1);
-                        customFatInput.value = calculatedFat.toFixed(1);
-                        customFoodName.value = ''; // Vider le champ nom personnalisé
-                    } else {
-                        // Aucun aliment sélectionné
-                        customCaloriesInput.value = '0';
-                        customProteinInput.value = '0';
-                        customCarbsInput.value = '0';
-                        customFatInput.value = '0';
-                    }
-                });
-
-                // Mettre à jour les valeurs quand la quantité change
-                quantityInput.addEventListener('input', function() {
-                    const selectedOption = foodSelect.options[foodSelect.selectedIndex];
-                    if (selectedOption.value) {
-                        const calories = parseFloat(selectedOption.dataset.calories);
-                        const protein = parseFloat(selectedOption.dataset.protein);
-                        const carbs = parseFloat(selectedOption.dataset.carbs);
-                        const fat = parseFloat(selectedOption.dataset.fat);
-                        const quantity = parseFloat(this.value) || 100;
-
-                        // Calculer les valeurs pour la nouvelle quantité
-                        const calculatedCalories = (calories * quantity) / 100;
-                        const calculatedProtein = (protein * quantity) / 100;
-                        const calculatedCarbs = (carbs * quantity) / 100;
-                        const calculatedFat = (fat * quantity) / 100;
-
-                        // Mettre à jour les champs
-                        customCaloriesInput.value = Math.round(calculatedCalories);
-                        customProteinInput.value = calculatedProtein.toFixed(1);
-                        customCarbsInput.value = calculatedCarbs.toFixed(1);
-                        customFatInput.value = calculatedFat.toFixed(1);
-                    }
-                });
-            }
-
-            // Gestion des suggestions de repas
-            const confirmSuggestionModal = new bootstrap.Modal(document.getElementById('confirmSuggestionModal'));
             
-            document.querySelectorAll('.add-suggestion-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const suggestionId = this.dataset.suggestionId;
-                    const suggestionName = this.dataset.suggestionName;
+            // Gestionnaire pour les boutons de visualisation de suggestion
+            document.querySelectorAll('.view-suggestion-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const ingredients = JSON.parse(this.dataset.ingredients);
+                    const conseils = JSON.parse(this.dataset.conseils);
                     
-                    document.getElementById('confirm_suggestion_id').value = suggestionId;
-                    document.getElementById('confirm_suggestion_name').textContent = suggestionName;
+                    // Mettre à jour les ingrédients
+                    const ingredientsList = document.getElementById('suggestion_ingredients');
+                    ingredientsList.innerHTML = ingredients.map(ingredient => 
+                        `<li><i class="fas fa-check text-success"></i> ${ingredient}</li>`
+                    ).join('');
                     
-                    confirmSuggestionModal.show();
+                    // Mettre à jour les conseils
+                    const conseilsList = document.getElementById('suggestion_conseils');
+                    conseilsList.innerHTML = conseils.map(conseil => 
+                        `<li><i class="fas fa-lightbulb text-warning"></i> ${conseil}</li>`
+                    ).join('');
+                    
+                    // Mettre à jour les valeurs nutritionnelles
+                    document.getElementById('view_suggestion_calories').textContent = this.dataset.calories;
+                    document.getElementById('view_suggestion_protein').textContent = this.dataset.protein;
+                    document.getElementById('view_suggestion_carbs').textContent = this.dataset.carbs;
+                    document.getElementById('view_suggestion_fat').textContent = this.dataset.fat;
                 });
             });
         });
