@@ -1733,3 +1733,112 @@ RÈGLES STRICTES :
     
     return $result['choices'][0]['message']['content'];
 }
+
+/**
+ * Analyse le contenu JSON d'une suggestion et gère les erreurs
+ * 
+ * @param string $content Contenu JSON de la suggestion
+ * @return array Données parsées
+ * @throws Exception Si le parsing échoue
+ */
+function parseSuggestionContent($content) {
+    $data = json_decode($content, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception("Erreur de parsing JSON: " . json_last_error_msg());
+    }
+    return $data;
+}
+
+/**
+ * Calcule les valeurs nutritionnelles totales à partir des ingrédients
+ * 
+ * @param array $ingredients Liste des ingrédients
+ * @return array Totaux nutritionnels
+ */
+function calculateTotalNutrition($ingredients) {
+    $totals = [
+        'calories' => 0,
+        'protein' => 0,
+        'carbs' => 0,
+        'fat' => 0
+    ];
+    
+    foreach ($ingredients as $ingredient) {
+        $food_id = createOrGetFood($ingredient['nom']);
+        $nutrition = calculateNutritionForQuantity($food_id, $ingredient['quantité']);
+        
+        $totals['calories'] += $nutrition['calories'];
+        $totals['protein'] += $nutrition['protein'];
+        $totals['carbs'] += $nutrition['carbs'];
+        $totals['fat'] += $nutrition['fat'];
+    }
+    
+    return $totals;
+}
+
+/**
+ * Crée un nouveau repas dans la base de données
+ * 
+ * @param int $user_id ID de l'utilisateur
+ * @param string $meal_type Type de repas
+ * @param string $notes Notes sur le repas
+ * @param array $totals Valeurs nutritionnelles totales
+ * @return int|false ID du repas créé ou false en cas d'erreur
+ */
+function createMealFromSuggestion($user_id, $meal_type, $notes, $totals) {
+    $sql = "INSERT INTO meals (user_id, meal_type, log_date, notes, total_calories, total_protein, total_carbs, total_fat) 
+            VALUES (?, ?, NOW(), ?, ?, ?, ?, ?)";
+            
+    return insert($sql, [
+        $user_id,
+        $meal_type,
+        $notes,
+        $totals['calories'],
+        $totals['protein'],
+        $totals['carbs'],
+        $totals['fat']
+    ]);
+}
+
+/**
+ * Ajoute les ingrédients à un repas
+ * 
+ * @param int $meal_id ID du repas
+ * @param array $ingredients Liste des ingrédients
+ * @return bool True si succès, false sinon
+ */
+function addIngredientsToMeal($meal_id, $ingredients) {
+    foreach ($ingredients as $ingredient) {
+        $food_id = createOrGetFood($ingredient['nom']);
+        $nutrition = calculateNutritionForQuantity($food_id, $ingredient['quantité']);
+        
+        $sql = "INSERT INTO meal_foods (meal_id, food_id, quantity, calories, protein, carbs, fat) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
+                
+        if (!insert($sql, [
+            $meal_id,
+            $food_id,
+            $ingredient['quantité'],
+            $nutrition['calories'],
+            $nutrition['protein'],
+            $nutrition['carbs'],
+            $nutrition['fat']
+        ])) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * Récupère une suggestion par son ID
+ * 
+ * @param int $suggestion_id ID de la suggestion
+ * @param int $user_id ID de l'utilisateur
+ * @return array|false Données de la suggestion ou false si non trouvée
+ */
+function fetchSuggestion($suggestion_id, $user_id) {
+    $sql = "SELECT content FROM ai_suggestions WHERE id = ? AND user_id = ?";
+    return fetchOne($sql, [$suggestion_id, $user_id]);
+}
