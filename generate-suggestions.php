@@ -210,9 +210,14 @@ Les valeurs nutritionnelles doivent correspondre à la quantité exacte spécifi
             $check_result = fetchOne($check_sql, [$suggestion_id]);
             error_log("Vérification de l'insertion: " . print_r($check_result, true));
             
-            // Rediriger vers my-coach.php avec un message de succès
-            $_SESSION['success_message'] = "Suggestion générée avec succès";
-            header('Location: my-coach.php');
+            // Renvoyer une réponse JSON de succès
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'message' => 'Suggestion générée avec succès',
+                'suggestion_id' => $suggestion_id,
+                'content' => json_decode($suggestion_content, true)
+            ]);
             exit;
         } else {
             error_log("❌ Erreur lors de l'insertion de la suggestion");
@@ -226,7 +231,11 @@ Les valeurs nutritionnelles doivent correspondre à la quantité exacte spécifi
     
 } catch (Exception $e) {
     error_log("❌ Erreur dans generate-suggestions.php: " . mb_convert_encoding($e->getMessage(), 'UTF-8', 'auto'));
-    $_SESSION['error_message'] = $e->getMessage();
-    header('Location: my-coach.php');
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
     exit;
 } 

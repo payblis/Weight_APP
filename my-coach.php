@@ -219,54 +219,78 @@ unset($_SESSION['error_message']);
             }
         }
 
-        // Gestion du formulaire de génération de suggestion
-        document.getElementById('generateSuggestionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Désactiver le bouton pendant la génération
-            const button = this.querySelector('button[type="submit"]');
-            const originalText = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération en cours...';
-            
-            fetch('generate-suggestions.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    type: 'alimentation'
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erreur réseau');
-                }
-                return response.text().then(text => {
-                    try {
-                        return JSON.parse(text);
-                    } catch (e) {
-                        console.error('Réponse brute:', text);
-                        throw new Error('Réponse invalide du serveur');
-                    }
+        document.addEventListener('DOMContentLoaded', function() {
+            // Gestion du formulaire de génération de suggestion
+            const generateForm = document.getElementById('generate-suggestion-form');
+            if (generateForm) {
+                generateForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Désactiver le bouton pendant la génération
+                    const submitButton = this.querySelector('button[type="submit"]');
+                    const originalText = submitButton.innerHTML;
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Génération en cours...';
+                    
+                    // Récupérer le type de suggestion
+                    const suggestionType = this.querySelector('select[name="type"]').value;
+                    
+                    // Préparer les données à envoyer
+                    const data = {
+                        type: suggestionType
+                    };
+                    
+                    // Envoyer la requête AJAX
+                    fetch('generate-suggestions.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Afficher le message de succès
+                            const alertDiv = document.createElement('div');
+                            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                            alertDiv.innerHTML = `
+                                ${data.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            `;
+                            generateForm.insertAdjacentElement('beforebegin', alertDiv);
+                            
+                            // Recharger la page après 2 secondes
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        } else {
+                            throw new Error(data.message || 'Une erreur est survenue');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        // Afficher le message d'erreur
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                        alertDiv.innerHTML = `
+                            Erreur: ${error.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        generateForm.insertAdjacentElement('beforebegin', alertDiv);
+                    })
+                    .finally(() => {
+                        // Réactiver le bouton
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalText;
+                    });
                 });
-            })
-            .then(data => {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert(data.message || 'Une erreur est survenue');
-                }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-                alert('Une erreur est survenue lors de la génération de la suggestion');
-            })
-            .finally(() => {
-                // Réactiver le bouton
-                button.disabled = false;
-                button.innerHTML = originalText;
-            });
+            }
         });
     </script>
 </body>
