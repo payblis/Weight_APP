@@ -112,12 +112,6 @@ function delete($sql, $params = []) {
     }
 }
 
-// Fonction pour obtenir le dernier ID inséré
-function getLastInsertId() {
-    global $pdo;
-    return $pdo->lastInsertId();
-}
-
 // Fonction pour obtenir la dernière erreur SQL
 function getLastError() {
     global $pdo;
