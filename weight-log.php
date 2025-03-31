@@ -61,6 +61,9 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                 update($sql, [$weight, $user_id]);
                 
                 // Vérifier si un objectif est atteint
+                $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+                $current_goal = fetchOne($sql, [$user_id]);
+                
                 if ($current_goal) {
                     $weight_diff = abs($weight - $current_goal['target_weight']);
                     
@@ -111,6 +114,9 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                 update($sql, [$weight, $user_id]);
                 
                 // Vérifier si un objectif est atteint
+                $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+                $current_goal = fetchOne($sql, [$user_id]);
+                
                 if ($current_goal) {
                     $weight_diff = abs($weight - $current_goal['target_weight']);
                     
@@ -421,10 +427,61 @@ if ($latest_weight) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(360deg); }
+        }
+        
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            animation: confetti 3s linear forwards;
+            z-index: 9999;
+        }
+        
+        .goal-achieved-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .goal-achieved-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            animation: scaleIn 0.5s ease-out;
+        }
+        
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+    </style>
 </head>
 <body>
     <!-- Barre de navigation -->
     <?php include 'navigation.php'; ?>
+
+    <!-- Modal de félicitations -->
+    <div id="goalAchievedModal" class="goal-achieved-modal">
+        <div class="goal-achieved-content">
+            <i class="fas fa-trophy fa-3x text-warning mb-3"></i>
+            <h2 class="mb-3">Félicitations !</h2>
+            <p class="mb-4"><?php echo $_SESSION['goal_message'] ?? ''; ?></p>
+            <button class="btn btn-primary" onclick="closeGoalAchievedModal()">Continuer</button>
+        </div>
+    </div>
 
     <!-- Contenu principal -->
     <div class="container py-4">
@@ -893,6 +950,36 @@ if ($latest_weight) {
                 });
             }
         });
+    </script>
+    <script>
+        function createConfetti() {
+            const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                document.body.appendChild(confetti);
+                
+                // Supprimer le confetti après l'animation
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+        
+        function showGoalAchievedModal() {
+            document.getElementById('goalAchievedModal').style.display = 'flex';
+            createConfetti();
+        }
+        
+        function closeGoalAchievedModal() {
+            document.getElementById('goalAchievedModal').style.display = 'none';
+        }
+        
+        // Afficher le modal au chargement de la page
+        window.addEventListener('load', showGoalAchievedModal);
     </script>
 </body>
 </html>
