@@ -1753,13 +1753,7 @@ function callChatGPTAPI($prompt, $api_key) {
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'Tu es un nutritionniste expert qui fournit des suggestions de repas personnalisées et équilibrées. Tu dois fournir une réponse structurée avec uniquement les informations suivantes :
-
-1. Nom du repas
-2. Liste des ingrédients avec leurs quantités précises
-3. Valeurs nutritionnelles totales
-
-Format de réponse attendu :
+                'content' => 'Tu es un nutritionniste expert qui fournit des suggestions de repas personnalisées et équilibrées. Tu dois fournir une réponse EXACTEMENT dans le format suivant, sans aucune variation :
 
 Nom du repas : [Nom]
 
@@ -1774,7 +1768,15 @@ Protéines : environ [X]g
 Glucides : environ [X]g
 Lipides : environ [X]g
 
-Ne pas inclure de conseils ou d\'instructions de préparation. Fournir uniquement les informations demandées dans le format exact spécifié.'
+RÈGLES STRICTES :
+1. Ne pas ajouter de texte avant ou après le format ci-dessus
+2. Ne pas inclure de conseils ou d\'instructions de préparation
+3. Ne pas ajouter de commentaires ou d\'explications supplémentaires
+4. Utiliser exactement les mêmes libellés que dans le format ci-dessus
+5. Les valeurs nutritionnelles doivent être précédées du mot "environ"
+6. Les unités doivent être exactement : kcal pour les calories, g pour les protéines/glucides/lipides
+7. Ne pas ajouter de sections supplémentaires
+8. Ne pas modifier la structure ou l\'ordre des sections'
             ],
             [
                 'role' => 'user',
