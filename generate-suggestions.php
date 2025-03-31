@@ -8,15 +8,17 @@ require_once 'includes/functions.php';
 
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Utilisateur non connecté']);
+    error_log("❌ Utilisateur non connecté");
+    $_SESSION['error_message'] = "Vous devez être connecté pour effectuer cette action";
+    header('Location: my-coach.php');
     exit;
 }
 
 // Vérifier si la requête est en POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'message' => 'Méthode non autorisée']);
+    error_log("❌ Requête non-POST détectée");
+    $_SESSION['error_message'] = "Cette page ne peut être accédée que via un formulaire";
+    header('Location: my-coach.php');
     exit;
 }
 
@@ -29,18 +31,24 @@ mb_internal_encoding('UTF-8');
 
 // Récupérer les informations de l'utilisateur
 $user_id = $_SESSION['user_id'];
+error_log("=== Début de la génération de suggestion ===");
+error_log("User ID: " . $user_id);
+error_log("Type de suggestion: " . $suggestion_type);
 
 // Récupérer le profil de l'utilisateur
 $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
 $profile = fetchOne($sql, [$user_id]);
+error_log("Profil utilisateur: " . print_r($profile, true));
 
 // Récupérer le dernier poids enregistré
 $sql = "SELECT * FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
 $latest_weight = fetchOne($sql, [$user_id]);
+error_log("Dernier poids: " . print_r($latest_weight, true));
 
 // Récupérer l'objectif de poids actuel
 $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
 $current_goal = fetchOne($sql, [$user_id]);
+error_log("Objectif actuel: " . print_r($current_goal, true));
 
 // Récupérer le programme actif de l'utilisateur
 $sql = "SELECT p.* FROM user_programs up 
@@ -48,10 +56,12 @@ $sql = "SELECT p.* FROM user_programs up
         WHERE up.user_id = ? AND up.status = 'actif' 
         ORDER BY up.created_at DESC LIMIT 1";
 $active_program = fetchOne($sql, [$user_id]);
+error_log("Programme actif: " . print_r($active_program, true));
 
 // Récupérer les préférences alimentaires de l'utilisateur
 $sql = "SELECT * FROM food_preferences WHERE user_id = ?";
 $preferences = fetchAll($sql, [$user_id]);
+error_log("Préférences alimentaires: " . print_r($preferences, true));
 
 // Organiser les préférences par type
 $favorite_foods = [];
@@ -139,6 +149,7 @@ try {
             // Appeler l'API ChatGPT
             $api_key = getSetting('chatgpt_api_key');
             if (empty($api_key)) {
+                error_log("❌ Clé API ChatGPT manquante");
                 throw new Exception("La clé API ChatGPT n'est pas configurée");
             }
             
@@ -148,13 +159,13 @@ try {
             // Vérifier que le contenu est un JSON valide
             $json_data = json_decode($suggestion_content, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log("Erreur de parsing JSON : " . json_last_error_msg());
+                error_log("❌ Erreur de parsing JSON : " . json_last_error_msg());
                 throw new Exception("La réponse de l'API n'est pas un JSON valide");
             }
 
             // Vérifier la structure minimale requise
             if (!isset($json_data['nom_du_repas']) || !isset($json_data['valeurs_nutritionnelles']) || !isset($json_data['ingredients'])) {
-                error_log("Structure JSON invalide : " . print_r($json_data, true));
+                error_log("❌ Structure JSON invalide : " . print_r($json_data, true));
                 throw new Exception("La réponse de l'API ne contient pas tous les champs requis");
             }
 
@@ -183,22 +194,22 @@ try {
         $result = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
         
         if ($result) {
-            error_log("Suggestion insérée avec succès");
+            error_log("✅ Suggestion insérée avec succès");
             // Rediriger vers my-coach.php avec un message de succès
             $_SESSION['success_message'] = "Suggestion générée avec succès";
             header('Location: my-coach.php');
             exit;
         } else {
-            error_log("Erreur lors de l'insertion de la suggestion");
+            error_log("❌ Erreur lors de l'insertion de la suggestion");
             throw new Exception("Erreur lors de l'enregistrement de la suggestion");
         }
     } else {
-        error_log("Aucune suggestion générée");
+        error_log("❌ Aucune suggestion générée");
         throw new Exception("Aucune suggestion générée");
     }
     
 } catch (Exception $e) {
-    error_log("Erreur dans generate-suggestions.php: " . mb_convert_encoding($e->getMessage(), 'UTF-8', 'auto'));
+    error_log("❌ Erreur dans generate-suggestions.php: " . mb_convert_encoding($e->getMessage(), 'UTF-8', 'auto'));
     $_SESSION['error_message'] = $e->getMessage();
     header('Location: my-coach.php');
     exit;

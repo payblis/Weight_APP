@@ -59,21 +59,25 @@ $suggestions = fetchAll($sql, [$user_id]);
                 print_r($raw_suggestions);
                 echo "</pre>";
 
+                // Debug: Afficher le contenu JSON de chaque suggestion
+                echo "<h6>Contenu JSON de chaque suggestion:</h6>";
+                foreach ($raw_suggestions as $suggestion) {
+                    echo "<h6>Suggestion ID: " . $suggestion['id'] . "</h6>";
+                    echo "<pre>";
+                    $json_data = json_decode($suggestion['content'], true);
+                    print_r($json_data);
+                    echo "</pre>";
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        echo "Erreur JSON: " . json_last_error_msg() . "<br>";
+                    }
+                }
+
                 // Debug: Afficher les suggestions formatées
                 echo "<h6>Suggestions formatées:</h6>";
                 $formatted_suggestions = getMealSuggestions($_SESSION['user_id']);
                 echo "<pre>";
                 print_r($formatted_suggestions);
                 echo "</pre>";
-
-                // Debug: Afficher les erreurs JSON si présentes
-                echo "<h6>Erreurs JSON:</h6>";
-                foreach ($raw_suggestions as $suggestion) {
-                    $json_data = json_decode($suggestion['content'], true);
-                    if (json_last_error() !== JSON_ERROR_NONE) {
-                        echo "Erreur JSON pour la suggestion ID {$suggestion['id']}: " . json_last_error_msg() . "<br>";
-                    }
-                }
                 ?>
             </div>
         </div>
