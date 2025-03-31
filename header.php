@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weight Tracker</title>
+    <title>MyFity - Votre compagnon santé et fitness</title>
 
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0d6efd">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Weight Tracker">
+    <meta name="apple-mobile-web-app-title" content="MyFity">
     <link rel="manifest" href="/manifest.json">
 
     <!-- Apple Touch Icons -->

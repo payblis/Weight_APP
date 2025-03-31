@@ -7,11 +7,11 @@ if (!isset($_SESSION)) {
     session_start();
 }
 ?>
-<!-- Barre de navigation -->
+<!-- Barre de navigation desktop -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary d-none d-lg-block">
     <div class="container">
         <a class="navbar-brand" href="dashboard.php">
-            <i class="fas fa-weight me-2"></i>Weight Tracker
+            <i class="fas fa-weight me-2"></i>MyFity
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -92,29 +92,10 @@ if (!isset($_SESSION)) {
                     </ul>
                 </li>
                 
-                <!-- Menu Objectifs et IA -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?php echo in_array($current_page, ['goals.php', 'ai-suggestions.php', 'my-coach.php']) ? 'active' : ''; ?>" href="#" id="objectifsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-bullseye me-1"></i>Objectifs & IA
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="objectifsDropdown">
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'goals.php' ? 'active' : ''; ?>" href="goals.php">
-                                <i class="fas fa-flag me-1"></i>Gestion des objectifs
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'my-coach.php' ? 'active' : ''; ?>" href="my-coach.php">
-                                <i class="fas fa-robot me-1"></i>Mon Coach
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                
-                <!-- Menu Communauté -->
+                <!-- Menu Objectifs -->
                 <li class="nav-item">
-                    <a class="nav-link" href="community.php">
-                        <i class="fas fa-users me-1"></i>Communauté
+                    <a class="nav-link <?php echo $current_page === 'goals.php' ? 'active' : ''; ?>" href="goals.php">
+                        <i class="fas fa-bullseye me-1"></i>Objectifs
                     </a>
                 </li>
             </ul>
@@ -137,58 +118,18 @@ if (!isset($_SESSION)) {
     </div>
 </nav>
 
-<!-- Navigation desktop -->
-<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom d-none d-lg-block">
-    <div class="container">
-        <a class="navbar-brand" href="dashboard.php">Weight Tracker</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php"><i class="fas fa-home me-1"></i>Tableau de bord</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="weight-log.php"><i class="fas fa-weight me-1"></i>Poids</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="food-log.php"><i class="fas fa-utensils me-1"></i>Alimentation</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="exercise-log.php"><i class="fas fa-dumbbell me-1"></i>Exercices</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="goals.php"><i class="fas fa-bullseye me-1"></i>Objectifs</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="community.php"><i class="fas fa-users me-1"></i>Communauté</a>
-                </li>
-            </ul>
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="profile.php"><i class="fas fa-user me-1"></i>Profil</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="logout.php"><i class="fas fa-sign-out-alt me-1"></i>Déconnexion</a>
-                </li>
-            </ul>
-        </div>
-    </div>
-</nav>
-
 <!-- Navigation mobile (bottom bar) -->
 <nav class="navbar fixed-bottom navbar-light bg-white border-top d-lg-none">
     <div class="container-fluid p-0">
         <div class="row w-100 text-center g-0">
             <div class="col">
-                <a class="nav-link py-2" href="dashboard.php">
+                <a class="nav-link py-2 <?php echo $current_page === 'dashboard.php' ? 'text-primary' : ''; ?>" href="dashboard.php">
                     <i class="fas fa-home d-block mb-1"></i>
                     <small>Accueil</small>
                 </a>
             </div>
             <div class="col">
-                <a class="nav-link py-2" href="food-log.php">
+                <a class="nav-link py-2 <?php echo $current_page === 'food-log.php' ? 'text-primary' : ''; ?>" href="food-log.php">
                     <i class="fas fa-utensils d-block mb-1"></i>
                     <small>Repas</small>
                 </a>
@@ -198,36 +139,24 @@ if (!isset($_SESSION)) {
                     <a class="nav-link py-2" href="#" data-bs-toggle="dropdown" style="position: relative; top: -20px;">
                         <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" 
                              style="width: 50px; height: 50px; margin: 0 auto;">
-                            <i class="fas fa-plus text-white"></i>
+                            <i class="fas fa-plus fa-lg text-white"></i>
                         </div>
                     </a>
-                    <ul class="dropdown-menu">
-                        <li>
-                            <a class="dropdown-item" href="food-log.php?action=add_meal">
-                                <i class="fas fa-utensils me-2"></i>Ajouter un repas
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="weight-log.php?action=add">
-                                <i class="fas fa-weight me-2"></i>Ajouter un poids
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="exercise-log.php?action=add">
-                                <i class="fas fa-dumbbell me-2"></i>Ajouter un exercice
-                            </a>
-                        </li>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="food-log.php?action=add_meal"><i class="fas fa-utensils me-2"></i>Ajouter un repas</a></li>
+                        <li><a class="dropdown-item" href="weight-log.php?action=add"><i class="fas fa-weight me-2"></i>Ajouter un poids</a></li>
+                        <li><a class="dropdown-item" href="exercise-log.php?action=add"><i class="fas fa-dumbbell me-2"></i>Ajouter un exercice</a></li>
                     </ul>
                 </div>
             </div>
             <div class="col">
-                <a class="nav-link py-2" href="exercise-log.php">
+                <a class="nav-link py-2 <?php echo $current_page === 'exercise-log.php' ? 'text-primary' : ''; ?>" href="exercise-log.php">
                     <i class="fas fa-dumbbell d-block mb-1"></i>
-                    <small>Exercice</small>
+                    <small>Exercices</small>
                 </a>
             </div>
             <div class="col">
-                <a class="nav-link py-2" href="profile.php">
+                <a class="nav-link py-2 <?php echo $current_page === 'profile.php' ? 'text-primary' : ''; ?>" href="profile.php">
                     <i class="fas fa-user d-block mb-1"></i>
                     <small>Profil</small>
                 </a>
