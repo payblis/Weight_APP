@@ -1589,7 +1589,7 @@ function getMealSuggestions($user_id) {
         error_log("Objectif trouvé : " . ($goal ? "Oui" : "Non"));
         
         // Récupérer les suggestions d'IA
-        $sql = "SELECT id, content as name, created_at FROM ai_suggestions 
+        $sql = "SELECT id, content, created_at FROM ai_suggestions 
                 WHERE user_id = ? AND suggestion_type IN ('repas', 'alimentation') 
                 ORDER BY created_at DESC LIMIT 5";
         $suggestions = fetchAll($sql, [$user_id]);
@@ -1600,11 +1600,11 @@ function getMealSuggestions($user_id) {
             error_log("=== Traitement de la suggestion " . $suggestion['id'] . " ===");
             
             // Parser le JSON de la suggestion
-            $data = json_decode($suggestion['name'], true);
+            $data = json_decode($suggestion['content'], true);
             
             if (json_last_error() !== JSON_ERROR_NONE) {
                 error_log("❌ Erreur de parsing JSON : " . json_last_error_msg());
-                error_log("Contenu brut : " . $suggestion['name']);
+                error_log("Contenu brut : " . $suggestion['content']);
                 continue;
             }
             
@@ -1620,7 +1620,7 @@ function getMealSuggestions($user_id) {
             ];
             $suggestion['description'] = [
                 'ingredients' => $data['ingredients'] ?? [],
-                'conseils' => []
+                'instructions' => $data['instructions'] ?? []
             ];
             
             error_log("Description finale : " . print_r($suggestion['description'], true));

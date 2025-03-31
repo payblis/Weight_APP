@@ -173,18 +173,45 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
         $prompt .= "Aliments à éviter : " . implode(", ", $blacklisted_foods) . "\n";
     }
     
-    $prompt .= "\nVeuillez fournir :\n";
-    $prompt .= "1. Une liste d'ingrédients avec leurs quantités\n";
-    $prompt .= "2. Les étapes de préparation\n";
-    $prompt .= "3. Les valeurs nutritionnelles exactes (calories, protéines, glucides, lipides)\n";
-    $prompt .= "4. Des conseils pour personnaliser le repas selon les préférences\n";
-    $prompt .= "5. Une explication de la compatibilité avec l'objectif de l'utilisateur\n";
+    $prompt .= "\nGénère une suggestion de repas au format JSON avec la structure suivante :\n";
+    $prompt .= "{\n";
+    $prompt .= "  \"nom_du_repas\": \"Nom du repas\",\n";
+    $prompt .= "  \"valeurs_nutritionnelles\": {\n";
+    $prompt .= "    \"calories\": nombre,\n";
+    $prompt .= "    \"proteines\": nombre,\n";
+    $prompt .= "    \"glucides\": nombre,\n";
+    $prompt .= "    \"lipides\": nombre\n";
+    $prompt .= "  },\n";
+    $prompt .= "  \"ingredients\": [\n";
+    $prompt .= "    {\n";
+    $prompt .= "      \"nom\": \"Nom de l'ingrédient\",\n";
+    $prompt .= "      \"quantite\": \"Quantité en grammes\",\n";
+    $prompt .= "      \"calories\": nombre,\n";
+    $prompt .= "      \"proteines\": nombre,\n";
+    $prompt .= "      \"glucides\": nombre,\n";
+    $prompt .= "      \"lipides\": nombre\n";
+    $prompt .= "    }\n";
+    $prompt .= "  ],\n";
+    $prompt .= "  \"instructions\": [\n";
+    $prompt .= "    \"Étape 1\",\n";
+    $prompt .= "    \"Étape 2\"\n";
+    $prompt .= "  ]\n";
+    $prompt .= "}\n\n";
+    $prompt .= "Assure-toi que le JSON est valide et que les valeurs nutritionnelles sont cohérentes avec l'objectif calorique.";
     
     // Appeler l'API ChatGPT
     $response = callChatGPTAPI($prompt, $api_key);
     
-    if ($response === false) {
-        return "Une erreur s'est produite lors de la génération de la suggestion. Veuillez réessayer plus tard.";
+    if (strpos($response, "La clé API ChatGPT n'est pas configurée") !== false) {
+        return $response;
+    }
+    
+    // Vérifier que la réponse est un JSON valide
+    $data = json_decode($response, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log("Erreur de parsing JSON dans la réponse de ChatGPT: " . json_last_error_msg());
+        error_log("Réponse brute: " . $response);
+        return "Erreur lors de la génération de la suggestion. Veuillez réessayer.";
     }
     
     return $response;
