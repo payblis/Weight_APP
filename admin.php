@@ -862,4 +862,4 @@ if ($section === 'predefined_meals') {
             addFoodItem(); // Ajouter un premier aliment vide
         });
     </script>
-<?php endif; ?>
+}
