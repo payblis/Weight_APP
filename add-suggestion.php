@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once 'includes/functions.php';
 
 // Vérifier que l'utilisateur est connecté
