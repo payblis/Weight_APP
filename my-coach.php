@@ -12,9 +12,15 @@ $user_id = $_SESSION['user_id'];
 // Récupérer les informations de l'utilisateur
 $sql = "SELECT u.*, p.name as program_name, p.description as program_description 
         FROM users u 
-        LEFT JOIN programs p ON u.program_id = p.id 
+        LEFT JOIN user_programs up ON u.id = up.user_id AND up.status = 'actif'
+        LEFT JOIN programs p ON up.program_id = p.id 
         WHERE u.id = ?";
 $user = fetchOne($sql, [$user_id]);
+
+if (!$user) {
+    $_SESSION['error_message'] = "Erreur : Utilisateur non trouvé.";
+    redirect('login.php');
+}
 
 // Récupérer les suggestions d'IA
 $sql = "SELECT id, content, created_at FROM ai_suggestions 
