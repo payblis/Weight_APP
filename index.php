@@ -18,14 +18,11 @@ include 'header.php';
     <!-- Hero Section -->
     <section class="hero text-white">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
+            <div class="row">
+                <div class="col-lg-7">
                     <h1 class="display-4 mb-4">Une bonne santé, c'est d'abord une bonne alimentation.</h1>
-                    <p class="lead mb-4">Vous voulez faire plus attention à ce que vous mangez ? Faites un suivi de vos repas, apprenez-en plus sur vos habitudes et atteignez vos objectifs avec MyFity.</p>
+                    <p class="lead mb-5">Vous voulez faire plus attention à ce que vous mangez ? Faites un suivi de vos repas, apprenez-en plus sur vos habitudes et atteignez vos objectifs avec MyFity.</p>
                     <a href="register.php" class="btn btn-light btn-lg">Démarrez gratuitement</a>
-                </div>
-                <div class="col-lg-6 text-center">
-                    <img src="assets/images/hero-image.png" alt="MyFity App" class="img-fluid rounded shadow">
                 </div>
             </div>
         </div>

@@ -38,43 +38,20 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="./assets/css/style.css" rel="stylesheet">
-
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then((registration) => {
-                        console.log('ServiceWorker registration successful');
-                    })
-                    .catch((err) => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
-            });
-        }
-    </script>
-
-    <style>
-        #pwa-install-banner {
-            display: none;
-            position: fixed;
-            bottom: 80px;
-            left: 0;
-            right: 0;
-            background: white;
-            padding: 15px;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
-        @media (min-width: 992px) {
-            #pwa-install-banner {
-                bottom: 20px;
-            }
-        }
-    </style>
 </head>
 <body>
-    <?php include 'navigation.php'; ?>
+    <!-- Header simplifié -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-transparent position-absolute w-100 z-3">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="index.php">
+                <i class="fas fa-weight me-2"></i>
+                <span class="fw-bold">MyFity</span>
+            </a>
+            <div class="ms-auto">
+                <a href="login.php" class="btn btn-outline-light">Se connecter</a>
+            </div>
+        </div>
+    </nav>
 
     <!-- Bannière d'installation PWA -->
     <div id="pwa-install-banner" class="container">
