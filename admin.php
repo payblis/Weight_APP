@@ -1060,7 +1060,11 @@ try {
                                                         <?php echo isset($program['type']) ? ucfirst($program['type']) : 'Non défini'; ?>
                                                     </span>
                                                 </td>
-                                                <td><?php echo htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                <td>
+                                                    <div style="max-height: 3em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                                        <?php echo html_entity_decode(htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8'), ENT_QUOTES | ENT_HTML5, 'UTF-8'); ?>
+                                                    </div>
+                                                </td>
                                                 <td><?php echo $program['user_count']; ?></td>
                                                 <td><?php echo $program['formatted_date']; ?></td>
                                                 <td>
