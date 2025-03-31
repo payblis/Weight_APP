@@ -56,7 +56,7 @@ function getFoodCategory($food_name) {
     $prompt .= "7. Autres\n\n";
     $prompt .= "Aliment : " . $food_name;
 
-    $response = callChatGPTAPI($prompt);
+    $response = callChatGPTAPI($prompt, 'gpt-3.5-turbo');
     
     // Nettoyer la réponse pour obtenir uniquement le numéro
     $category_id = (int) preg_replace('/[^0-9]/', '', $response);
