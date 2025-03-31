@@ -122,9 +122,13 @@ function fetchAll($sql, $params = []) {
 function insert($sql, $params = []) {
     global $pdo;
     try {
+        error_log("Exécution de la requête insert : " . $sql);
+        error_log("Paramètres : " . print_r($params, true));
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        return $pdo->lastInsertId();
+        $result = $stmt->execute($params);
+        $lastId = $pdo->lastInsertId();
+        error_log("Résultat de insert : " . ($result ? "Succès" : "Échec") . ", ID : " . $lastId);
+        return $lastId;
     } catch (Exception $e) {
         error_log("Erreur dans insert: " . $e->getMessage());
         return 0;
