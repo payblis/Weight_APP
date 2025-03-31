@@ -206,7 +206,7 @@ unset($_SESSION['error']);
                 <i class="fas fa-exclamation-triangle"></i> 
                 Le fichier CSV n'existe pas à l'emplacement : <?php echo htmlspecialchars($csv_file); ?>
                 <br>
-                Veuillez placer le fichier aliments.csv dans le dossier data/
+                Veuillez placer le fichier aliments.csv dans le même dossier que ce script
             </div>
         <?php else: ?>
             <div class="card mb-4">
