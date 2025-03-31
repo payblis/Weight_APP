@@ -206,26 +206,25 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                         $active_program = fetchOne($sql, [$user_id]);
                         
                         if ($active_program) {
-                            // Si un programme est actif, mettre à jour directement les calories
+                            // Si un programme est actif, calculer les calories finales
                             $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
                             $final_calories = $tdee + $program_adjustment;
                             
-                            $sql = "UPDATE user_profiles SET 
-                                    daily_calories = ?,
-                                    updated_at = NOW()
-                                    WHERE user_id = ?";
-                            update($sql, [
-                                $final_calories,
-                                $user_id
-                            ]);
-                            
-                            $success_message = "Votre poids a été enregistré avec succès ! Vos besoins caloriques ont été ajustés en fonction de votre nouveau poids.";
+                            // Demander confirmation même avec un programme actif
+                            $_SESSION['pending_calories_update'] = [
+                                'tdee' => $final_calories,
+                                'weight' => $weight,
+                                'weight_change' => $weight_change,
+                                'has_program' => true
+                            ];
+                            $success_message = "Votre poids a été enregistré avec succès ! Une variation de " . number_format($weight_change, 1) . " kg a été détectée depuis le début. Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau poids ?";
                         } else {
                             // Si pas de programme actif, demander confirmation
                             $_SESSION['pending_calories_update'] = [
                                 'tdee' => $tdee,
                                 'weight' => $weight,
-                                'weight_change' => $weight_change
+                                'weight_change' => $weight_change,
+                                'has_program' => false
                             ];
                             $success_message = "Votre poids a été enregistré avec succès ! Une variation de " . number_format($weight_change, 1) . " kg a été détectée depuis le début. Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau poids ?";
                         }
@@ -258,6 +257,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_calories' && isset($
             $user_id
         ]);
         $success_message = "Vos besoins caloriques ont été mis à jour avec succès ! Les macronutriments seront automatiquement ajustés en fonction de vos ratios actuels.";
+    } else {
+        $success_message = "Vos besoins caloriques n'ont pas été mis à jour.";
     }
     
     // Nettoyer la session
