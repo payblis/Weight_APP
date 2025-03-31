@@ -1060,7 +1060,7 @@ try {
                                                         <?php echo isset($program['type']) ? ucfirst($program['type']) : 'Non défini'; ?>
                                                     </span>
                                                 </td>
-                                                <td><?php echo htmlspecialchars(substr($program['description'], 0, 100)) . (strlen($program['description']) > 100 ? '...' : ''); ?></td>
+                                                <td><?php echo htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8'); ?></td>
                                                 <td><?php echo $program['user_count']; ?></td>
                                                 <td><?php echo $program['formatted_date']; ?></td>
                                                 <td>

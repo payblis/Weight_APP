@@ -280,7 +280,7 @@ $programs = fetchAll($sql, []);
                 </div>
                 <div class="card-body">
                     <h5><?php echo htmlspecialchars($active_program['name']); ?></h5>
-                    <p class="text-muted"><?php echo htmlspecialchars($active_program['description']); ?></p>
+                    <p class="text-muted"><?php echo htmlspecialchars($active_program['description'], ENT_QUOTES, 'UTF-8'); ?></p>
                     
                     <div class="row">
                         <div class="col-md-6">
@@ -350,7 +350,7 @@ $programs = fetchAll($sql, []);
                                 <div class="card h-100">
                                     <div class="card-body">
                                         <h5 class="card-title"><?php echo htmlspecialchars($program['name']); ?></h5>
-                                        <p class="card-text text-muted"><?php echo htmlspecialchars($program['description']); ?></p>
+                                        <p class="card-text text-muted"><?php echo htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8'); ?></p>
                                         
                                         <div class="mb-3">
                                             <?php
@@ -383,7 +383,7 @@ $programs = fetchAll($sql, []);
                                                     data-bs-target="#shareProgramModal"
                                                     data-program-id="<?php echo $program['id']; ?>"
                                                     data-program-name="<?php echo htmlspecialchars($program['name']); ?>"
-                                                    data-program-description="<?php echo htmlspecialchars($program['description']); ?>"
+                                                    data-program-description="<?php echo htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8'); ?>"
                                                     data-program-type="<?php echo $program['type']; ?>"
                                                     data-program-calories="<?php echo $program['calorie_adjustment']; ?>"
                                                     onclick="console.log('Partage de programme:', this.dataset);">
@@ -426,7 +426,7 @@ $programs = fetchAll($sql, []);
                     </div>
                     <div class="modal-body">
                         <h6>Description</h6>
-                        <p><?php echo nl2br(htmlspecialchars($program['description'])); ?></p>
+                        <p><?php echo nl2br(htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8')); ?></p>
                         
                         <h6>Contenu du programme</h6>
                         <div class="program-content">
