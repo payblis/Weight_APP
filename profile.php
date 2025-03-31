@@ -66,13 +66,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
                     $current_goal = fetchOne($sql, [$user_id]);
                     
-                    $final_calories = $tdee;
-                    $protein_ratio = 0.3;
-                    $carbs_ratio = 0.4;
-                    $fat_ratio = 0.3;
-                    
-                    // Calculer les calories nécessaires pour l'objectif
-                    if ($current_goal) {
+                    if ($active_program) {
+                        error_log("=== Début du calcul avec le programme actif ===");
+                        error_log("Nom du programme : " . $active_program['name']);
+                        error_log("TDEE initial : " . $tdee);
+                        error_log("Ajustement calorique du programme : " . $active_program['calorie_adjustment'] . "%");
+                        
+                        // Calculer l'ajustement du programme
+                        $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                        error_log("Ajustement calorique calculé : " . $program_adjustment);
+                        
+                        // Ajouter l'ajustement du programme aux calories de base
+                        $final_calories = $tdee + $program_adjustment;
+                        error_log("Calories après ajustement programme : " . $final_calories);
+                        
+                        // Utiliser les ratios du programme
+                        $protein_ratio = $active_program['protein_ratio'];
+                        $carbs_ratio = $active_program['carbs_ratio'];
+                        $fat_ratio = $active_program['fat_ratio'];
+                        
+                        error_log("Ratios de macros du programme :");
+                        error_log("- Protéines : " . ($protein_ratio * 100) . "%");
+                        error_log("- Glucides : " . ($carbs_ratio * 100) . "%");
+                        error_log("- Lipides : " . ($fat_ratio * 100) . "%");
+                        
+                        // Calculer les macros en grammes
+                        $protein_grams = ($final_calories * $protein_ratio) / 4;
+                        $carbs_grams = ($final_calories * $carbs_ratio) / 4;
+                        $fat_grams = ($final_calories * $fat_ratio) / 9;
+                        
+                        error_log("Macros calculés en grammes :");
+                        error_log("- Protéines : " . $protein_grams . "g");
+                        error_log("- Glucides : " . $carbs_grams . "g");
+                        error_log("- Lipides : " . $fat_grams . "g");
+                        error_log("=== Fin du calcul avec le programme actif ===");
+                    } else if ($current_goal) {
                         error_log("=== Début du calcul des calories pour l'objectif ===");
                         error_log("Poids actuel : " . $latest_weight['weight']);
                         error_log("Poids cible : " . $current_goal['target_weight']);
@@ -95,50 +123,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $daily_adjustment = $total_calories_needed / $days_to_goal;
                         error_log("Ajustement quotidien pour l'objectif : " . $daily_adjustment);
                         
-                        if ($active_program) {
-                            error_log("=== Début du calcul avec le programme actif ===");
-                            error_log("Nom du programme : " . $active_program['name']);
-                            error_log("TDEE initial : " . $tdee);
-                            error_log("Ajustement calorique du programme : " . $active_program['calorie_adjustment'] . "%");
-                            
-                            // Calculer l'ajustement du programme
-                            $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
-                            error_log("Ajustement calorique calculé : " . $program_adjustment);
-                            
-                            // Ajouter l'ajustement du programme aux calories de base
-                            $tdee += $program_adjustment;
-                            error_log("TDEE après ajustement programme : " . $tdee);
-                            
-                            // Utiliser les ratios du programme
-                            $protein_ratio = $active_program['protein_ratio'];
-                            $carbs_ratio = $active_program['carbs_ratio'];
-                            $fat_ratio = $active_program['fat_ratio'];
-                            
-                            error_log("Ratios de macros du programme :");
-                            error_log("- Protéines : " . ($protein_ratio * 100) . "%");
-                            error_log("- Glucides : " . ($carbs_ratio * 100) . "%");
-                            error_log("- Lipides : " . ($fat_ratio * 100) . "%");
-                            
-                            // Calculer les macros en grammes
-                            $protein_grams = ($tdee * $protein_ratio) / 4;
-                            $carbs_grams = ($tdee * $carbs_ratio) / 4;
-                            $fat_grams = ($tdee * $fat_ratio) / 9;
-                            
-                            error_log("Macros calculés en grammes :");
-                            error_log("- Protéines : " . $protein_grams . "g");
-                            error_log("- Glucides : " . $carbs_grams . "g");
-                            error_log("- Lipides : " . $fat_grams . "g");
-                            error_log("=== Fin du calcul avec le programme actif ===");
-                        } else {
-                            error_log("Aucun programme actif, utilisation des ratios par défaut :");
-                            error_log("- Protéines : " . $protein_ratio);
-                            error_log("- Glucides : " . $carbs_ratio);
-                            error_log("- Lipides : " . $fat_ratio);
-                        }
-                        
                         // Ajouter l'ajustement quotidien pour l'objectif
                         $final_calories = $tdee + $daily_adjustment;
                         error_log("Calories finales : " . $final_calories);
+                        
+                        // Utiliser les ratios par défaut pour l'objectif
+                        $protein_ratio = 0.3;
+                        $carbs_ratio = 0.4;
+                        $fat_ratio = 0.3;
                         
                         // Calculer les macros en grammes
                         $protein_grams = ($final_calories * $protein_ratio) / 4;
@@ -149,8 +141,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("- Protéines : " . $protein_grams . "g");
                         error_log("- Glucides : " . $carbs_grams . "g");
                         error_log("- Lipides : " . $fat_grams . "g");
-                        
                         error_log("=== Fin du calcul des calories pour l'objectif ===");
+                    } else {
+                        error_log("Aucun programme ni objectif actif, utilisation du TDEE et ratios par défaut");
+                        $final_calories = $tdee;
+                        
+                        // Ratios par défaut (40% protéines, 30% glucides, 30% lipides)
+                        $protein_ratio = 0.40;
+                        $carbs_ratio = 0.30;
+                        $fat_ratio = 0.30;
+                        
+                        error_log("Ratios de macronutriments par défaut : " . print_r([
+                            'protein' => $protein_ratio,
+                            'carbs' => $carbs_ratio,
+                            'fat' => $fat_ratio
+                        ], true));
                     }
                     
                     // Mettre à jour les calories et les ratios dans le profil
