@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Récupérer les données JSON
 $data = json_decode(file_get_contents('php://input'), true);
-$suggestion_type = $data['type'] ?? 'repas';
+$suggestion_type = $data['type'] ?? 'alimentation';
 
 // Définir l'encodage UTF-8 pour les logs
 mb_internal_encoding('UTF-8');
