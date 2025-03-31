@@ -212,16 +212,10 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                             
                             $sql = "UPDATE user_profiles SET 
                                     daily_calories = ?,
-                                    protein_ratio = ?,
-                                    carbs_ratio = ?,
-                                    fat_ratio = ?,
                                     updated_at = NOW()
                                     WHERE user_id = ?";
                             update($sql, [
                                 $final_calories,
-                                $active_program['protein_ratio'],
-                                $active_program['carbs_ratio'],
-                                $active_program['fat_ratio'],
                                 $user_id
                             ]);
                             
@@ -254,31 +248,16 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_calories' && isset($
     $pending_update = $_SESSION['pending_calories_update'];
     
     if ($_POST['confirm'] === 'yes') {
-        // Récupérer les ratios actuels
-        $sql = "SELECT protein_ratio, carbs_ratio, fat_ratio FROM user_profiles WHERE user_id = ?";
-        $current_ratios = fetchOne($sql, [$user_id]);
-        
-        // Calculer les macros en grammes avec les ratios actuels
-        $protein_grams = ($pending_update['tdee'] * $current_ratios['protein_ratio']) / 4;
-        $carbs_grams = ($pending_update['tdee'] * $current_ratios['carbs_ratio']) / 4;
-        $fat_grams = ($pending_update['tdee'] * $current_ratios['fat_ratio']) / 9;
-        
-        // Mettre à jour uniquement les calories et les macros en grammes
+        // Mettre à jour uniquement les calories
         $sql = "UPDATE user_profiles SET 
                 daily_calories = ?,
-                protein_grams = ?,
-                carbs_grams = ?,
-                fat_grams = ?,
                 updated_at = NOW()
                 WHERE user_id = ?";
         update($sql, [
             $pending_update['tdee'],
-            $protein_grams,
-            $carbs_grams,
-            $fat_grams,
             $user_id
         ]);
-        $success_message = "Vos besoins caloriques et vos macronutriments ont été mis à jour avec succès !";
+        $success_message = "Vos besoins caloriques ont été mis à jour avec succès ! Les macronutriments seront automatiquement ajustés en fonction de vos ratios actuels.";
     }
     
     // Nettoyer la session

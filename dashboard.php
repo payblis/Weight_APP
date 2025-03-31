@@ -74,8 +74,41 @@ $carbs_goal = 0;
 $fat_goal = 0;
 
 if ($profile && $latest_weight) {
-    // Utiliser les calories stockées dans le profil
+    // Utiliser les calories stockées dans le profil ou les calculer si non définies
     $calorie_goal = $profile['daily_calories'] ?? 0;
+    
+    if ($calorie_goal <= 0) {
+        // Calculer le BMR
+        $bmr = calculateBMR($latest_weight['weight'], $profile['height'], $profile['birth_date'], $profile['gender']);
+        
+        // Calculer le TDEE
+        $tdee = calculateTDEE($bmr, $profile['activity_level']);
+        
+        // Ajuster selon le programme actif ou l'objectif
+        if ($active_program) {
+            $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+            $calorie_goal = $tdee + $program_adjustment;
+        } elseif ($current_goal) {
+            $weight_diff = $current_goal['target_weight'] - $latest_weight['weight'];
+            if ($weight_diff < 0) {
+                // Perte de poids
+                $calorie_goal = $tdee - 500;
+            } elseif ($weight_diff > 0) {
+                // Prise de poids
+                $calorie_goal = $tdee + 500;
+            } else {
+                // Maintien
+                $calorie_goal = $tdee;
+            }
+        } else {
+            // Pas d'objectif ni de programme, utiliser le TDEE
+            $calorie_goal = $tdee;
+        }
+        
+        // Mettre à jour le profil avec les nouvelles calories
+        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
+        update($sql, [$calorie_goal, $user_id]);
+    }
     
     // Calculer les objectifs de macronutriments
     if ($active_program) {
@@ -373,7 +406,10 @@ if (!empty($pending_invitations)):
                         
                         <div class="progress mb-2" style="height: 20px;">
                             <?php 
-                            $percentage = min(100, max(0, ($net_calories / $calorie_goal) * 100));
+                            $percentage = 0;
+                            if ($calorie_goal > 0) {
+                                $percentage = min(100, max(0, ($net_calories / $calorie_goal) * 100));
+                            }
                             $bg_class = $percentage > 100 ? 'bg-danger' : 'bg-success';
                             ?>
                             <div class="progress-bar <?php echo $bg_class; ?>" role="progressbar" style="width: <?php echo $percentage; ?>%;" aria-valuenow="<?php echo $percentage; ?>" aria-valuemin="0" aria-valuemax="100">
