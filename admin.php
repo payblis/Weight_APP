@@ -206,158 +206,191 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Création d'un repas prédéfini
     elseif ($post_action === 'create_meal') {
-        $name = sanitizeInput($_POST['name'] ?? '');
-        $description = sanitizeInput($_POST['description'] ?? '');
-        $is_public = isset($_POST['is_public']) ? 1 : 0;
-        $foods = $_POST['foods'] ?? [];
-        
-        // Validation
-        if (empty($name)) {
-            $errors[] = "Le nom du repas est requis";
-        }
-        
-        if (empty($foods)) {
-            $errors[] = "Au moins un aliment est requis";
-        }
-        
-        if (empty($errors)) {
-            try {
-                // Calculer les totaux nutritionnels
-                $total_calories = 0;
-                $total_protein = 0;
-                $total_carbs = 0;
-                $total_fat = 0;
-                
-                foreach ($foods as $food) {
-                    $sql = "SELECT calories, protein, carbs, fat FROM foods WHERE id = ?";
-                    $food_details = fetchOne($sql, [$food['food_id']]);
-                    
-                    if ($food_details) {
-                        $quantity = floatval($food['quantity']) / 100; // Convertir en kg
-                        $total_calories += $food_details['calories'] * $quantity;
-                        $total_protein += $food_details['protein'] * $quantity;
-                        $total_carbs += $food_details['carbs'] * $quantity;
-                        $total_fat += $food_details['fat'] * $quantity;
-                    }
-                }
-                
-                $sql = "INSERT INTO predefined_meals (name, description, total_calories, total_protein, total_carbs, total_fat, is_public, user_id, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-                $result = insert($sql, [$name, $description, $total_calories, $total_protein, $total_carbs, $total_fat, $is_public, $user_id]);
-                
-                if ($result) {
-                    $meal_id = lastInsertId();
-                    
-                    // Ajouter les aliments au repas
-                    foreach ($foods as $food) {
-                        $sql = "INSERT INTO predefined_meal_foods (predefined_meal_id, food_id, quantity, created_at) 
-                                VALUES (?, ?, ?, NOW())";
-                        insert($sql, [$meal_id, $food['food_id'], $food['quantity']]);
-                    }
-                    
-                    $success_message = "Repas prédéfini créé avec succès";
-                } else {
-                    $errors[] = "Une erreur s'est produite lors de la création du repas";
-                }
-            } catch (Exception $e) {
-                $errors[] = "Erreur: " . $e->getMessage();
+        try {
+            $name = sanitizeInput($_POST['name']);
+            $description = sanitizeInput($_POST['description']);
+            $is_public = isset($_POST['is_public']) ? 1 : 0;
+            $notes = sanitizeInput($_POST['notes'] ?? '');
+            
+            if (empty($name)) {
+                throw new Exception("Le nom du repas est requis.");
             }
+
+            // Calculer les totaux nutritionnels
+            $total_calories = 0;
+            $total_protein = 0;
+            $total_carbs = 0;
+            $total_fat = 0;
+
+            if (isset($_POST['foods']) && is_array($_POST['foods'])) {
+                foreach ($_POST['foods'] as $food) {
+                    if (!empty($food['food_id']) && isset($food['quantity'])) {
+                        $food_id = (int)$food['food_id'];
+                        $quantity = (float)$food['quantity'];
+                        
+                        // Récupérer les informations nutritionnelles de l'aliment
+                        $food_sql = "SELECT * FROM foods WHERE id = ?";
+                        $food_stmt = $pdo->prepare($food_sql);
+                        $food_stmt->execute([$food_id]);
+                        $food_data = $food_stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($food_data) {
+                            $total_calories += ($food_data['calories'] * $quantity / 100);
+                            $total_protein += ($food_data['protein'] * $quantity / 100);
+                            $total_carbs += ($food_data['carbs'] * $quantity / 100);
+                            $total_fat += ($food_data['fat'] * $quantity / 100);
+                        }
+                    }
+                }
+            }
+
+            // Insérer le repas prédéfini
+            $sql = "INSERT INTO predefined_meals (name, description, total_calories, total_protein, total_carbs, total_fat, is_public, user_id, notes, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                $name,
+                $description,
+                $total_calories,
+                $total_protein,
+                $total_carbs,
+                $total_fat,
+                $is_public,
+                $user_id,
+                $notes
+            ]);
+
+            $meal_id = $pdo->lastInsertId();
+
+            // Insérer les aliments associés
+            if (isset($_POST['foods']) && is_array($_POST['foods'])) {
+                $sql = "INSERT INTO predefined_meal_items (predefined_meal_id, food_id, quantity, notes, created_at) 
+                        VALUES (?, ?, ?, ?, NOW())";
+                $stmt = $pdo->prepare($sql);
+                
+                foreach ($_POST['foods'] as $food) {
+                    if (!empty($food['food_id']) && isset($food['quantity'])) {
+                        $stmt->execute([
+                            $meal_id,
+                            (int)$food['food_id'],
+                            (float)$food['quantity'],
+                            $food['notes'] ?? null
+                        ]);
+                    }
+                }
+            }
+
+            $_SESSION['success'] = "Repas prédéfini créé avec succès.";
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Erreur lors de la création du repas prédéfini : " . $e->getMessage();
         }
     }
     
     // Mise à jour d'un repas prédéfini
     elseif ($post_action === 'update_meal') {
-        $meal_id = intval($_POST['meal_id'] ?? 0);
-        $name = sanitizeInput($_POST['name'] ?? '');
-        $description = sanitizeInput($_POST['description'] ?? '');
-        $is_public = isset($_POST['is_public']) ? 1 : 0;
-        $foods = $_POST['foods'] ?? [];
-        
-        // Validation
-        if ($meal_id <= 0) {
-            $errors[] = "ID de repas invalide";
-        }
-        
-        if (empty($name)) {
-            $errors[] = "Le nom du repas est requis";
-        }
-        
-        if (empty($foods)) {
-            $errors[] = "Au moins un aliment est requis";
-        }
-        
-        if (empty($errors)) {
-            try {
-                // Calculer les totaux nutritionnels
-                $total_calories = 0;
-                $total_protein = 0;
-                $total_carbs = 0;
-                $total_fat = 0;
-                
-                foreach ($foods as $food) {
-                    $sql = "SELECT calories, protein, carbs, fat FROM foods WHERE id = ?";
-                    $food_details = fetchOne($sql, [$food['food_id']]);
-                    
-                    if ($food_details) {
-                        $quantity = floatval($food['quantity']) / 100; // Convertir en kg
-                        $total_calories += $food_details['calories'] * $quantity;
-                        $total_protein += $food_details['protein'] * $quantity;
-                        $total_carbs += $food_details['carbs'] * $quantity;
-                        $total_fat += $food_details['fat'] * $quantity;
-                    }
-                }
-                
-                $sql = "UPDATE predefined_meals 
-                        SET name = ?, description = ?, total_calories = ?, total_protein = ?, total_carbs = ?, total_fat = ?, is_public = ?, notes = ?, updated_at = NOW() 
-                        WHERE id = ?";
-                $result = update($sql, [$name, $description, $total_calories, $total_protein, $total_carbs, $total_fat, $is_public, $notes, $meal_id]);
-                
-                if ($result) {
-                    // Supprimer les anciens aliments
-                    $sql = "DELETE FROM predefined_meal_foods WHERE predefined_meal_id = ?";
-                    delete($sql, [$meal_id]);
-                    
-                    // Ajouter les nouveaux aliments
-                    foreach ($foods as $food) {
-                        $sql = "INSERT INTO predefined_meal_foods (predefined_meal_id, food_id, quantity, created_at) 
-                                VALUES (?, ?, ?, NOW())";
-                        insert($sql, [$meal_id, $food['food_id'], $food['quantity']]);
-                    }
-                    
-                    $success_message = "Repas prédéfini mis à jour avec succès";
-                } else {
-                    $errors[] = "Une erreur s'est produite lors de la mise à jour du repas";
-                }
-            } catch (Exception $e) {
-                $errors[] = "Erreur: " . $e->getMessage();
+        try {
+            $meal_id = (int)$_POST['meal_id'];
+            $name = sanitizeInput($_POST['name']);
+            $description = sanitizeInput($_POST['description']);
+            $is_public = isset($_POST['is_public']) ? 1 : 0;
+            $notes = sanitizeInput($_POST['notes'] ?? '');
+            
+            if (empty($name)) {
+                throw new Exception("Le nom du repas est requis.");
             }
+
+            // Calculer les totaux nutritionnels
+            $total_calories = 0;
+            $total_protein = 0;
+            $total_carbs = 0;
+            $total_fat = 0;
+
+            if (isset($_POST['foods']) && is_array($_POST['foods'])) {
+                foreach ($_POST['foods'] as $food) {
+                    if (!empty($food['food_id']) && isset($food['quantity'])) {
+                        $food_id = (int)$food['food_id'];
+                        $quantity = (float)$food['quantity'];
+                        
+                        // Récupérer les informations nutritionnelles de l'aliment
+                        $food_sql = "SELECT * FROM foods WHERE id = ?";
+                        $food_stmt = $pdo->prepare($food_sql);
+                        $food_stmt->execute([$food_id]);
+                        $food_data = $food_stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($food_data) {
+                            $total_calories += ($food_data['calories'] * $quantity / 100);
+                            $total_protein += ($food_data['protein'] * $quantity / 100);
+                            $total_carbs += ($food_data['carbs'] * $quantity / 100);
+                            $total_fat += ($food_data['fat'] * $quantity / 100);
+                        }
+                    }
+                }
+            }
+
+            // Mettre à jour le repas prédéfini
+            $sql = "UPDATE predefined_meals 
+                    SET name = ?, description = ?, total_calories = ?, total_protein = ?, total_carbs = ?, total_fat = ?, is_public = ?, notes = ?, updated_at = NOW() 
+                    WHERE id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                $name,
+                $description,
+                $total_calories,
+                $total_protein,
+                $total_carbs,
+                $total_fat,
+                $is_public,
+                $notes,
+                $meal_id
+            ]);
+
+            // Supprimer les anciens aliments associés
+            $sql = "DELETE FROM predefined_meal_items WHERE predefined_meal_id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$meal_id]);
+
+            // Insérer les nouveaux aliments
+            if (isset($_POST['foods']) && is_array($_POST['foods'])) {
+                $sql = "INSERT INTO predefined_meal_items (predefined_meal_id, food_id, quantity, notes, created_at) 
+                        VALUES (?, ?, ?, ?, NOW())";
+                $stmt = $pdo->prepare($sql);
+                
+                foreach ($_POST['foods'] as $food) {
+                    if (!empty($food['food_id']) && isset($food['quantity'])) {
+                        $stmt->execute([
+                            $meal_id,
+                            (int)$food['food_id'],
+                            (float)$food['quantity'],
+                            $food['notes'] ?? null
+                        ]);
+                    }
+                }
+            }
+
+            $_SESSION['success'] = "Repas prédéfini mis à jour avec succès.";
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Erreur lors de la mise à jour du repas prédéfini : " . $e->getMessage();
         }
     }
     
     // Suppression d'un repas prédéfini
     elseif ($post_action === 'delete_meal') {
-        $meal_id = intval($_POST['meal_id'] ?? 0);
-        
-        if ($meal_id <= 0) {
-            $errors[] = "ID de repas invalide";
-        } else {
-            try {
-                // Supprimer d'abord les aliments associés
-                $sql = "DELETE FROM predefined_meal_foods WHERE predefined_meal_id = ?";
-                delete($sql, [$meal_id]);
-                
-                // Puis supprimer le repas
-                $sql = "DELETE FROM predefined_meals WHERE id = ?";
-                $result = delete($sql, [$meal_id]);
-                
-                if ($result) {
-                    $success_message = "Repas prédéfini supprimé avec succès";
-                } else {
-                    $errors[] = "Une erreur s'est produite lors de la suppression du repas";
-                }
-            } catch (Exception $e) {
-                $errors[] = "Erreur: " . $e->getMessage();
-            }
+        try {
+            $meal_id = (int)$_POST['meal_id'];
+            
+            // Supprimer d'abord les aliments associés
+            $sql = "DELETE FROM predefined_meal_items WHERE predefined_meal_id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$meal_id]);
+            
+            // Puis supprimer le repas prédéfini
+            $sql = "DELETE FROM predefined_meals WHERE id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$meal_id]);
+
+            $_SESSION['success'] = "Repas prédéfini supprimé avec succès.";
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Erreur lors de la suppression du repas prédéfini : " . $e->getMessage();
         }
     }
 }
@@ -507,12 +540,39 @@ if ($section === 'delete_program' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 // Traitement des actions pour la gestion des repas prédéfinis
 if ($section === 'predefined_meals') {
     // Récupérer les repas prédéfinis
-    $sql = "SELECT * FROM predefined_meals ORDER BY created_at DESC";
-    $predefined_meals = fetchAll($sql);
+    $sql = "SELECT pm.*, 
+            DATE_FORMAT(pm.created_at, '%d/%m/%Y') as formatted_date,
+            u.username as creator_name
+            FROM predefined_meals pm 
+            LEFT JOIN users u ON pm.user_id = u.id
+            ORDER BY pm.created_at DESC";
+    try {
+        $predefined_meals = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Erreur dans fetchAll: " . $e->getMessage());
+        $predefined_meals = [];
+    }
 
-    // Récupérer les catégories d'aliments
+    // Récupération des aliments disponibles
+    $sql = "SELECT f.*, c.name as category_name 
+            FROM foods f 
+            LEFT JOIN food_categories c ON f.category_id = c.id 
+            ORDER BY c.name, f.name";
+    try {
+        $foods = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Erreur dans fetchAll: " . $e->getMessage());
+        $foods = [];
+    }
+
+    // Récupération des catégories d'aliments
     $sql = "SELECT * FROM food_categories ORDER BY name";
-    $categories = fetchAll($sql);
+    try {
+        $categories = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Erreur dans fetchAll: " . $e->getMessage());
+        $categories = [];
+    }
 
     // Afficher la section de gestion des repas prédéfinis
     ?>
@@ -892,7 +952,6 @@ if ($section === 'programs' && $action === 'edit' && isset($_GET['program_id']))
 $predefined_meals = [];
 try {
     $sql = "SELECT pm.*, 
-            (SELECT COUNT(*) FROM predefined_meal_foods pmf WHERE pmf.predefined_meal_id = pm.id) as food_count,
             DATE_FORMAT(pm.created_at, '%d/%m/%Y') as formatted_date,
             u.username as creator_name
             FROM predefined_meals pm 
@@ -906,10 +965,10 @@ try {
 // Récupérer les aliments disponibles
 $foods = [];
 try {
-    $sql = "SELECT f.*, fc.name as category_name 
+    $sql = "SELECT f.*, c.name as category_name 
             FROM foods f 
-            LEFT JOIN food_categories fc ON f.category_id = fc.id 
-            ORDER BY fc.name, f.name";
+            LEFT JOIN food_categories c ON f.category_id = c.id 
+            ORDER BY c.name, f.name";
     $foods = fetchAll($sql, []);
 } catch (Exception $e) {
     $errors[] = "Erreur lors de la récupération des aliments: " . $e->getMessage();
@@ -930,20 +989,20 @@ $predefined_meal_foods = [];
 if ($section === 'predefined_meals' && $action === 'edit_meal' && isset($_GET['meal_id'])) {
     $predefined_meal_id = intval($_GET['meal_id']);
     try {
-        $sql = "SELECT * FROM predefined_meals WHERE id = ? AND created_by_admin = 1";
+        $sql = "SELECT * FROM predefined_meals WHERE id = ?";
         $predefined_meal_details = fetchOne($sql, [$predefined_meal_id]);
         
         if ($predefined_meal_details) {
-            $sql = "SELECT pmf.*, 
+            $sql = "SELECT pmi.*, 
                     f.name as food_name, 
                     f.calories as food_calories, 
                     f.protein as food_protein, 
                     f.carbs as food_carbs, 
                     f.fat as food_fat
-                    FROM predefined_meal_items pmf 
-                    LEFT JOIN foods f ON pmf.food_id = f.id 
-                    WHERE pmf.predefined_meal_id = ? 
-                    ORDER BY pmf.created_at";
+                    FROM predefined_meal_items pmi 
+                    LEFT JOIN foods f ON pmi.food_id = f.id 
+                    WHERE pmi.predefined_meal_id = ? 
+                    ORDER BY pmi.created_at";
             $predefined_meal_foods = fetchAll($sql, [$predefined_meal_id]);
         }
     } catch (Exception $e) {
