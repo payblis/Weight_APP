@@ -1531,3 +1531,46 @@ function isPostLiked($post_id, $user_id) {
     $result = fetchOne($sql, [$post_id, $user_id]);
     return $result['count'] > 0;
 }
+
+/**
+ * Récupère les statistiques d'exercice pour un utilisateur
+ * 
+ * @param int $user_id ID de l'utilisateur
+ * @return array Tableau contenant les statistiques d'exercice
+ */
+function getExerciseStats($user_id) {
+    try {
+        // Récupérer les statistiques de base
+        $sql = "SELECT 
+                COUNT(*) as total_exercises,
+                SUM(duration) as total_duration,
+                SUM(calories_burned) as total_calories
+                FROM exercise_logs
+                WHERE user_id = ?";
+        
+        $stats = fetchOne($sql, [$user_id]);
+        
+        // Si aucune donnée n'est trouvée, retourner des valeurs par défaut
+        if (!$stats) {
+            return [
+                'total_exercises' => 0,
+                'total_duration' => 0,
+                'total_calories' => 0
+            ];
+        }
+        
+        // Convertir les valeurs en nombres
+        $stats['total_exercises'] = (int)$stats['total_exercises'];
+        $stats['total_duration'] = (int)$stats['total_duration'];
+        $stats['total_calories'] = (int)$stats['total_calories'];
+        
+        return $stats;
+    } catch (Exception $e) {
+        error_log("Erreur lors de la récupération des statistiques d'exercice: " . $e->getMessage());
+        return [
+            'total_exercises' => 0,
+            'total_duration' => 0,
+            'total_calories' => 0
+        ];
+    }
+}
