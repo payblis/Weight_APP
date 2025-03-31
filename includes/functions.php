@@ -1749,7 +1749,7 @@ function callChatGPTAPI($prompt, $api_key) {
     $url = 'https://api.openai.com/v1/chat/completions';
     
     $data = [
-        'model' => 'gpt-3.5-turbo',
+        'model' => 'gpt-4-turbo',
         'messages' => [
             [
                 'role' => 'system',
