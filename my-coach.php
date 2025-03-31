@@ -102,10 +102,18 @@ unset($_SESSION['error_message']);
                                             </small>
                                         </div>
                                         <div class="mt-2">
+                                            <button type="button" class="btn btn-sm btn-info me-2" 
+                                                    onclick="showSuggestionDetails(<?php echo htmlspecialchars(json_encode($data)); ?>)">
+                                                <i class="fas fa-eye"></i> Voir les détails
+                                            </button>
                                             <a href="create-foods-from-suggestion.php?id=<?php echo $suggestion['id']; ?>" 
-                                               class="btn btn-sm btn-success">
+                                               class="btn btn-sm btn-success me-2">
                                                 <i class="fas fa-plus"></i> Ajouter à mon journal
                                             </a>
+                                            <button type="button" class="btn btn-sm btn-danger" 
+                                                    onclick="deleteSuggestion(<?php echo $suggestion['id']; ?>)">
+                                                <i class="fas fa-trash"></i> Supprimer
+                                            </button>
                                         </div>
                                     </div>
                                     <?php endif; ?>
@@ -120,10 +128,106 @@ unset($_SESSION['error_message']);
         </div>
     </div>
 
+    <!-- Modal pour afficher les détails de la suggestion -->
+    <div class="modal fade" id="suggestionDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails de la suggestion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="suggestionDetailsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Fonction pour afficher les détails d'une suggestion
+        function showSuggestionDetails(data) {
+            const modal = new bootstrap.Modal(document.getElementById('suggestionDetailsModal'));
+            const content = document.getElementById('suggestionDetailsContent');
+            
+            let html = `
+                <h4>${data.nom_du_repas}</h4>
+                <div class="mt-3">
+                    <h5>Ingrédients :</h5>
+                    <ul class="list-group">
+                        ${data.ingredients.map(ing => `
+                            <li class="list-group-item">
+                                <strong>${ing.nom}</strong> - ${ing.quantite}
+                                <br>
+                                <small class="text-muted">
+                                    Calories: ${ing.calories} | 
+                                    Protéines: ${ing.proteines}g | 
+                                    Glucides: ${ing.glucides}g | 
+                                    Lipides: ${ing.lipides}g
+                                </small>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                <div class="mt-3">
+                    <h5>Valeurs nutritionnelles totales :</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item">
+                            Calories: ${data.valeurs_nutritionnelles.calories}
+                        </li>
+                        <li class="list-group-item">
+                            Protéines: ${data.valeurs_nutritionnelles.proteines}g
+                        </li>
+                        <li class="list-group-item">
+                            Glucides: ${data.valeurs_nutritionnelles.glucides}g
+                        </li>
+                        <li class="list-group-item">
+                            Lipides: ${data.valeurs_nutritionnelles.lipides}g
+                        </li>
+                    </ul>
+                </div>
+            `;
+            
+            content.innerHTML = html;
+            modal.show();
+        }
+
+        // Fonction pour supprimer une suggestion
+        function deleteSuggestion(suggestionId) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer cette suggestion ?')) {
+                fetch('delete-suggestion.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: suggestionId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data.message || 'Erreur lors de la suppression');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Une erreur est survenue lors de la suppression');
+                });
+            }
+        }
+
+        // Gestion du formulaire de génération de suggestion
         document.getElementById('generateSuggestionForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Désactiver le bouton pendant la génération
+            const button = this.querySelector('button[type="submit"]');
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération en cours...';
             
             fetch('generate-suggestions.php', {
                 method: 'POST',
@@ -157,6 +261,11 @@ unset($_SESSION['error_message']);
             .catch(error => {
                 console.error('Erreur:', error);
                 alert('Une erreur est survenue lors de la génération de la suggestion');
+            })
+            .finally(() => {
+                // Réactiver le bouton
+                button.disabled = false;
+                button.innerHTML = originalText;
             });
         });
     </script>
