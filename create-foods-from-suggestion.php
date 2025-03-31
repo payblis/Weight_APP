@@ -47,7 +47,11 @@ try {
             // Si l'aliment existe, l'ajouter à la liste des aliments créés
             $created_foods[] = [
                 'id' => $existing_food['id'],
-                'name' => $food['name']
+                'name' => $food['name'],
+                'calories' => $food['calories'],
+                'protein' => $food['protein'],
+                'carbs' => $food['carbs'],
+                'fat' => $food['fat']
             ];
             continue;
         }
@@ -65,7 +69,11 @@ try {
         if ($food_id) {
             $created_foods[] = [
                 'id' => $food_id,
-                'name' => $food['name']
+                'name' => $food['name'],
+                'calories' => $food['calories'],
+                'protein' => $food['protein'],
+                'carbs' => $food['carbs'],
+                'fat' => $food['fat']
             ];
         }
     }
