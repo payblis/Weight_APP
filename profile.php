@@ -98,6 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($active_program) {
                             error_log("Programme actif : " . $active_program['name']);
                             error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
+                            error_log("Ratios du programme :");
+                            error_log("- Protéines : " . $active_program['protein_ratio']);
+                            error_log("- Glucides : " . $active_program['carbs_ratio']);
+                            error_log("- Lipides : " . $active_program['fat_ratio']);
                             
                             // Calculer l'ajustement du programme
                             $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
@@ -111,11 +115,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $protein_ratio = $active_program['protein_ratio'];
                             $carbs_ratio = $active_program['carbs_ratio'];
                             $fat_ratio = $active_program['fat_ratio'];
+                        } else {
+                            error_log("Aucun programme actif, utilisation des ratios par défaut :");
+                            error_log("- Protéines : " . $protein_ratio);
+                            error_log("- Glucides : " . $carbs_ratio);
+                            error_log("- Lipides : " . $fat_ratio);
                         }
                         
                         // Ajouter l'ajustement quotidien pour l'objectif
                         $final_calories = $tdee + $daily_adjustment;
                         error_log("Calories finales : " . $final_calories);
+                        
+                        // Calculer les macros en grammes
+                        $protein_grams = ($final_calories * $protein_ratio) / 4;
+                        $carbs_grams = ($final_calories * $carbs_ratio) / 4;
+                        $fat_grams = ($final_calories * $fat_ratio) / 9;
+                        
+                        error_log("Macros calculés en grammes :");
+                        error_log("- Protéines : " . $protein_grams . "g");
+                        error_log("- Glucides : " . $carbs_grams . "g");
+                        error_log("- Lipides : " . $fat_grams . "g");
+                        
                         error_log("=== Fin du calcul des calories pour l'objectif ===");
                     }
                     
