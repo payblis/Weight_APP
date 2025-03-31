@@ -4,6 +4,13 @@ require_once 'includes/functions.php';
 // Définir le chemin du fichier CSV
 $csv_file = __DIR__ . '/aliments.csv';
 
+// Récupérer la clé API ChatGPT
+$api_key = getSetting('chatgpt_api_key');
+if (empty($api_key)) {
+    $_SESSION['error'] = "La clé API ChatGPT n'est pas configurée. Veuillez la configurer dans les paramètres d'administration.";
+    redirect('admin.php?section=api_settings');
+}
+
 // Fonction pour lire le fichier CSV
 function readCSV($file, $lines = null) {
     if (!file_exists($file)) {
@@ -46,6 +53,8 @@ function readCSV($file, $lines = null) {
 
 // Fonction pour obtenir la catégorie d'un aliment via ChatGPT
 function getFoodCategory($food_name) {
+    global $api_key;
+    
     $prompt = "Quelle est la catégorie de l'aliment suivant ? Répondre uniquement avec le numéro de la catégorie correspondante :\n";
     $prompt .= "1. Fruits et légumes\n";
     $prompt .= "2. Viandes et poissons\n";
@@ -56,13 +65,7 @@ function getFoodCategory($food_name) {
     $prompt .= "7. Autres\n\n";
     $prompt .= "Aliment : " . $food_name;
 
-    // Utiliser la clé API de l'application
-    $api_key = getenv('OPENAI_API_KEY');
-    if (!$api_key) {
-        throw new Exception("La clé API OpenAI n'est pas configurée");
-    }
-
-    $response = callChatGPTAPI($prompt, 'gpt-3.5-turbo', $api_key);
+    $response = callChatGPTAPI($prompt, $api_key);
     
     // Nettoyer la réponse pour obtenir uniquement le numéro
     $category_id = (int) preg_replace('/[^0-9]/', '', $response);
