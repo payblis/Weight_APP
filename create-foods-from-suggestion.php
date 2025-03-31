@@ -54,6 +54,15 @@ function shouldExcludeIngredient($ingredient) {
 
 // Fonction pour calculer les macronutriments par ingrédient
 function calculateIngredientMacros($ingredient) {
+    // Valeurs nutritionnelles par défaut pour 100g d'ingrédients courants
+    $default_values = [
+        'épinards' => ['calories' => 23, 'proteins' => 2.9, 'glucides' => 3.6, 'lipides' => 0.4],
+        'tomate' => ['calories' => 18, 'proteins' => 0.9, 'glucides' => 3.9, 'lipides' => 0.2],
+        'pain' => ['calories' => 265, 'proteins' => 9, 'glucides' => 49, 'lipides' => 3.2],
+        'feta' => ['calories' => 264, 'proteins' => 14, 'glucides' => 4.1, 'lipides' => 21],
+        'œufs' => ['calories' => 155, 'proteins' => 13, 'glucides' => 1.1, 'lipides' => 11]
+    ];
+
     // Si l'ingrédient a déjà ses propres valeurs nutritionnelles, les utiliser
     if (isset($ingredient['calories']) && isset($ingredient['proteines']) && 
         isset($ingredient['glucides']) && isset($ingredient['lipides'])) {
@@ -109,7 +118,7 @@ function calculateIngredientMacros($ingredient) {
                 'fruits rouges' => 150
             ],
             'tranche' => [
-                'pain complet' => 30
+                'pain' => 30
             ],
             'baguette française' => 250,
             'pita moyenne' => 60,
@@ -177,6 +186,19 @@ function calculateIngredientMacros($ingredient) {
                 'proteins' => round(($ingredient['proteines'] * 100) / $factor, 1),
                 'carbs' => round(($ingredient['glucides'] * 100) / $factor, 1),
                 'fats' => round(($ingredient['lipides'] * 100) / $factor, 1)
+            ];
+        }
+    }
+    
+    // Si aucune valeur n'a été calculée, utiliser les valeurs par défaut
+    $name = strtolower($ingredient['nom']);
+    foreach ($default_values as $key => $values) {
+        if (strpos($name, $key) !== false) {
+            return [
+                'calories' => $values['calories'],
+                'proteins' => $values['proteins'],
+                'carbs' => $values['glucides'],
+                'fats' => $values['lipides']
             ];
         }
     }
