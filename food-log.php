@@ -1190,8 +1190,11 @@ function updateMealTotals($meal_id) {
                 <div class="col-md-6">
                     <!-- Suggestions de repas -->
                     <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-white">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
                             <h5 class="card-title mb-0">Suggestions de repas</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="generateSuggestionsBtn">
+                                <i class="fas fa-sync-alt me-1"></i>Générer des suggestions
+                            </button>
                         </div>
                         <div class="card-body">
                             <?php
@@ -1520,6 +1523,22 @@ function updateMealTotals($meal_id) {
         document.addEventListener('DOMContentLoaded', function() {
             // Gestion du partage
             const shareModal = new bootstrap.Modal(document.getElementById('shareMealModal'));
+            
+            // Gestion de la génération des suggestions
+            const generateSuggestionsBtn = document.getElementById('generateSuggestionsBtn');
+            if (generateSuggestionsBtn) {
+                generateSuggestionsBtn.addEventListener('click', function() {
+                    // Ajouter une classe de rotation à l'icône
+                    const icon = this.querySelector('i');
+                    icon.classList.add('fa-spin');
+                    
+                    // Désactiver le bouton pendant le chargement
+                    this.disabled = true;
+                    
+                    // Recharger la page pour obtenir de nouvelles suggestions
+                    window.location.reload();
+                });
+            }
             
             document.querySelectorAll('.share-meal-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
