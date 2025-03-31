@@ -57,6 +57,23 @@ try {
     error_log("✅ JSON parsé avec succès");
     error_log("Contenu du JSON: " . print_r($data, true));
     
+    // Vérifier la présence des valeurs nutritionnelles
+    if (!isset($data['valeurs_nutritionnelles'])) {
+        error_log("⚠️ Valeurs nutritionnelles manquantes dans le JSON");
+        $data['valeurs_nutritionnelles'] = [
+            'calories' => 0,
+            'proteines' => 0,
+            'glucides' => 0,
+            'lipides' => 0
+        ];
+    }
+    
+    error_log("Valeurs nutritionnelles utilisées :");
+    error_log("- Calories: " . ($data['valeurs_nutritionnelles']['calories'] ?? 0));
+    error_log("- Protéines: " . ($data['valeurs_nutritionnelles']['proteines'] ?? 0));
+    error_log("- Glucides: " . ($data['valeurs_nutritionnelles']['glucides'] ?? 0));
+    error_log("- Lipides: " . ($data['valeurs_nutritionnelles']['lipides'] ?? 0));
+    
     // Créer le repas
     $sql = "INSERT INTO meals (user_id, meal_type, log_date, notes, total_calories, total_protein, total_carbs, total_fat) 
             VALUES (?, ?, NOW(), ?, ?, ?, ?, ?)";
