@@ -347,6 +347,250 @@ if ($section === 'delete_program' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('admin.php?section=programs');
 }
 
+// Traitement des actions pour la gestion des repas prédéfinis
+if ($section === 'predefined_meals') {
+    // Récupérer les repas prédéfinis
+    $sql = "SELECT * FROM predefined_meals ORDER BY created_at DESC";
+    $predefined_meals = fetchAll($sql);
+
+    // Récupérer les catégories d'aliments
+    $sql = "SELECT * FROM food_categories ORDER BY name";
+    $categories = fetchAll($sql);
+
+    // Afficher la section de gestion des repas prédéfinis
+    ?>
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Gestion des Repas Prédéfinis</h2>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createMealModal">
+                <i class="fas fa-plus"></i> Nouveau Repas
+            </button>
+        </div>
+
+        <?php if (!empty($success_message)): ?>
+            <div class="alert alert-success"><?php echo $success_message; ?></div>
+        <?php endif; ?>
+
+        <?php if (!empty($errors)): ?>
+            <div class="alert alert-danger">
+                <ul class="mb-0">
+                    <?php foreach ($errors as $error): ?>
+                        <li><?php echo $error; ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Description</th>
+                                <th>Calories</th>
+                                <th>Protéines</th>
+                                <th>Glucides</th>
+                                <th>Lipides</th>
+                                <th>Public</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($predefined_meals as $meal): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($meal['name']); ?></td>
+                                <td><?php echo htmlspecialchars($meal['description']); ?></td>
+                                <td><?php echo $meal['total_calories']; ?></td>
+                                <td><?php echo $meal['total_protein']; ?>g</td>
+                                <td><?php echo $meal['total_carbs']; ?>g</td>
+                                <td><?php echo $meal['total_fat']; ?>g</td>
+                                <td>
+                                    <span class="badge <?php echo $meal['is_public'] ? 'bg-success' : 'bg-secondary'; ?>">
+                                        <?php echo $meal['is_public'] ? 'Public' : 'Privé'; ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-info" 
+                                            onclick="viewMealDetails(<?php echo $meal['id']; ?>)">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-warning" 
+                                            onclick="editMeal(<?php echo $meal['id']; ?>)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-danger" 
+                                            onclick="deleteMeal(<?php echo $meal['id']; ?>)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de création de repas -->
+    <div class="modal fade" id="createMealModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Créer un Nouveau Repas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createMealForm">
+                        <div class="mb-3">
+                            <label class="form-label">Nom du repas</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="is_public" id="is_public">
+                                <label class="form-check-label" for="is_public">Rendre public</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Aliments</label>
+                            <div id="foodsList" class="list-group mb-3"></div>
+                            <button type="button" class="btn btn-outline-primary" onclick="addFoodItem()">
+                                <i class="fas fa-plus"></i> Ajouter un aliment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" onclick="saveMeal()">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addFoodItem() {
+            const foodsList = document.getElementById('foodsList');
+            const foodItem = document.createElement('div');
+            foodItem.className = 'list-group-item';
+            foodItem.innerHTML = `
+                <div class="row g-2">
+                    <div class="col-md-5">
+                        <select class="form-select food-select" required>
+                            <option value="">Sélectionner un aliment</option>
+                            <?php foreach ($categories as $category): ?>
+                                <optgroup label="<?php echo htmlspecialchars($category['name']); ?>">
+                                    <?php
+                                    $sql = "SELECT id, name FROM foods WHERE category_id = ? ORDER BY name";
+                                    $foods = fetchAll($sql, [$category['id']]);
+                                    foreach ($foods as $food):
+                                    ?>
+                                        <option value="<?php echo $food['id']; ?>">
+                                            <?php echo htmlspecialchars($food['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <input type="number" class="form-control quantity-input" placeholder="Quantité (g)" min="0" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-danger" onclick="this.parentElement.parentElement.parentElement.remove()">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            foodsList.appendChild(foodItem);
+        }
+
+        function saveMeal() {
+            const form = document.getElementById('createMealForm');
+            const foods = [];
+            
+            document.querySelectorAll('#foodsList .list-group-item').forEach(item => {
+                const foodId = item.querySelector('.food-select').value;
+                const quantity = item.querySelector('.quantity-input').value;
+                if (foodId && quantity) {
+                    foods.push({
+                        food_id: foodId,
+                        quantity: quantity
+                    });
+                }
+            });
+
+            const data = {
+                name: form.querySelector('[name="name"]').value,
+                description: form.querySelector('[name="description"]').value,
+                is_public: form.querySelector('[name="is_public"]').checked ? 1 : 0,
+                foods: foods
+            };
+
+            fetch('admin/create-predefined-meal.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Erreur lors de la création du repas');
+                }
+            })
+            .catch(error => {
+                alert('Erreur: ' + error.message);
+            });
+        }
+
+        function viewMealDetails(mealId) {
+            // Implémenter la visualisation des détails
+        }
+
+        function editMeal(mealId) {
+            // Implémenter la modification
+        }
+
+        function deleteMeal(mealId) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')) {
+                fetch('admin/delete-predefined-meal.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: mealId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data.message || 'Erreur lors de la suppression');
+                    }
+                })
+                .catch(error => {
+                    alert('Erreur: ' + error.message);
+                });
+            }
+        }
+    </script>
+    <?php
+}
+
 // Récupérer les données pour le tableau de bord administrateur
 $total_users = 0;
 $total_weight_logs = 0;
@@ -684,7 +928,12 @@ try {
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo $section === 'reports' ? 'active' : ''; ?>" href="admin.php?section=reports">
-                                <i class="fas fa-chart-bar me-2"></i>Rapports
+                                <i class="fas fa-chart-bar"></i> Rapports
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $section === 'predefined_meals' ? 'active' : ''; ?>" href="admin.php?section=predefined_meals">
+                                <i class="fas fa-utensils"></i> Repas Prédéfinis
                             </a>
                         </li>
                     </ul>
