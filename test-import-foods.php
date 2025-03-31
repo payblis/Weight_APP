@@ -1,14 +1,26 @@
 <?php
 require_once 'includes/functions.php';
 
+// Définir le chemin du fichier CSV
+$csv_file = __DIR__ . 'aliments.csv';
+
 // Fonction pour lire le fichier CSV
 function readCSV($file, $lines = null) {
+    if (!file_exists($file)) {
+        throw new Exception("Le fichier CSV n'existe pas : " . $file);
+    }
+    
     $foods = [];
     $row = 0;
     
     if (($handle = fopen($file, "r")) !== FALSE) {
         // Lire l'en-tête
         $header = fgetcsv($handle);
+        
+        // Vérifier que l'en-tête contient les colonnes nécessaires
+        if (!$header || count($header) < 5) {
+            throw new Exception("Le fichier CSV n'a pas le bon format. Il doit contenir : nom, calories, protéines, glucides, lipides");
+        }
         
         // Lire les lignes de données
         while (($data = fgetcsv($handle)) !== FALSE && ($lines === null || $row < $lines)) {
@@ -26,6 +38,8 @@ function readCSV($file, $lines = null) {
             $row++;
         }
         fclose($handle);
+    } else {
+        throw new Exception("Impossible d'ouvrir le fichier CSV");
     }
     return $foods;
 }
@@ -59,7 +73,7 @@ function getFoodCategory($food_name) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $isTestImport = isset($_POST['test_import']);
-        $foods = readCSV('aliments.csv', $isTestImport ? 5 : null);
+        $foods = readCSV($csv_file, $isTestImport ? 5 : null);
         $results = [];
         $total = count($foods);
         $processed = 0;
@@ -187,23 +201,32 @@ unset($_SESSION['error']);
             </div>
         <?php endif; ?>
         
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Actions</h5>
-                <div class="btn-group">
-                    <form method="POST" class="d-inline">
-                        <button type="submit" name="test_import" class="btn btn-primary" onclick="showLoader()">
-                            <i class="fas fa-vial"></i> Test Import (5 aliments)
-                        </button>
-                    </form>
-                    <form method="POST" class="d-inline">
-                        <button type="submit" name="full_import" class="btn btn-success" onclick="showLoader()">
-                            <i class="fas fa-file-import"></i> Import Complet
-                        </button>
-                    </form>
+        <?php if (!file_exists($csv_file)): ?>
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> 
+                Le fichier CSV n'existe pas à l'emplacement : <?php echo htmlspecialchars($csv_file); ?>
+                <br>
+                Veuillez placer le fichier aliments.csv dans le dossier data/
+            </div>
+        <?php else: ?>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Actions</h5>
+                    <div class="btn-group">
+                        <form method="POST" class="d-inline">
+                            <button type="submit" name="test_import" class="btn btn-primary" onclick="showLoader()">
+                                <i class="fas fa-vial"></i> Test Import (5 aliments)
+                            </button>
+                        </form>
+                        <form method="POST" class="d-inline">
+                            <button type="submit" name="full_import" class="btn btn-success" onclick="showLoader()">
+                                <i class="fas fa-file-import"></i> Import Complet
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
+        <?php endif; ?>
         
         <?php if ($import_results): ?>
             <div class="card">
