@@ -1297,127 +1297,118 @@ function updateMealTotals($meal_id) {
                 </div>
                 
                 <div class="col-md-6">
-                    <!-- Historique des repas -->
-                    <div class="card shadow-sm mb-4">
+                    <!-- Repas prédéfinis -->
+                    <div class="card shadow-sm h-100">
                         <div class="card-header bg-white">
-                            <h5 class="card-title mb-0">Historique des repas</h5>
+                            <h5 class="card-title mb-0">Repas prédéfinis</h5>
                         </div>
                         <div class="card-body">
-                            <?php if (empty($meal_history)): ?>
+                            <?php if (empty($predefined_meals)): ?>
                                 <div class="text-center py-4">
-                                    <p>Aucun historique de repas disponible.</p>
+                                    <p class="mb-3">Aucun repas prédéfini disponible.</p>
+                                    <p class="text-muted small">Créez des repas et enregistrez-les comme modèles pour les réutiliser facilement.</p>
                                 </div>
                             <?php else: ?>
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>Type</th>
-                                                <th>Aliments</th>
-                                                <th>Calories</th>
-                                                <th>Notes</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php if (empty($meals)): ?>
-                                                <tr>
-                                                    <td colspan="6" class="text-center py-4">
-                                                        <p class="text-muted mb-0">Aucun repas enregistré</p>
-                                                        <small class="text-muted">Commencez à enregistrer vos repas pour suivre votre alimentation</small>
-                                                    </td>
-                                                </tr>
-                                            <?php else: ?>
-                                                <?php foreach ($meals as $meal): ?>
-                                                    <?php error_log("Affichage du repas : " . print_r($meal, true)); ?>
-                                                    <tr>
-                                                        <td><?php echo date('d/m/Y', strtotime($meal['log_date'])); ?></td>
-                                                        <td><?php echo getMealTypeName($meal['meal_type']); ?></td>
-                                                        <td><?php echo $meal['food_count']; ?> aliment(s)</td>
-                                                        <td><?php echo number_format($meal['total_calories']); ?> kcal</td>
-                                                        <td><?php echo $meal['notes'] ? htmlspecialchars($meal['notes']) : '—'; ?></td>
-                                                        <td>
-                                                            <div class="btn-group">
-                                                                <button type="button" 
-                                                                        class="btn btn-sm btn-outline-primary share-meal-btn" 
-                                                                        data-bs-toggle="modal" 
-                                                                        data-bs-target="#shareMealModal"
-                                                                        data-meal-id="<?php echo $meal['id']; ?>"
-                                                                        data-meal-type="<?php echo $meal['meal_type']; ?>"
-                                                                        data-calories="<?php echo $meal['total_calories']; ?>"
-                                                                        data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>"
-                                                                        onclick="console.log('Partage de repas:', this.dataset);">
-                                                                    <i class="fas fa-share-alt me-1"></i>Partager
-                                                                </button>
-                                                                <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" 
-                                                                   class="btn btn-sm btn-outline-secondary">
-                                                                    <i class="fas fa-edit"></i>
-                                                                </a>
-                                                                <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" 
-                                                                   class="btn btn-sm btn-outline-danger"
-                                                                   onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </a>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
-                                        </tbody>
-                                    </table>
+                                <div class="list-group">
+                                    <?php 
+                                    $displayed_count = 0;
+                                    foreach ($predefined_meals as $pm): 
+                                        if ($displayed_count >= 5) break;
+                                        $displayed_count++;
+                                    ?>
+                                        <a href="food-log.php?action=view_predefined_meal&predefined_meal_id=<?php echo $pm['id']; ?>" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1"><?php echo htmlspecialchars($pm['name']); ?></h6>
+                                                <p class="text-muted small mb-0">
+                                                    <?php if ($pm['user_id'] == 1): ?>
+                                                        <span class="badge bg-danger">Admin</span>
+                                                    <?php endif; ?>
+                                                    <?php if ($pm['is_public'] && $pm['user_id'] != $user_id): ?>
+                                                        <span class="badge bg-success">Public</span>
+                                                    <?php endif; ?>
+                                                </p>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye me-1"></i>Voir
+                                            </button>
+                                        </a>
+                                    <?php endforeach; ?>
                                 </div>
+                                
+                                <?php if (count($predefined_meals) > 5): ?>
+                                    <div class="text-center mt-3">
+                                        <button class="btn btn-link" data-bs-toggle="modal" data-bs-target="#viewPredefinedMealsModal">
+                                            Voir tous les repas prédéfinis (<?php echo count($predefined_meals); ?>)
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Repas prédéfinis -->
-            <div class="card shadow-sm h-100">
+
+            <!-- Historique des repas -->
+            <div class="card shadow-sm mb-4">
                 <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">Repas prédéfinis</h5>
+                    <h5 class="card-title mb-0">Historique des repas</h5>
                 </div>
                 <div class="card-body">
-                    <?php if (empty($predefined_meals)): ?>
+                    <?php if (empty($meal_history)): ?>
                         <div class="text-center py-4">
-                            <p class="mb-3">Aucun repas prédéfini disponible.</p>
-                            <p class="text-muted small">Créez des repas et enregistrez-les comme modèles pour les réutiliser facilement.</p>
+                            <p>Aucun historique de repas disponible.</p>
                         </div>
                     <?php else: ?>
-                        <div class="list-group">
-                            <?php 
-                            $displayed_count = 0;
-                            foreach ($predefined_meals as $pm): 
-                                if ($displayed_count >= 5) break;
-                                $displayed_count++;
-                            ?>
-                                <a href="food-log.php?action=view_predefined_meal&predefined_meal_id=<?php echo $pm['id']; ?>" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="mb-1"><?php echo htmlspecialchars($pm['name']); ?></h6>
-                                        <p class="text-muted small mb-0">
-                                            <?php if ($pm['user_id'] == 1): ?>
-                                                <span class="badge bg-danger">Admin</span>
-                                            <?php endif; ?>
-                                            <?php if ($pm['is_public'] && $pm['user_id'] != $user_id): ?>
-                                                <span class="badge bg-success">Public</span>
-                                            <?php endif; ?>
-                                        </p>
-                                    </div>
-                                    <button class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-eye me-1"></i>Voir
-                                    </button>
-                                </a>
-                            <?php endforeach; ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Aliments</th>
+                                        <th>Calories</th>
+                                        <th>Notes</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($meals as $meal): ?>
+                                        <?php error_log("Affichage du repas : " . print_r($meal, true)); ?>
+                                        <tr>
+                                            <td><?php echo date('d/m/Y', strtotime($meal['log_date'])); ?></td>
+                                            <td><?php echo getMealTypeName($meal['meal_type']); ?></td>
+                                            <td><?php echo $meal['food_count']; ?> aliment(s)</td>
+                                            <td><?php echo number_format($meal['total_calories']); ?> kcal</td>
+                                            <td><?php echo $meal['notes'] ? htmlspecialchars($meal['notes']) : '—'; ?></td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-primary share-meal-btn" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#shareMealModal"
+                                                            data-meal-id="<?php echo $meal['id']; ?>"
+                                                            data-meal-type="<?php echo $meal['meal_type']; ?>"
+                                                            data-calories="<?php echo $meal['total_calories']; ?>"
+                                                            data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>"
+                                                            onclick="console.log('Partage de repas:', this.dataset);">
+                                                        <i class="fas fa-share-alt me-1"></i>Partager
+                                                    </button>
+                                                    <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" 
+                                                       class="btn btn-sm btn-outline-secondary">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" 
+                                                       class="btn btn-sm btn-outline-danger"
+                                                       onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
-                        
-                        <?php if (count($predefined_meals) > 5): ?>
-                            <div class="text-center mt-3">
-                                <button class="btn btn-link" data-bs-toggle="modal" data-bs-target="#viewPredefinedMealsModal">
-                                    Voir tous les repas prédéfinis (<?php echo count($predefined_meals); ?>)
-                                </button>
-                            </div>
-                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>
