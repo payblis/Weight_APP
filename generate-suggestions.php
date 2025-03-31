@@ -126,20 +126,14 @@ try {
             $prompt .= "\nVeuillez fournir une réponse au format JSON avec la structure suivante :\n";
             $prompt .= "{\n";
             $prompt .= "  \"nom_du_repas\": \"Nom du repas\",\n";
-            $prompt .= "  \"valeurs_nutritionnelles\": {\n";
-            $prompt .= "    \"calories\": 0,\n";
-            $prompt .= "    \"proteines\": 0,\n";
-            $prompt .= "    \"glucides\": 0,\n";
-            $prompt .= "    \"lipides\": 0\n";
-            $prompt .= "  },\n";
             $prompt .= "  \"ingredients\": [\n";
             $prompt .= "    {\n";
             $prompt .= "      \"nom\": \"Nom de l'ingrédient\",\n";
             $prompt .= "      \"quantite\": \"Quantité\",\n";
-            $prompt .= "      \"calories\": 0,  // Calories pour 100g\n";
-            $prompt .= "      \"proteines\": 0, // Protéines pour 100g\n";
-            $prompt .= "      \"glucides\": 0,  // Glucides pour 100g\n";
-            $prompt .= "      \"lipides\": 0    // Lipides pour 100g\n";
+            $prompt .= "      \"calories\": 0,  // Calories pour la quantité spécifiée\n";
+            $prompt .= "      \"proteines\": 0, // Protéines pour la quantité spécifiée\n";
+            $prompt .= "      \"glucides\": 0,  // Glucides pour la quantité spécifiée\n";
+            $prompt .= "      \"lipides\": 0    // Lipides pour la quantité spécifiée\n";
             $prompt .= "    }\n";
             $prompt .= "  ]\n";
             $prompt .= "}\n";
@@ -164,19 +158,34 @@ try {
             }
 
             // Vérifier la structure minimale requise
-            if (!isset($json_data['nom_du_repas']) || !isset($json_data['valeurs_nutritionnelles']) || !isset($json_data['ingredients'])) {
+            if (!isset($json_data['nom_du_repas']) || !isset($json_data['ingredients'])) {
                 error_log("❌ Structure JSON invalide : " . print_r($json_data, true));
                 throw new Exception("La réponse de l'API ne contient pas tous les champs requis");
             }
 
-            // Ajouter des instructions par défaut si manquantes
-            if (!isset($json_data['instructions'])) {
-                $json_data['instructions'] = [
-                    "Préparer tous les ingrédients",
-                    "Assaisonner selon vos goûts",
-                    "Suivre les temps de cuisson recommandés"
-                ];
+            // Calculer les totaux nutritionnels à partir des ingrédients
+            $totals = [
+                'calories' => 0,
+                'proteines' => 0,
+                'glucides' => 0,
+                'lipides' => 0
+            ];
+
+            foreach ($json_data['ingredients'] as $ingredient) {
+                $totals['calories'] += $ingredient['calories'];
+                $totals['proteines'] += $ingredient['proteines'];
+                $totals['glucides'] += $ingredient['glucides'];
+                $totals['lipides'] += $ingredient['lipides'];
             }
+
+            // Arrondir les valeurs
+            $totals['calories'] = round($totals['calories']);
+            $totals['proteines'] = round($totals['proteines'], 1);
+            $totals['glucides'] = round($totals['glucides'], 1);
+            $totals['lipides'] = round($totals['lipides'], 1);
+
+            // Ajouter les totaux au JSON
+            $json_data['valeurs_nutritionnelles'] = $totals;
 
             // Reconvertir en JSON pour le stockage
             $suggestion_content = json_encode($json_data, JSON_UNESCAPED_UNICODE);

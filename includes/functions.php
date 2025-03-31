@@ -1670,10 +1670,9 @@ function callChatGPTAPI($prompt, $api_key) {
     $prompt .= "- glucides : grammes de glucides pour la quantité spécifiée\n";
     $prompt .= "- lipides : grammes de lipides pour la quantité spécifiée\n\n";
     $prompt .= "CRITÈRES DE COHÉRENCE STRICTS :\n";
-    $prompt .= "1. Les valeurs nutritionnelles totales du repas DOIVENT être exactement égales à la somme des valeurs de chaque ingrédient\n";
-    $prompt .= "2. Les valeurs pour chaque ingrédient doivent être réalistes et cohérentes avec les aliments courants\n";
-    $prompt .= "3. Pour les ingrédients comme l'huile d'olive, utiliser des mesures standard (ex: 1 cuillère à soupe = 15ml)\n";
-    $prompt .= "4. Pour les épices et aromates (sel, poivre, herbes), ne pas inclure les valeurs nutritionnelles car négligeables\n\n";
+    $prompt .= "1. Les valeurs pour chaque ingrédient doivent être réalistes et cohérentes avec les aliments courants\n";
+    $prompt .= "2. Pour les ingrédients comme l'huile d'olive, utiliser des mesures standard (ex: 1 cuillère à soupe = 15ml)\n";
+    $prompt .= "3. Pour les épices et aromates (sel, poivre, herbes), ne pas inclure les valeurs nutritionnelles car négligeables\n\n";
     $prompt .= "Exemple de format pour un ingrédient :\n";
     $prompt .= "{\n";
     $prompt .= "  \"nom\": \"Poulet\",\n";
@@ -1689,7 +1688,7 @@ function callChatGPTAPI($prompt, $api_key) {
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'Vous êtes un nutritionniste expert qui fournit des suggestions de repas avec des valeurs nutritionnelles précises et cohérentes. Les valeurs totales doivent être exactement égales à la somme des valeurs des ingrédients.'
+                'content' => 'Vous êtes un nutritionniste expert qui fournit des suggestions de repas avec des valeurs nutritionnelles précises pour chaque ingrédient. Fournissez uniquement les valeurs pour chaque ingrédient, pas les totaux.'
             ],
             [
                 'role' => 'user',
