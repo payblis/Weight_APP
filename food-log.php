@@ -1438,6 +1438,72 @@ function updateMealTotals($meal_id) {
                     shareModal.show();
                 });
             });
+
+            // Gestion du remplissage automatique des nutriments
+            const foodSelect = document.getElementById('food_id');
+            const customFoodName = document.getElementById('custom_food_name');
+            const quantityInput = document.getElementById('quantity');
+            const customCaloriesInput = document.getElementById('custom_calories');
+            const customProteinInput = document.getElementById('custom_protein');
+            const customCarbsInput = document.getElementById('custom_carbs');
+            const customFatInput = document.getElementById('custom_fat');
+
+            if (foodSelect) {
+                foodSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    if (selectedOption.value) {
+                        // Un aliment prédéfini est sélectionné
+                        const calories = parseFloat(selectedOption.dataset.calories);
+                        const protein = parseFloat(selectedOption.dataset.protein);
+                        const carbs = parseFloat(selectedOption.dataset.carbs);
+                        const fat = parseFloat(selectedOption.dataset.fat);
+                        const quantity = parseFloat(quantityInput.value) || 100;
+
+                        // Calculer les valeurs pour la quantité donnée
+                        const calculatedCalories = (calories * quantity) / 100;
+                        const calculatedProtein = (protein * quantity) / 100;
+                        const calculatedCarbs = (carbs * quantity) / 100;
+                        const calculatedFat = (fat * quantity) / 100;
+
+                        // Remplir les champs
+                        customCaloriesInput.value = Math.round(calculatedCalories);
+                        customProteinInput.value = calculatedProtein.toFixed(1);
+                        customCarbsInput.value = calculatedCarbs.toFixed(1);
+                        customFatInput.value = calculatedFat.toFixed(1);
+                        customFoodName.value = ''; // Vider le champ nom personnalisé
+                    } else {
+                        // Aucun aliment sélectionné
+                        customCaloriesInput.value = '0';
+                        customProteinInput.value = '0';
+                        customCarbsInput.value = '0';
+                        customFatInput.value = '0';
+                    }
+                });
+
+                // Mettre à jour les valeurs quand la quantité change
+                quantityInput.addEventListener('input', function() {
+                    const selectedOption = foodSelect.options[foodSelect.selectedIndex];
+                    if (selectedOption.value) {
+                        const calories = parseFloat(selectedOption.dataset.calories);
+                        const protein = parseFloat(selectedOption.dataset.protein);
+                        const carbs = parseFloat(selectedOption.dataset.carbs);
+                        const fat = parseFloat(selectedOption.dataset.fat);
+                        const quantity = parseFloat(this.value) || 100;
+
+                        // Calculer les valeurs pour la nouvelle quantité
+                        const calculatedCalories = (calories * quantity) / 100;
+                        const calculatedProtein = (protein * quantity) / 100;
+                        const calculatedCarbs = (carbs * quantity) / 100;
+                        const calculatedFat = (fat * quantity) / 100;
+
+                        // Mettre à jour les champs
+                        customCaloriesInput.value = Math.round(calculatedCalories);
+                        customProteinInput.value = calculatedProtein.toFixed(1);
+                        customCarbsInput.value = calculatedCarbs.toFixed(1);
+                        customFatInput.value = calculatedFat.toFixed(1);
+                    }
+                });
+            }
         });
     </script>
 </body>
