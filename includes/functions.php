@@ -1595,10 +1595,10 @@ function getMealSuggestions($user_id) {
             $content = $suggestion['name'];
             
             // Rechercher les valeurs nutritionnelles dans le contenu
-            preg_match('/calories?\s*:?\s*(\d+)\s*kcal/i', $content, $calories_match);
-            preg_match('/prot[ée]ines?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match);
-            preg_match('/glucides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $carbs_match);
-            preg_match('/lipides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $fat_match);
+            preg_match('/calories?\s*:?\s*environ\s*(\d+)\s*kcal/i', $content, $calories_match);
+            preg_match('/prot[ée]ines?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match);
+            preg_match('/glucides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $carbs_match);
+            preg_match('/lipides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $fat_match);
             
             // Stocker les valeurs nutritionnelles
             $suggestion['totals'] = [
@@ -1618,10 +1618,7 @@ function getMealSuggestions($user_id) {
                 // Extraire chaque ingrédient avec sa quantité
                 preg_match_all('/-\s*(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|unité|tasse|cuillère|pincée)?)\s+(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list, PREG_SET_ORDER);
                 foreach ($ingredients_list as $match) {
-                    $ingredients[] = [
-                        'quantity' => trim($match[1]),
-                        'name' => trim($match[2])
-                    ];
+                    $ingredients[] = trim($match[1] . ' ' . $match[2]);
                 }
             }
             
