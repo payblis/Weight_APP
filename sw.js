@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weight-tracker-v1';
+const CACHE_NAME = 'myfity-v1';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.php',
