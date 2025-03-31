@@ -215,9 +215,9 @@ function update($sql, $params = []) {
 // Fonction pour supprimer des données et retourner le nombre de lignes affectées
 function delete($sql, $params = []) {
     // Si $sql est un nom de table et $params est un ID
-    if (is_string($sql) && !strpos($sql, ' ') && count($params) === 1) {
+    if (is_string($sql) && !strpos($sql, ' ') && is_numeric($params)) {
         $table = $sql;
-        $id = $params[0];
+        $id = $params;
         $sql = "DELETE FROM $table WHERE id = ?";
         $params = [$id];
     }
