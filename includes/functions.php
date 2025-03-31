@@ -1509,8 +1509,8 @@ function deleteExercise($exercise_id, $user_id) {
         }
 
         // Supprimer l'exercice
-        $sql = "DELETE FROM exercise_logs WHERE id = ?";
-        $result = execute($sql, [$exercise_id]);
+        $sql = "DELETE FROM exercise_logs WHERE id = ? AND user_id = ?";
+        $result = execute($sql, [$exercise_id, $user_id]);
         
         error_log("Résultat de la suppression de l'exercice: " . ($result ? "succès" : "échec"));
         return $result;
@@ -1548,7 +1548,9 @@ function getExerciseStats($user_id) {
                 FROM exercise_logs
                 WHERE user_id = ?";
         
-        $stats = fetchOne($sql, [$user_id]);
+        $stmt = $GLOBALS['pdo']->prepare($sql);
+        $stmt->execute([$user_id]);
+        $stats = $stmt->fetch(PDO::FETCH_ASSOC);
         
         // Si aucune donnée n'est trouvée, retourner des valeurs par défaut
         if (!$stats) {
