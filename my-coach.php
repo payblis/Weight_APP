@@ -12,8 +12,8 @@ $success_message = '';
 $errors = [];
 
 // Récupérer les suggestions de repas
-$sql = "SELECT * FROM ai_suggestions 
-        WHERE user_id = ? AND suggestion_type = 'repas' 
+$sql = "SELECT id, content, created_at FROM ai_suggestions 
+        WHERE user_id = ? AND suggestion_type IN ('repas', 'alimentation') 
         ORDER BY created_at DESC";
 $suggestions = fetchAll($sql, [$user_id]);
 ?>
