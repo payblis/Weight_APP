@@ -1633,7 +1633,11 @@ function getMealSuggestions($user_id) {
                 '/Ingr[ée]dients\s*:(.*?)(?=\n\n|$)/s',
                 '/\*\*Ingr[ée]dients\s*:\*\*(.*?)(?=\n\n|$)/s',
                 '/Ingr[ée]dients\s*:(.*?)(?=Calories|$)/s',
-                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=Calories|$)/s'
+                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=Calories|$)/s',
+                '/Ingr[ée]dients\s*:(.*?)(?=Pr[ée]paration|$)/s',
+                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=Pr[ée]paration|$)/s',
+                '/Ingr[ée]dients\s*:(.*?)(?=Conseils|$)/s',
+                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=Conseils|$)/s'
             ];
             
             $ingredients_text = '';
@@ -1672,7 +1676,11 @@ function getMealSuggestions($user_id) {
                 '/Conseils\s*:(.*?)$/s',
                 '/\*\*Conseils\s*:\*\*(.*?)$/s',
                 '/Conseils\s*:(.*?)(?=Calories|$)/s',
-                '/4\.\s*Conseils\s*:(.*?)(?=Calories|$)/s'
+                '/4\.\s*Conseils\s*:(.*?)(?=Calories|$)/s',
+                '/Conseils\s*:(.*?)(?=Pr[ée]paration|$)/s',
+                '/4\.\s*Conseils\s*:(.*?)(?=Pr[ée]paration|$)/s',
+                '/Conseils\s*:(.*?)(?=Ingr[ée]dients|$)/s',
+                '/4\.\s*Conseils\s*:(.*?)(?=Ingr[ée]dients|$)/s'
             ];
             
             $conseils_text = '';
