@@ -194,7 +194,7 @@ $max_date = date('Y-m-d', strtotime("-16 years"));
             <div class="col-md-10 col-lg-8">
                 <div class="card shadow-sm">
                     <div class="card-header bg-primary text-white text-center py-3">
-                        <h2 class="mb-0"><i class="fas fa-weight me-2"></i>Weight Tracker</h2>
+                        <h2 class="mb-0"><i class="fas fa-weight me-2"></i>MyFity</h2>
                         <p class="mb-0">Créez votre compte pour commencer à suivre votre progression</p>
                     </div>
                     <div class="card-body p-4">
