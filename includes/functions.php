@@ -1591,7 +1591,7 @@ function getMealSuggestions($user_id) {
         
         // Récupérer les repas prédéfinis qui correspondent aux préférences
         $sql = "SELECT DISTINCT pm.*, 
-                (SELECT COUNT(*) FROM predefined_meal_foods pmf 
+                (SELECT COUNT(*) FROM predefined_meal_items pmf 
                  WHERE pmf.predefined_meal_id = pm.id 
                  AND pmf.food_id IN (" . implode(',', array_fill(0, count($preferred_foods), '?')) . ")) as matching_foods
                 FROM predefined_meals pm
@@ -1606,7 +1606,7 @@ function getMealSuggestions($user_id) {
         foreach ($suggestions as &$suggestion) {
             $sql = "SELECT pmf.*, f.name as food_name, f.calories as food_calories, 
                     f.protein as food_protein, f.carbs as food_carbs, f.fat as food_fat
-                    FROM predefined_meal_foods pmf
+                    FROM predefined_meal_items pmf
                     LEFT JOIN foods f ON pmf.food_id = f.id
                     WHERE pmf.predefined_meal_id = ?";
             $suggestion['foods'] = fetchAll($sql, [$suggestion['id']]);

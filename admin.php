@@ -469,7 +469,7 @@ if ($section === 'programs' && $action === 'edit' && isset($_GET['program_id']))
 $predefined_meals = [];
 try {
     $sql = "SELECT pm.*, 
-            (SELECT COUNT(*) FROM predefined_meal_foods pmf WHERE pmf.predefined_meal_id = pm.id) as food_count,
+            (SELECT COUNT(*) FROM predefined_meal_items pmf WHERE pmf.predefined_meal_id = pm.id) as food_count,
             DATE_FORMAT(pm.created_at, '%d/%m/%Y') as formatted_date
             FROM predefined_meals pm 
             WHERE pm.created_by_admin = 1
@@ -495,7 +495,7 @@ if ($section === 'predefined_meals' && $action === 'edit_meal' && isset($_GET['m
                     f.protein as food_protein, 
                     f.carbs as food_carbs, 
                     f.fat as food_fat
-                    FROM predefined_meal_foods pmf 
+                    FROM predefined_meal_items pmf 
                     LEFT JOIN foods f ON pmf.food_id = f.id 
                     WHERE pmf.predefined_meal_id = ? 
                     ORDER BY pmf.created_at";

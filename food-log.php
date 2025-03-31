@@ -187,17 +187,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Ajouter chaque aliment au repas prédéfini
                         foreach ($foods as $food) {
-                            $sql = "INSERT INTO predefined_meal_foods (predefined_meal_id, food_id, custom_food_name, quantity, custom_calories, custom_protein, custom_carbs, custom_fat, created_at) 
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                            $sql = "INSERT INTO predefined_meal_items (predefined_meal_id, food_id, quantity, notes, created_at) 
+                                    VALUES (?, ?, ?, ?, NOW())";
                             insert($sql, [
                                 $predefined_meal_id,
                                 $food['food_id'],
-                                $food['custom_food_name'],
                                 $food['quantity'],
-                                $food['custom_calories'],
-                                $food['custom_protein'],
-                                $food['custom_carbs'],
-                                $food['custom_fat']
+                                json_encode([
+                                    'custom_food_name' => $food['custom_food_name'],
+                                    'custom_calories' => $food['custom_calories'],
+                                    'custom_protein' => $food['custom_protein'],
+                                    'custom_carbs' => $food['custom_carbs'],
+                                    'custom_fat' => $food['custom_fat']
+                                ])
                             ]);
                         }
                         
@@ -253,13 +255,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     if ($new_meal_id) {
                         // Récupérer tous les aliments du repas prédéfini
-                        $sql = "SELECT * FROM predefined_meal_foods WHERE predefined_meal_id = ?";
+                        $sql = "SELECT * FROM predefined_meal_items WHERE predefined_meal_id = ?";
                         $foods = fetchAll($sql, [$predefined_meal_id]);
                         
                         // Ajouter chaque aliment au nouveau repas
                         foreach ($foods as $food) {
-                            // Debug: Afficher les informations de chaque aliment ajouté
-                            error_log("Ajout d'un aliment du repas prédéfini: " . print_r($food, true));
+                            $custom_data = json_decode($food['notes'], true) ?? [];
                             
                             $sql = "INSERT INTO food_logs (user_id, food_id, custom_food_name, quantity, custom_calories, custom_protein, custom_carbs, custom_fat, log_date, meal_id, is_part_of_meal, created_at) 
                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
@@ -509,7 +510,7 @@ if ($action === 'view_predefined_meal' && $predefined_meal_id > 0) {
                 f.protein as food_protein, 
                 f.carbs as food_carbs, 
                 f.fat as food_fat
-                FROM predefined_meal_foods pmf 
+                FROM predefined_meal_items pmf 
                 LEFT JOIN foods f ON pmf.food_id = f.id 
                 WHERE pmf.predefined_meal_id = ? 
                 ORDER BY pmf.created_at";
@@ -1043,14 +1044,39 @@ function updateMealTotals($meal_id) {
                     $total_carbs = 0;
                     $total_fat = 0;
                     
-                    foreach ($predefined_meal_foods as $food) {
-                        $nutrients = calculateNutrients($food);
-                        $total_calories += $nutrients['calories'];
-                        $total_protein += $nutrients['protein'];
-                        $total_carbs += $nutrients['carbs'];
-                        $total_fat += $nutrients['fat'];
-                    }
-                    ?>
+                    foreach ($predefined_meal_foods as $food): ?>
+                        <?php 
+                        $custom_data = json_decode($food['notes'], true) ?? [];
+                        $nutrients = calculateNutrients([
+                            'food_id' => $food['food_id'],
+                            'food_name' => $food['food_name'],
+                            'food_calories' => $food['food_calories'],
+                            'food_protein' => $food['food_protein'],
+                            'food_carbs' => $food['food_carbs'],
+                            'food_fat' => $food['food_fat'],
+                            'quantity' => $food['quantity'],
+                            'custom_food_name' => $custom_data['custom_food_name'] ?? '',
+                            'custom_calories' => $custom_data['custom_calories'] ?? 0,
+                            'custom_protein' => $custom_data['custom_protein'] ?? 0,
+                            'custom_carbs' => $custom_data['custom_carbs'] ?? 0,
+                            'custom_fat' => $custom_data['custom_fat'] ?? 0
+                        ]); 
+                        ?>
+                        <tr>
+                            <td>
+                                <?php if ($food['food_id']): ?>
+                                    <?php echo htmlspecialchars($food['food_name']); ?>
+                                <?php else: ?>
+                                    <?php echo htmlspecialchars($custom_data['custom_food_name'] ?? ''); ?> <span class="badge bg-secondary">Personnalisé</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo $food['quantity']; ?></td>
+                            <td><?php echo $nutrients['calories']; ?></td>
+                            <td><?php echo $nutrients['protein']; ?></td>
+                            <td><?php echo $nutrients['carbs']; ?></td>
+                            <td><?php echo $nutrients['fat']; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="d-flex justify-content-between">
@@ -1083,13 +1109,29 @@ function updateMealTotals($meal_id) {
                                 </thead>
                                 <tbody>
                                     <?php foreach ($predefined_meal_foods as $food): ?>
-                                        <?php $nutrients = calculateNutrients($food); ?>
+                                        <?php 
+                                        $custom_data = json_decode($food['notes'], true) ?? [];
+                                        $nutrients = calculateNutrients([
+                                            'food_id' => $food['food_id'],
+                                            'food_name' => $food['food_name'],
+                                            'food_calories' => $food['food_calories'],
+                                            'food_protein' => $food['food_protein'],
+                                            'food_carbs' => $food['food_carbs'],
+                                            'food_fat' => $food['food_fat'],
+                                            'quantity' => $food['quantity'],
+                                            'custom_food_name' => $custom_data['custom_food_name'] ?? '',
+                                            'custom_calories' => $custom_data['custom_calories'] ?? 0,
+                                            'custom_protein' => $custom_data['custom_protein'] ?? 0,
+                                            'custom_carbs' => $custom_data['custom_carbs'] ?? 0,
+                                            'custom_fat' => $custom_data['custom_fat'] ?? 0
+                                        ]); 
+                                        ?>
                                         <tr>
                                             <td>
                                                 <?php if ($food['food_id']): ?>
                                                     <?php echo htmlspecialchars($food['food_name']); ?>
                                                 <?php else: ?>
-                                                    <?php echo htmlspecialchars($food['custom_food_name']); ?> <span class="badge bg-secondary">Personnalisé</span>
+                                                    <?php echo htmlspecialchars($custom_data['custom_food_name'] ?? ''); ?> <span class="badge bg-secondary">Personnalisé</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td><?php echo $food['quantity']; ?></td>
