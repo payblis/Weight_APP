@@ -352,7 +352,7 @@ $programs = fetchAll($sql, []);
                                         <h5 class="card-title"><?php echo htmlspecialchars($program['name']); ?></h5>
                                         <p class="card-text text-muted">
                                             <?php 
-                                            $description = htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8');
+                                            $description = html_entity_decode(htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8'), ENT_QUOTES | ENT_HTML5, 'UTF-8');
                                             echo nl2br(substr($description, 0, 150)) . (strlen($description) > 150 ? '...' : '');
                                             ?>
                                         </p>
@@ -431,7 +431,7 @@ $programs = fetchAll($sql, []);
                     </div>
                     <div class="modal-body">
                         <h6>Description</h6>
-                        <p><?php echo nl2br(htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8')); ?></p>
+                        <p><?php echo nl2br(html_entity_decode(htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8'), ENT_QUOTES | ENT_HTML5, 'UTF-8')); ?></p>
                         
                         <h6>Contenu du programme</h6>
                         <div class="program-content">

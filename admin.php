@@ -1151,7 +1151,7 @@ try {
 
                                             <div class="mb-3">
                                                 <label for="description" class="form-label">Description</label>
-                                                <textarea class="form-control" id="description" name="description" rows="3" required><?php echo htmlspecialchars($program['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                                <textarea class="form-control" id="description" name="description" rows="3" required><?php echo html_entity_decode(htmlspecialchars($program['description'] ?? '', ENT_QUOTES, 'UTF-8'), ENT_QUOTES | ENT_HTML5, 'UTF-8'); ?></textarea>
                                             </div>
 
                                             <div class="mb-3">
