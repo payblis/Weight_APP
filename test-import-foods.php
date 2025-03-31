@@ -56,7 +56,13 @@ function getFoodCategory($food_name) {
     $prompt .= "7. Autres\n\n";
     $prompt .= "Aliment : " . $food_name;
 
-    $response = callChatGPTAPI($prompt, 'gpt-3.5-turbo');
+    // Utiliser la clé API de l'application
+    $api_key = getenv('OPENAI_API_KEY');
+    if (!$api_key) {
+        throw new Exception("La clé API OpenAI n'est pas configurée");
+    }
+
+    $response = callChatGPTAPI($prompt, 'gpt-3.5-turbo', $api_key);
     
     // Nettoyer la réponse pour obtenir uniquement le numéro
     $category_id = (int) preg_replace('/[^0-9]/', '', $response);
