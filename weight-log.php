@@ -70,6 +70,9 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                     // Si l'utilisateur est à moins de 1,2kg de son objectif
                     if ($weight_diff <= 1.2 && $weight_diff > 0.1) {
                         $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1,2kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
+                    } else {
+                        // Si l'utilisateur est à plus de 1,2kg de son objectif, supprimer le message d'encouragement
+                        unset($_SESSION['encouragement_message']);
                     }
                     
                     // Si l'objectif est atteint (différence de moins de 0.1 kg)
@@ -123,6 +126,9 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                     // Si l'utilisateur est à moins de 1,2kg de son objectif
                     if ($weight_diff <= 1.2 && $weight_diff > 0.1) {
                         $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1,2kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
+                    } else {
+                        // Si l'utilisateur est à plus de 1,2kg de son objectif, supprimer le message d'encouragement
+                        unset($_SESSION['encouragement_message']);
                     }
                     
                     // Si l'objectif est atteint (différence de moins de 0.1 kg)
@@ -428,20 +434,6 @@ if ($latest_weight) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <style>
-        @keyframes confetti {
-            0% { transform: translateY(0) rotate(0deg); }
-            100% { transform: translateY(100vh) rotate(360deg); }
-        }
-        
-        .confetti {
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            background-color: #f00;
-            animation: confetti 3s linear forwards;
-            z-index: 9999;
-        }
-        
         .goal-achieved-modal {
             display: none;
             position: fixed;
@@ -491,38 +483,19 @@ if ($latest_weight) {
                 <?php echo $_SESSION['encouragement_message']; ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
-            <?php unset($_SESSION['encouragement_message']); ?>
         <?php endif; ?>
         
         <?php if (isset($_SESSION['goal_achieved'])): ?>
             <script>
-                function createConfetti() {
-                    const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff'];
-                    for (let i = 0; i < 50; i++) {
-                        const confetti = document.createElement('div');
-                        confetti.className = 'confetti';
-                        confetti.style.left = Math.random() * 100 + 'vw';
-                        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                        confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
-                        document.body.appendChild(confetti);
-                        
-                        // Supprimer le confetti après l'animation
-                        setTimeout(() => {
-                            confetti.remove();
-                        }, 5000);
-                    }
-                }
-                
                 function showGoalAchievedModal() {
                     document.getElementById('goalAchievedModal').style.display = 'flex';
-                    createConfetti();
                 }
                 
                 function closeGoalAchievedModal() {
                     document.getElementById('goalAchievedModal').style.display = 'none';
                 }
                 
-                // Afficher le modal et le confetti immédiatement
+                // Afficher le modal immédiatement
                 showGoalAchievedModal();
             </script>
             <?php unset($_SESSION['goal_achieved']); ?>
