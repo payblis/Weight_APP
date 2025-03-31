@@ -90,7 +90,10 @@ unset($_SESSION['error_message']);
                         <?php if (!empty($suggestions)): ?>
                             <div class="list-group">
                                 <?php foreach ($suggestions as $suggestion): ?>
-                                    <?php $data = json_decode($suggestion['content'], true); ?>
+                                    <?php 
+                                    $data = json_decode($suggestion['content'], true);
+                                    if (json_last_error() === JSON_ERROR_NONE): 
+                                    ?>
                                     <div class="list-group-item">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <h6 class="mb-1"><?php echo htmlspecialchars($data['nom_du_repas']); ?></h6>
@@ -105,6 +108,7 @@ unset($_SESSION['error_message']);
                                             </a>
                                         </div>
                                     </div>
+                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </div>
                         <?php else: ?>
@@ -130,7 +134,19 @@ unset($_SESSION['error_message']);
                     type: 'alimentation'
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur réseau');
+                }
+                return response.text().then(text => {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Réponse brute:', text);
+                        throw new Error('Réponse invalide du serveur');
+                    }
+                });
+            })
             .then(data => {
                 if (data.success) {
                     window.location.reload();
