@@ -57,15 +57,54 @@ function calculateIngredientMacros($ingredient) {
     // Si l'ingrédient a déjà ses propres valeurs nutritionnelles, les utiliser
     if (isset($ingredient['calories']) && isset($ingredient['proteines']) && 
         isset($ingredient['glucides']) && isset($ingredient['lipides'])) {
-        // Convertir les valeurs pour 100g
-        $quantity = (float) str_replace(['g', 'kg', 'ml', 'l'], '', $ingredient['quantite']);
-        if ($quantity > 0) {
+        
+        // Si la quantité est déjà en 100g, retourner directement les valeurs
+        if ($ingredient['quantite'] === '100g') {
             return [
-                'calories' => round(($ingredient['calories'] * 100) / $quantity),
-                'proteins' => round(($ingredient['proteines'] * 100) / $quantity, 1),
-                'carbs' => round(($ingredient['glucides'] * 100) / $quantity, 1),
-                'fats' => round(($ingredient['lipides'] * 100) / $quantity, 1)
+                'calories' => round($ingredient['calories']),
+                'proteins' => round($ingredient['proteines'], 1),
+                'carbs' => round($ingredient['glucides'], 1),
+                'fats' => round($ingredient['lipides'], 1)
             ];
+        }
+        
+        // Si la quantité est en grammes, convertir pour 100g
+        if (strpos($ingredient['quantite'], 'g') !== false) {
+            $quantity = (float) str_replace('g', '', $ingredient['quantite']);
+            if ($quantity > 0) {
+                return [
+                    'calories' => round(($ingredient['calories'] * 100) / $quantity),
+                    'proteins' => round(($ingredient['proteines'] * 100) / $quantity, 1),
+                    'carbs' => round(($ingredient['glucides'] * 100) / $quantity, 1),
+                    'fats' => round(($ingredient['lipides'] * 100) / $quantity, 1)
+                ];
+            }
+        }
+        
+        // Pour les autres unités (tasse, cuillère à soupe, etc.), utiliser des valeurs standard
+        $standard_values = [
+            'tasse' => [
+                'quinoa' => ['calories' => 220, 'proteins' => 8, 'glucides' => 39, 'lipides' => 3.5],
+                'laitue' => ['calories' => 5, 'proteins' => 0.5, 'glucides' => 1, 'lipides' => 0.1]
+            ],
+            'cuillère à soupe' => [
+                'huile' => ['calories' => 119, 'proteins' => 0, 'glucides' => 0, 'lipides' => 13.5]
+            ]
+        ];
+        
+        foreach ($standard_values as $unit => $foods) {
+            if (strpos($ingredient['quantite'], $unit) !== false) {
+                foreach ($foods as $food => $values) {
+                    if (strpos(strtolower($ingredient['nom']), $food) !== false) {
+                        return [
+                            'calories' => round($values['calories']),
+                            'proteins' => round($values['proteins'], 1),
+                            'carbs' => round($values['glucides'], 1),
+                            'fats' => round($values['lipides'], 1)
+                        ];
+                    }
+                }
+            }
         }
     }
     
