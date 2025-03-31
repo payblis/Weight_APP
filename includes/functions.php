@@ -1669,3 +1669,59 @@ function getSetting($setting_name) {
     
     return $result ? $result['setting_value'] : null;
 }
+
+/**
+ * Appelle l'API ChatGPT pour générer une suggestion
+ * @param string $prompt Le prompt à envoyer à l'API
+ * @param string $api_key La clé API ChatGPT
+ * @return string La réponse de l'API
+ */
+function callChatGPTAPI($prompt, $api_key) {
+    $url = 'https://api.openai.com/v1/chat/completions';
+    
+    $data = [
+        'model' => 'gpt-3.5-turbo',
+        'messages' => [
+            [
+                'role' => 'system',
+                'content' => 'Tu es un nutritionniste expert qui fournit des suggestions de repas personnalisées et équilibrées.'
+            ],
+            [
+                'role' => 'user',
+                'content' => $prompt
+            ]
+        ],
+        'temperature' => 0.7,
+        'max_tokens' => 1000
+    ];
+    
+    $options = [
+        'http' => [
+            'method' => 'POST',
+            'header' => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $api_key
+            ],
+            'content' => json_encode($data)
+        ]
+    ];
+    
+    $context = stream_context_create($options);
+    $response = file_get_contents($url, false, $context);
+    
+    if ($response === false) {
+        throw new Exception("Erreur lors de l'appel à l'API ChatGPT");
+    }
+    
+    $result = json_decode($response, true);
+    
+    if (isset($result['error'])) {
+        throw new Exception("Erreur API ChatGPT : " . $result['error']['message']);
+    }
+    
+    if (!isset($result['choices'][0]['message']['content'])) {
+        throw new Exception("Format de réponse invalide de l'API ChatGPT");
+    }
+    
+    return $result['choices'][0]['message']['content'];
+}
