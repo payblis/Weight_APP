@@ -38,8 +38,38 @@ if (empty($meal_name) || empty($foods)) {
 
 try {
     // Créer le repas
-    $sql = "INSERT INTO meals (user_id, name, created_at) VALUES (?, ?, NOW())";
-    $meal_id = insert($sql, [$_SESSION['user_id'], $meal_name]);
+    $sql = "INSERT INTO meals (user_id, notes, meal_type, log_date, total_calories, total_protein, total_carbs, total_fat, created_at) 
+            VALUES (?, ?, 'dejeuner', CURDATE(), ?, ?, ?, ?, NOW())";
+    
+    // Calculer les totaux nutritionnels
+    $totals = [
+        'calories' => 0,
+        'protein' => 0,
+        'carbs' => 0,
+        'fat' => 0
+    ];
+    
+    foreach ($foods as $food) {
+        $sql_food = "SELECT calories, protein, carbs, fat FROM foods WHERE id = ?";
+        $food_data = fetchOne($sql_food, [$food['food_id']]);
+        
+        if ($food_data) {
+            $quantity = $food['quantity'] / 100; // Convertir en pourcentage
+            $totals['calories'] += $food_data['calories'] * $quantity;
+            $totals['protein'] += $food_data['protein'] * $quantity;
+            $totals['carbs'] += $food_data['carbs'] * $quantity;
+            $totals['fat'] += $food_data['fat'] * $quantity;
+        }
+    }
+    
+    $meal_id = insert($sql, [
+        $_SESSION['user_id'],
+        $data['name'],
+        round($totals['calories']),
+        round($totals['protein'], 2),
+        round($totals['carbs'], 2),
+        round($totals['fat'], 2)
+    ]);
     
     if (!$meal_id) {
         throw new Exception("Erreur lors de la création du repas");
