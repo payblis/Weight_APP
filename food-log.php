@@ -460,7 +460,6 @@ error_log("SQL de récupération des repas : " . $sql);
 error_log("Paramètres : user_id=" . $user_id . ", date=" . $date_filter);
 $meals = fetchAll($sql, [$user_id, $date_filter]);
 error_log("Nombre de repas trouvés : " . count($meals));
-error_log("Données des repas : " . print_r($meals, true));
 error_log("=== FIN DE LA RÉCUPÉRATION DES REPAS ===");
 
 // Récupérer les repas prédéfinis
@@ -1173,7 +1172,7 @@ function updateMealTotals($meal_id) {
                                                            class="btn btn-sm btn-outline-secondary">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
-                                                        <a href="food-log.php?action=delete&id=<?php echo $meal['id']; ?>" 
+                                                        <a href="food-log.php?action=delete&meal_id=<?php echo $meal['id']; ?>" 
                                                            class="btn btn-sm btn-outline-danger"
                                                            onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
                                                             <i class="fas fa-trash"></i>
