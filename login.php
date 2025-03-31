@@ -184,7 +184,7 @@ if (!isLoggedIn() && isset($_COOKIE['remember_token'])) {
                             <div class="carousel-inner py-3">
                                 <div class="carousel-item active">
                                     <div class="testimonial text-center">
-                                        <p class="mb-3">"Grâce à Weight Tracker, j'ai perdu 15 kg en 6 mois. L'application m'a aidé à rester motivé et à suivre mes progrès jour après jour."</p>
+                                        <p class="mb-3">"Grâce à MyFity, j'ai perdu 15 kg en 6 mois. L'application m'a aidé à rester motivé et à suivre mes progrès jour après jour."</p>
                                         <div class="testimonial-author">
                                             <div class="rating text-warning mb-2">
                                                 <i class="fas fa-star"></i>
