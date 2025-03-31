@@ -1616,6 +1616,63 @@ function updateMealTotals($meal_id) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Gestionnaire pour le sélecteur d'aliments
+            const foodSelect = document.getElementById('food_id');
+            if (foodSelect) {
+                foodSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const quantity = document.getElementById('quantity').value;
+                    
+                    if (this.value) {
+                        // Récupérer les valeurs nutritionnelles de l'option sélectionnée
+                        const calories = selectedOption.dataset.calories;
+                        const protein = selectedOption.dataset.protein;
+                        const carbs = selectedOption.dataset.carbs;
+                        const fat = selectedOption.dataset.fat;
+                        
+                        // Calculer les valeurs en fonction de la quantité
+                        const ratio = quantity / 100;
+                        document.getElementById('custom_calories').value = Math.round(calories * ratio);
+                        document.getElementById('custom_protein').value = (protein * ratio).toFixed(1);
+                        document.getElementById('custom_carbs').value = (carbs * ratio).toFixed(1);
+                        document.getElementById('custom_fat').value = (fat * ratio).toFixed(1);
+                        
+                        // Vider le champ de nom personnalisé
+                        document.getElementById('custom_food_name').value = '';
+                    } else {
+                        // Réinitialiser les champs si aucun aliment n'est sélectionné
+                        document.getElementById('custom_calories').value = '0';
+                        document.getElementById('custom_protein').value = '0';
+                        document.getElementById('custom_carbs').value = '0';
+                        document.getElementById('custom_fat').value = '0';
+                    }
+                });
+            }
+            
+            // Gestionnaire pour le champ de quantité
+            const quantityInput = document.getElementById('quantity');
+            if (quantityInput) {
+                quantityInput.addEventListener('input', function() {
+                    const foodSelect = document.getElementById('food_id');
+                    const selectedOption = foodSelect.options[foodSelect.selectedIndex];
+                    
+                    if (foodSelect.value) {
+                        const quantity = this.value;
+                        const calories = selectedOption.dataset.calories;
+                        const protein = selectedOption.dataset.protein;
+                        const carbs = selectedOption.dataset.carbs;
+                        const fat = selectedOption.dataset.fat;
+                        
+                        // Calculer les valeurs en fonction de la quantité
+                        const ratio = quantity / 100;
+                        document.getElementById('custom_calories').value = Math.round(calories * ratio);
+                        document.getElementById('custom_protein').value = (protein * ratio).toFixed(1);
+                        document.getElementById('custom_carbs').value = (carbs * ratio).toFixed(1);
+                        document.getElementById('custom_fat').value = (fat * ratio).toFixed(1);
+                    }
+                });
+            }
+            
             // Gestionnaire pour le bouton de génération de suggestions
             const generateSuggestionsBtn = document.getElementById('generateSuggestionsBtn');
             if (generateSuggestionsBtn) {
