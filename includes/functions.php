@@ -1580,63 +1580,36 @@ function getExerciseStats($user_id) {
 // Fonction pour obtenir les suggestions de repas
 function getMealSuggestions($user_id) {
     try {
-        // Récupérer les préférences alimentaires de l'utilisateur
-        $sql = "SELECT food_id FROM food_preferences WHERE user_id = ?";
-        $preferences = fetchAll($sql, [$user_id]);
-        $preferred_foods = array_column($preferences, 'food_id');
-        
         // Récupérer l'objectif de l'utilisateur
         $sql = "SELECT g.* FROM goals g WHERE g.user_id = ? AND g.status = 'active'";
         $goal = fetchOne($sql, [$user_id]);
         
-        // Récupérer les repas prédéfinis qui correspondent aux préférences
-        $sql = "SELECT DISTINCT pm.*, 
-                (SELECT COUNT(*) FROM predefined_meal_items pmf 
-                 WHERE pmf.predefined_meal_id = pm.id 
-                 AND pmf.food_id IN (" . implode(',', array_fill(0, count($preferred_foods), '?')) . ")) as matching_foods
-                FROM predefined_meals pm
-                WHERE pm.is_public = 1 OR pm.user_id = ?
-                ORDER BY matching_foods DESC, pm.created_at DESC
-                LIMIT 5";
+        // Récupérer les suggestions d'IA
+        $sql = "SELECT id, content as name, created_at FROM ai_suggestions 
+                WHERE user_id = ? AND suggestion_type IN ('repas', 'alimentation') 
+                ORDER BY created_at DESC LIMIT 5";
+        $suggestions = fetchAll($sql, [$user_id]);
         
-        $params = array_merge($preferred_foods, [$user_id]);
-        $suggestions = fetchAll($sql, $params);
-        
-        // Ajouter les informations sur les aliments pour chaque suggestion
+        // Ajouter les informations nutritionnelles pour chaque suggestion
         foreach ($suggestions as &$suggestion) {
-            $sql = "SELECT pmf.*, f.name as food_name, f.calories as food_calories, 
-                    f.protein as food_protein, f.carbs as food_carbs, f.fat as food_fat
-                    FROM predefined_meal_items pmf
-                    LEFT JOIN foods f ON pmf.food_id = f.id
-                    WHERE pmf.predefined_meal_id = ?";
-            $suggestion['foods'] = fetchAll($sql, [$suggestion['id']]);
+            $content = $suggestion['name'];
             
-            // Calculer les totaux nutritionnels
-            $total_calories = 0;
-            $total_protein = 0;
-            $total_carbs = 0;
-            $total_fat = 0;
-            
-            foreach ($suggestion['foods'] as $food) {
-                if ($food['food_id']) {
-                    $total_calories += ($food['food_calories'] * $food['quantity']) / 100;
-                    $total_protein += ($food['food_protein'] * $food['quantity']) / 100;
-                    $total_carbs += ($food['food_carbs'] * $food['quantity']) / 100;
-                    $total_fat += ($food['food_fat'] * $food['quantity']) / 100;
-                } else {
-                    $total_calories += $food['custom_calories'];
-                    $total_protein += $food['custom_protein'];
-                    $total_carbs += $food['custom_carbs'];
-                    $total_fat += $food['custom_fat'];
-                }
-            }
+            // Rechercher les valeurs nutritionnelles dans le contenu
+            preg_match('/calories?\s*:?\s*(\d+)\s*kcal/i', $content, $calories_match);
+            preg_match('/prot[ée]ines?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match);
+            preg_match('/glucides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $carbs_match);
+            preg_match('/lipides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $fat_match);
             
             $suggestion['totals'] = [
-                'calories' => round($total_calories),
-                'protein' => round($total_protein, 1),
-                'carbs' => round($total_carbs, 1),
-                'fat' => round($total_fat, 1)
+                'calories' => isset($calories_match[1]) ? intval($calories_match[1]) : 0,
+                'protein' => isset($protein_match[1]) ? floatval($protein_match[1]) : 0,
+                'carbs' => isset($carbs_match[1]) ? floatval($carbs_match[1]) : 0,
+                'fat' => isset($fat_match[1]) ? floatval($fat_match[1]) : 0
             ];
+            
+            // Extraire une description courte (première ligne ou premiers caractères)
+            $lines = explode("\n", $content);
+            $suggestion['description'] = trim($lines[0]);
             
             // Ajouter des informations sur la compatibilité avec l'objectif
             if ($goal) {

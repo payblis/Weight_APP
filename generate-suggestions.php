@@ -80,6 +80,7 @@ try {
     
     switch ($suggestion_type) {
         case 'repas':
+        case 'alimentation':
             // Construire le prompt pour ChatGPT
             $prompt = "En tant que nutritionniste expert, génère une suggestion de repas équilibré en tenant compte des informations suivantes :\n\n";
             

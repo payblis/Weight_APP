@@ -1584,7 +1584,7 @@ function updateMealTotals($meal_id) {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            type: 'repas'
+                            type: 'alimentation'
                         })
                     })
                     .then(response => response.json())
