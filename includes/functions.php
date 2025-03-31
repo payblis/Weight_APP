@@ -41,11 +41,11 @@ function redirect($url) {
  * @return int|false ID de la dernière insertion ou false en cas d'erreur
  */
 function getLastInsertId() {
-    global $pdo;
+    global $conn;
     
     try {
-        return $GLOBALS['pdo']->lastInsertId();
-    } catch (PDOException $e) {
+        return $conn->insert_id;
+    } catch (Exception $e) {
         error_log("Erreur SQL: " . $e->getMessage());
         return false;
     }

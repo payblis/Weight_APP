@@ -120,49 +120,15 @@ function fetchAll($sql, $params = []) {
 
 // Fonction pour insérer des données et retourner l'ID
 function insert($sql, $params = []) {
-    $conn = connectDB();
-    $stmt = $conn->prepare($sql);
-    
-    if (!$stmt) {
-        error_log("Erreur de préparation de la requête: " . $conn->error . " - SQL: " . $sql);
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $pdo->lastInsertId();
+    } catch (Exception $e) {
+        error_log("Erreur dans insert: " . $e->getMessage());
         return 0;
     }
-    
-    if (!empty($params)) {
-        $types = '';
-        $bindParams = [];
-        
-        // Déterminer les types de paramètres
-        foreach ($params as $param) {
-            if (is_int($param)) {
-                $types .= 'i';
-            } elseif (is_float($param)) {
-                $types .= 'd';
-            } elseif (is_string($param)) {
-                $types .= 's';
-            } else {
-                $types .= 'b';
-            }
-        }
-        
-        // Créer un tableau de références pour bind_param
-        $bindParams[] = &$types;
-        
-        for ($i = 0; $i < count($params); $i++) {
-            $bindParams[] = &$params[$i];
-        }
-        
-        // Lier les paramètres dynamiquement
-        call_user_func_array([$stmt, 'bind_param'], $bindParams);
-    }
-    
-    $success = $stmt->execute();
-    $insertId = $success ? $conn->insert_id : 0;
-    
-    $stmt->close();
-    $conn->close();
-    
-    return $insertId;
 }
 
 // Fonction pour mettre à jour des données et retourner le nombre de lignes affectées
