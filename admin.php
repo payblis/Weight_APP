@@ -1917,4 +1917,3 @@ try {
     </script>
 </body>
 </html>
-<?php endif; // Fermeture de la condition if ($section === 'predefined_meals') ?>
