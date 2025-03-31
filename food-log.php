@@ -1271,7 +1271,7 @@ function updateMealTotals($meal_id) {
                                             <div>
                                                 <h6 class="mb-1"><?php echo htmlspecialchars($pm['name']); ?></h6>
                                                 <p class="text-muted small mb-0">
-                                                    <?php if ($pm['created_by_admin']): ?>
+                                                    <?php if ($pm['user_id'] == 1): ?>
                                                         <span class="badge bg-danger">Admin</span>
                                                     <?php endif; ?>
                                                     <?php if ($pm['is_public'] && $pm['user_id'] != $user_id): ?>
@@ -1404,7 +1404,7 @@ function updateMealTotals($meal_id) {
                                         <tr>
                                             <td>
                                                 <?php echo htmlspecialchars($pm['name']); ?>
-                                                <?php if ($pm['created_by_admin']): ?>
+                                                <?php if ($pm['user_id'] == 1): ?>
                                                     <span class="badge bg-danger">Admin</span>
                                                 <?php endif; ?>
                                                 <?php if ($pm['is_public'] && $pm['user_id'] != $user_id): ?>
@@ -1417,7 +1417,7 @@ function updateMealTotals($meal_id) {
                                             <td>
                                                 <?php if ($pm['user_id'] == $user_id): ?>
                                                     <span class="badge bg-primary">Personnel</span>
-                                                <?php elseif ($pm['created_by_admin']): ?>
+                                                <?php elseif ($pm['user_id'] == 1): ?>
                                                     <span class="badge bg-danger">Admin</span>
                                                 <?php else: ?>
                                                     <span class="badge bg-success">Public</span>

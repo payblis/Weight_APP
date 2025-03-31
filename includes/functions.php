@@ -1586,10 +1586,7 @@ function getMealSuggestions($user_id) {
         $preferred_foods = array_column($preferences, 'food_id');
         
         // Récupérer l'objectif de l'utilisateur
-        $sql = "SELECT g.*, p.name as program_name, p.description as program_description 
-                FROM goals g 
-                LEFT JOIN programs p ON g.program_id = p.id 
-                WHERE g.user_id = ? AND g.status = 'active'";
+        $sql = "SELECT g.* FROM goals g WHERE g.user_id = ? AND g.status = 'active'";
         $goal = fetchOne($sql, [$user_id]);
         
         // Récupérer les repas prédéfinis qui correspondent aux préférences
@@ -1695,51 +1692,14 @@ function calculateGoalCompatibility($meal_totals, $goal) {
         }
     } else {
         // Si pas de besoins caloriques définis, utiliser une logique simplifiée
-        if ($goal['program_id']) {
-            switch ($goal['program_name']) {
-                case 'Perte de poids':
-                    // Vérifier que les calories sont raisonnables
-                    if ($meal_totals['calories'] > 800) {
-                        $compatibility += 20; // Pénalité pour trop de calories
-                    }
-                    // Vérifier le ratio protéines/calories
-                    $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
-                    if ($protein_ratio > 0.3) {
-                        $compatibility += 30; // Bonus pour un bon ratio protéines
-                    }
-                    break;
-                case 'Prise de masse':
-                    // Vérifier que les calories sont suffisantes
-                    if ($meal_totals['calories'] < 500) {
-                        $compatibility += 20; // Pénalité pour trop peu de calories
-                    }
-                    // Vérifier le ratio protéines/calories
-                    $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
-                    if ($protein_ratio > 0.25) {
-                        $compatibility += 30; // Bonus pour un bon ratio protéines
-                    }
-                    break;
-                case 'Maintien':
-                    // Vérifier que les calories sont modérées
-                    if ($meal_totals['calories'] > 1000) {
-                        $compatibility += 20; // Pénalité pour trop de calories
-                    }
-                    // Vérifier l'équilibre des macronutriments
-                    $total_macros = $meal_totals['protein'] + $meal_totals['carbs'] + $meal_totals['fat'];
-                    if ($total_macros > 0) {
-                        $protein_ratio = $meal_totals['protein'] / $total_macros;
-                        $carbs_ratio = $meal_totals['carbs'] / $total_macros;
-                        $fat_ratio = $meal_totals['fat'] / $total_macros;
-                        
-                        // Vérifier si les ratios sont équilibrés
-                        if ($protein_ratio >= 0.2 && $protein_ratio <= 0.3 &&
-                            $carbs_ratio >= 0.4 && $carbs_ratio <= 0.5 &&
-                            $fat_ratio >= 0.2 && $fat_ratio <= 0.3) {
-                            $compatibility += 30; // Bonus pour un bon équilibre
-                        }
-                    }
-                    break;
-            }
+        // Vérifier que les calories sont raisonnables
+        if ($meal_totals['calories'] > 800) {
+            $compatibility += 20; // Pénalité pour trop de calories
+        }
+        // Vérifier le ratio protéines/calories
+        $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
+        if ($protein_ratio > 0.3) {
+            $compatibility += 30; // Bonus pour un bon ratio protéines
         }
     }
     
