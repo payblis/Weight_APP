@@ -350,21 +350,12 @@ $programs = fetchAll($sql, []);
                                 <div class="card h-100">
                                     <div class="card-body">
                                         <h5 class="card-title"><?php echo htmlspecialchars($program['name']); ?></h5>
-                                        <p class="card-text text-muted description-preview">
+                                        <p class="card-text text-muted">
                                             <?php 
                                             $description = htmlspecialchars($program['description'], ENT_QUOTES, 'UTF-8');
-                                            $short_desc = substr($description, 0, 150);
-                                            echo nl2br($short_desc);
-                                            if (strlen($description) > 150) {
-                                                echo '...';
-                                            }
+                                            echo nl2br(substr($description, 0, 150)) . (strlen($description) > 150 ? '...' : '');
                                             ?>
                                         </p>
-                                        <?php if (strlen($description) > 150): ?>
-                                            <button class="btn btn-link btn-sm p-0 show-more-btn" data-program-id="<?php echo $program['id']; ?>">
-                                                Voir plus
-                                            </button>
-                                        <?php endif; ?>
                                         
                                         <div class="mb-3">
                                             <?php
@@ -561,24 +552,6 @@ $programs = fetchAll($sql, []);
                     programId,
                     content
                 });
-            });
-        });
-
-        // Gestion des boutons "Voir plus"
-        document.querySelectorAll('.show-more-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const programId = this.dataset.programId;
-                const description = <?php echo json_encode($programs); ?>[programId - 1].description;
-                const previewElement = this.previousElementSibling;
-                
-                if (this.textContent === 'Voir plus') {
-                    previewElement.innerHTML = description.replace(/\n/g, '<br>');
-                    this.textContent = 'Voir moins';
-                } else {
-                    const shortDesc = description.substring(0, 150) + '...';
-                    previewElement.innerHTML = shortDesc.replace(/\n/g, '<br>');
-                    this.textContent = 'Voir plus';
-                }
             });
         });
     });
