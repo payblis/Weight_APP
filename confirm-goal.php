@@ -35,8 +35,13 @@ if (!$profile) {
     redirect('goals.php');
 }
 
-// Calculer le BMR de base
-$bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+// Calculer l'âge à partir de la date de naissance
+$birth_date = new DateTime($profile['birth_date']);
+$today = new DateTime();
+$age = $birth_date->diff($today)->y;
+
+// Calculer le BMR de base avec l'âge calculé
+$bmr = calculateBMR($current_weight, $profile['height'], $age, $profile['gender']);
 
 // Calculer le TDEE (calories de base)
 $tdee = calculateTDEE($bmr, $profile['activity_level']);
@@ -44,7 +49,6 @@ $tdee = calculateTDEE($bmr, $profile['activity_level']);
 // Calculer les calories nécessaires pour l'objectif
 $weight_diff = $pending_goal['target_weight'] - $current_weight;
 $target_date = new DateTime($pending_goal['target_date']);
-$today = new DateTime();
 $days_to_goal = $today->diff($target_date)->days;
 
 if ($days_to_goal <= 0) {
