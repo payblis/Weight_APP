@@ -57,10 +57,14 @@ function calculateIngredientMacros($ingredient) {
     // Valeurs nutritionnelles par défaut pour 100g d'ingrédients courants
     $default_values = [
         'épinards' => ['calories' => 23, 'proteins' => 2.9, 'glucides' => 3.6, 'lipides' => 0.4],
+        'épinards frais' => ['calories' => 23, 'proteins' => 2.9, 'glucides' => 3.6, 'lipides' => 0.4],
         'tomate' => ['calories' => 18, 'proteins' => 0.9, 'glucides' => 3.9, 'lipides' => 0.2],
-        'pain' => ['calories' => 265, 'proteins' => 9, 'glucides' => 49, 'lipides' => 3.2],
         'feta' => ['calories' => 264, 'proteins' => 14, 'glucides' => 4.1, 'lipides' => 21],
-        'œufs' => ['calories' => 155, 'proteins' => 13, 'glucides' => 1.1, 'lipides' => 11]
+        'fromage feta' => ['calories' => 264, 'proteins' => 14, 'glucides' => 4.1, 'lipides' => 21],
+        'œufs' => ['calories' => 155, 'proteins' => 13, 'glucides' => 1.1, 'lipides' => 11],
+        'oeufs' => ['calories' => 155, 'proteins' => 13, 'glucides' => 1.1, 'lipides' => 11],
+        'pain' => ['calories' => 265, 'proteins' => 9, 'glucides' => 49, 'lipides' => 3.2],
+        'pain de blé entier' => ['calories' => 247, 'proteins' => 13, 'glucides' => 41, 'lipides' => 3.4]
     ];
 
     // Si l'ingrédient a déjà ses propres valeurs nutritionnelles, les utiliser
@@ -210,6 +214,22 @@ function calculateIngredientMacros($ingredient) {
 $sql = "SELECT * FROM food_categories ORDER BY name";
 $categories = fetchAll($sql);
 
+// Fonction pour vérifier si un aliment similaire existe déjà
+function findSimilarFood($name, $pdo) {
+    // Nettoyer le nom pour la recherche
+    $searchName = strtolower(trim($name));
+    
+    // Rechercher les aliments similaires
+    $sql = "SELECT id, name FROM foods WHERE LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR LOWER(name) LIKE ?";
+    $params = [
+        "%$searchName%",
+        "%" . str_replace(' ', '%', $searchName) . "%",
+        "%" . str_replace('é', 'e', $searchName) . "%"
+    ];
+    
+    return fetchAll($sql, $params);
+}
+
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -237,24 +257,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $name = $ingredient['nom'];
             
-            // Calculer les macronutriments pour cet ingrédient
-            $macros = calculateIngredientMacros($ingredient);
+            // Vérifier si un aliment similaire existe
+            $similarFoods = findSimilarFood($name, $pdo);
             
-            if ($macros) {
-                $sql = "INSERT INTO foods (name, description, calories, protein, carbs, fat, category_id, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+            if (!empty($similarFoods)) {
+                // Si l'utilisateur a confirmé l'ajout malgré les doublons
+                if (isset($_POST['confirm_add'][$name]) && $_POST['confirm_add'][$name] === 'yes') {
+                    // Calculer les macronutriments pour cet ingrédient
+                    $macros = calculateIngredientMacros($ingredient);
+                    
+                    if ($macros) {
+                        $sql = "INSERT INTO foods (name, description, calories, protein, carbs, fat, category_id, created_at) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+                        
+                        $params = [
+                            $name,
+                            "Ingrédient de {$data['nom_du_repas']}",
+                            $macros['calories'],
+                            $macros['proteins'],
+                            $macros['carbs'],
+                            $macros['fats'],
+                            $_POST['category_id'][$name]
+                        ];
+                        
+                        insert($sql, $params);
+                    }
+                }
+            } else {
+                // Aucun aliment similaire trouvé, ajouter normalement
+                $macros = calculateIngredientMacros($ingredient);
                 
-                $params = [
-                    $name,
-                    "Ingrédient de {$data['nom_du_repas']}",
-                    $macros['calories'],
-                    $macros['proteins'],
-                    $macros['carbs'],
-                    $macros['fats'],
-                    $_POST['category_id'][$name]
-                ];
-                
-                insert($sql, $params);
+                if ($macros) {
+                    $sql = "INSERT INTO foods (name, description, calories, protein, carbs, fat, category_id, created_at) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+                    
+                    $params = [
+                        $name,
+                        "Ingrédient de {$data['nom_du_repas']}",
+                        $macros['calories'],
+                        $macros['proteins'],
+                        $macros['carbs'],
+                        $macros['fats'],
+                        $_POST['category_id'][$name]
+                    ];
+                    
+                    insert($sql, $params);
+                }
             }
         }
         
@@ -263,6 +311,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
     } catch (Exception $e) {
         $errors[] = "Erreur lors de la création des aliments : " . $e->getMessage();
+    }
+}
+
+// Récupérer les aliments similaires pour l'affichage
+$similarFoodsMap = [];
+foreach ($data['ingredients'] as $ingredient) {
+    if (!shouldExcludeIngredient($ingredient)) {
+        $similarFoodsMap[$ingredient['nom']] = findSimilarFood($ingredient['nom'], $pdo);
     }
 }
 ?>
@@ -321,15 +377,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <?php if (!shouldExcludeIngredient($ingredient)): ?>
                                         <?php 
                                         $macros = calculateIngredientMacros($ingredient);
+                                        $name = $ingredient['nom'];
+                                        $similarFoods = $similarFoodsMap[$name] ?? [];
                                         ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars($ingredient['nom']); ?></td>
+                                            <td><?php echo htmlspecialchars($name); ?></td>
                                             <td><?php echo $macros['calories']; ?></td>
                                             <td><?php echo $macros['proteins']; ?>g</td>
                                             <td><?php echo $macros['carbs']; ?>g</td>
                                             <td><?php echo $macros['fats']; ?>g</td>
                                             <td>
-                                                <select name="category_id[<?php echo htmlspecialchars($ingredient['nom']); ?>]" 
+                                                <select name="category_id[<?php echo htmlspecialchars($name); ?>]" 
                                                         class="form-select" required>
                                                     <option value="">Sélectionner une catégorie</option>
                                                     <?php foreach ($categories as $category): ?>
@@ -340,6 +398,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                 </select>
                                             </td>
                                         </tr>
+                                        <?php if (!empty($similarFoods)): ?>
+                                            <tr class="table-warning">
+                                                <td colspan="6">
+                                                    <div class="alert alert-warning mb-0">
+                                                        <strong>Attention :</strong> Des aliments similaires existent déjà dans la base de données :
+                                                        <ul class="mb-0">
+                                                            <?php foreach ($similarFoods as $similar): ?>
+                                                                <li><?php echo htmlspecialchars($similar['name']); ?></li>
+                                                            <?php endforeach; ?>
+                                                        </ul>
+                                                        <div class="form-check mt-2">
+                                                            <input type="checkbox" 
+                                                                   class="form-check-input" 
+                                                                   name="confirm_add[<?php echo htmlspecialchars($name); ?>]" 
+                                                                   value="yes" 
+                                                                   id="confirm_<?php echo htmlspecialchars($name); ?>">
+                                                            <label class="form-check-label" for="confirm_<?php echo htmlspecialchars($name); ?>">
+                                                                Je confirme que je souhaite ajouter cet aliment malgré les doublons
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 <?php endforeach; ?>
                             </tbody>
