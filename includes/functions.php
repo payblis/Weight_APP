@@ -1810,7 +1810,7 @@ function callChatGPTAPI($prompt, $api_key) {
 function getSetting($setting_name) {
     global $db;
     
-    $sql = "SELECT setting_value FROM app_settings WHERE setting_key = ?";
+    $sql = "SELECT setting_value FROM settings WHERE setting_name = ?";
     $result = fetchOne($sql, [$setting_name]);
     
     return $result ? $result['setting_value'] : null;
