@@ -52,10 +52,15 @@ if ($days_to_goal <= 0) {
 }
 
 // Calculer les calories totales nécessaires (1 kg = 7700 calories)
-$total_calories_needed = $weight_diff * 7700;
+$total_calories_needed = abs($weight_diff) * 7700;
 
 // Calculer l'ajustement quotidien nécessaire
 $daily_adjustment = $total_calories_needed / $days_to_goal;
+
+// Ajuster le signe de l'ajustement quotidien en fonction du type d'objectif
+if ($weight_diff < 0) {
+    $daily_adjustment = -$daily_adjustment; // Pour la perte de poids
+}
 
 // Vérifier si un programme est actif
 $sql = "SELECT p.*, up.status 
