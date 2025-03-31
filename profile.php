@@ -96,16 +96,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("Ajustement quotidien pour l'objectif : " . $daily_adjustment);
                         
                         if ($active_program) {
-                            error_log("Programme actif : " . $active_program['name']);
-                            error_log("Ajustement du programme : " . $active_program['calorie_adjustment'] . "%");
-                            error_log("Ratios du programme :");
-                            error_log("- Protéines : " . $active_program['protein_ratio']);
-                            error_log("- Glucides : " . $active_program['carbs_ratio']);
-                            error_log("- Lipides : " . $active_program['fat_ratio']);
+                            error_log("=== Début du calcul avec le programme actif ===");
+                            error_log("Nom du programme : " . $active_program['name']);
+                            error_log("TDEE initial : " . $tdee);
+                            error_log("Ajustement calorique du programme : " . $active_program['calorie_adjustment'] . "%");
                             
                             // Calculer l'ajustement du programme
                             $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
-                            error_log("Ajustement du programme calculé : " . $program_adjustment);
+                            error_log("Ajustement calorique calculé : " . $program_adjustment);
                             
                             // Ajouter l'ajustement du programme aux calories de base
                             $tdee += $program_adjustment;
@@ -115,6 +113,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $protein_ratio = $active_program['protein_ratio'];
                             $carbs_ratio = $active_program['carbs_ratio'];
                             $fat_ratio = $active_program['fat_ratio'];
+                            
+                            error_log("Ratios de macros du programme :");
+                            error_log("- Protéines : " . ($protein_ratio * 100) . "%");
+                            error_log("- Glucides : " . ($carbs_ratio * 100) . "%");
+                            error_log("- Lipides : " . ($fat_ratio * 100) . "%");
+                            
+                            // Calculer les macros en grammes
+                            $protein_grams = ($tdee * $protein_ratio) / 4;
+                            $carbs_grams = ($tdee * $carbs_ratio) / 4;
+                            $fat_grams = ($tdee * $fat_ratio) / 9;
+                            
+                            error_log("Macros calculés en grammes :");
+                            error_log("- Protéines : " . $protein_grams . "g");
+                            error_log("- Glucides : " . $carbs_grams . "g");
+                            error_log("- Lipides : " . $fat_grams . "g");
+                            error_log("=== Fin du calcul avec le programme actif ===");
                         } else {
                             error_log("Aucun programme actif, utilisation des ratios par défaut :");
                             error_log("- Protéines : " . $protein_ratio);
