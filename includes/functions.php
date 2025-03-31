@@ -1604,18 +1604,20 @@ function getMealSuggestions($user_id) {
             // Rechercher les valeurs nutritionnelles dans le contenu
             preg_match('/calories?\s*:?\s*environ\s*(\d+)\s*kcal/i', $content, $calories_match);
             preg_match('/prot[ée]ines?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match);
+            preg_match('/prot[ée]ines?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match_alt);
             preg_match('/glucides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $carbs_match);
             preg_match('/lipides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $fat_match);
             
             error_log("Calories match : " . print_r($calories_match, true));
             error_log("Protéines match : " . print_r($protein_match, true));
+            error_log("Protéines match alternatif : " . print_r($protein_match_alt, true));
             error_log("Glucides match : " . print_r($carbs_match, true));
             error_log("Lipides match : " . print_r($fat_match, true));
             
             // Stocker les valeurs nutritionnelles
             $suggestion['totals'] = [
                 'calories' => isset($calories_match[1]) ? intval($calories_match[1]) : 0,
-                'protein' => isset($protein_match[1]) ? floatval($protein_match[1]) : 0,
+                'protein' => isset($protein_match[1]) ? floatval($protein_match[1]) : (isset($protein_match_alt[1]) ? floatval($protein_match_alt[1]) : 0),
                 'carbs' => isset($carbs_match[1]) ? floatval($carbs_match[1]) : 0,
                 'fat' => isset($fat_match[1]) ? floatval($fat_match[1]) : 0
             ];
@@ -1625,10 +1627,23 @@ function getMealSuggestions($user_id) {
             $ingredients = [];
             $conseils = [];
             
-            // Rechercher la section des ingrédients
-            if (preg_match('/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s', $content, $ingredients_match)) {
-                error_log("Section ingrédients trouvée");
-                $ingredients_text = $ingredients_match[1];
+            // Rechercher la section des ingrédients avec différents formats possibles
+            $ingredients_patterns = [
+                '/1\.\s*Ingr[ée]dients\s*:(.*?)(?=2\.|$)/s',
+                '/Ingr[ée]dients\s*:(.*?)(?=\n\n|$)/s',
+                '/\*\*Ingr[ée]dients\s*:\*\*(.*?)(?=\n\n|$)/s'
+            ];
+            
+            $ingredients_text = '';
+            foreach ($ingredients_patterns as $pattern) {
+                if (preg_match($pattern, $content, $ingredients_match)) {
+                    error_log("Section ingrédients trouvée avec le pattern : " . $pattern);
+                    $ingredients_text = $ingredients_match[1];
+                    break;
+                }
+            }
+            
+            if (!empty($ingredients_text)) {
                 error_log("Texte des ingrédients : " . $ingredients_text);
                 
                 // Extraire chaque ingrédient avec sa quantité
@@ -1649,10 +1664,23 @@ function getMealSuggestions($user_id) {
                 error_log("Section ingrédients non trouvée");
             }
             
-            // Rechercher la section des conseils
-            if (preg_match('/4\.\s*Conseils\s*:(.*?)$/s', $content, $conseils_match)) {
-                error_log("Section conseils trouvée");
-                $conseils_text = $conseils_match[1];
+            // Rechercher la section des conseils avec différents formats possibles
+            $conseils_patterns = [
+                '/4\.\s*Conseils\s*:(.*?)$/s',
+                '/Conseils\s*:(.*?)$/s',
+                '/\*\*Conseils\s*:\*\*(.*?)$/s'
+            ];
+            
+            $conseils_text = '';
+            foreach ($conseils_patterns as $pattern) {
+                if (preg_match($pattern, $content, $conseils_match)) {
+                    error_log("Section conseils trouvée avec le pattern : " . $pattern);
+                    $conseils_text = $conseils_match[1];
+                    break;
+                }
+            }
+            
+            if (!empty($conseils_text)) {
                 error_log("Texte des conseils : " . $conseils_text);
                 
                 // Extraire chaque conseil
