@@ -230,6 +230,12 @@ function findSimilarFood($name, $pdo) {
     return fetchAll($sql, $params);
 }
 
+// Fonction pour récupérer les valeurs nutritionnelles d'un aliment
+function getFoodNutrition($food_id) {
+    $sql = "SELECT calories, protein, carbs, fat FROM foods WHERE id = ?";
+    return fetchOne($sql, [$food_id]);
+}
+
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -314,11 +320,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Récupérer les aliments similaires pour l'affichage
+// Récupérer les aliments similaires et leurs valeurs nutritionnelles pour l'affichage
 $similarFoodsMap = [];
 foreach ($data['ingredients'] as $ingredient) {
     if (!shouldExcludeIngredient($ingredient)) {
-        $similarFoodsMap[$ingredient['nom']] = findSimilarFood($ingredient['nom'], $pdo);
+        $similarFoods = findSimilarFood($ingredient['nom'], $pdo);
+        foreach ($similarFoods as &$similar) {
+            $similar['nutrition'] = getFoodNutrition($similar['id']);
+        }
+        $similarFoodsMap[$ingredient['nom']] = $similarFoods;
     }
 }
 ?>
@@ -381,7 +391,10 @@ foreach ($data['ingredients'] as $ingredient) {
                                         $similarFoods = $similarFoodsMap[$name] ?? [];
                                         ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars($name); ?></td>
+                                            <td>
+                                                <?php echo htmlspecialchars($name); ?>
+                                                <i class="fas fa-plus-circle text-primary ms-2"></i>
+                                            </td>
                                             <td><?php echo $macros['calories']; ?></td>
                                             <td><?php echo $macros['proteins']; ?>g</td>
                                             <td><?php echo $macros['carbs']; ?>g</td>
@@ -398,30 +411,30 @@ foreach ($data['ingredients'] as $ingredient) {
                                                 </select>
                                             </td>
                                         </tr>
-                                        <?php if (!empty($similarFoods)): ?>
-                                            <tr class="table-warning">
-                                                <td colspan="6">
-                                                    <div class="alert alert-warning mb-0">
-                                                        <strong>Attention :</strong> Des aliments similaires existent déjà dans la base de données :
-                                                        <ul class="mb-0">
-                                                            <?php foreach ($similarFoods as $similar): ?>
-                                                                <li><?php echo htmlspecialchars($similar['name']); ?></li>
-                                                            <?php endforeach; ?>
-                                                        </ul>
-                                                        <div class="form-check mt-2">
-                                                            <input type="checkbox" 
-                                                                   class="form-check-input" 
-                                                                   name="confirm_add[<?php echo htmlspecialchars($name); ?>]" 
-                                                                   value="yes" 
-                                                                   id="confirm_<?php echo htmlspecialchars($name); ?>">
-                                                            <label class="form-check-label" for="confirm_<?php echo htmlspecialchars($name); ?>">
-                                                                Je confirme que je souhaite ajouter cet aliment malgré les doublons
-                                                            </label>
-                                                        </div>
+                                        <?php foreach ($similarFoods as $similar): ?>
+                                            <tr class="table-light">
+                                                <td>
+                                                    <?php echo htmlspecialchars($similar['name']); ?>
+                                                    <i class="fas fa-check-circle text-success ms-2"></i>
+                                                </td>
+                                                <td><?php echo $similar['nutrition']['calories']; ?></td>
+                                                <td><?php echo $similar['nutrition']['protein']; ?>g</td>
+                                                <td><?php echo $similar['nutrition']['carbs']; ?>g</td>
+                                                <td><?php echo $similar['nutrition']['fat']; ?>g</td>
+                                                <td>
+                                                    <div class="form-check">
+                                                        <input type="checkbox" 
+                                                               class="form-check-input" 
+                                                               name="confirm_add[<?php echo htmlspecialchars($name); ?>]" 
+                                                               value="yes" 
+                                                               id="confirm_<?php echo htmlspecialchars($name); ?>">
+                                                        <label class="form-check-label" for="confirm_<?php echo htmlspecialchars($name); ?>">
+                                                            Utiliser cet aliment
+                                                        </label>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        <?php endif; ?>
+                                        <?php endforeach; ?>
                                     <?php endif; ?>
                                 <?php endforeach; ?>
                             </tbody>
