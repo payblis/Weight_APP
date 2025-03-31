@@ -330,7 +330,7 @@ $max_date = date('Y-m-d', strtotime("-16 years"));
                 <!-- Avantages de l'application -->
                 <div class="card mt-4 shadow-sm">
                     <div class="card-body">
-                        <h5 class="card-title">Pourquoi utiliser Weight Tracker ?</h5>
+                        <h5 class="card-title">Pourquoi utiliser MyFity ?</h5>
                         <div class="row mt-3">
                             <div class="col-md-6">
                                 <div class="d-flex mb-3">
