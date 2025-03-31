@@ -36,7 +36,48 @@ $suggestions = fetchAll($sql, [$user_id]);
 <body>
     <?php include 'navigation.php'; ?>
 
+    <!-- Contenu principal -->
     <div class="container py-4">
+        <!-- Section de débogage -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning">
+                <h5 class="card-title mb-0">Debug Information</h5>
+            </div>
+            <div class="card-body">
+                <?php
+                // Debug: Afficher les informations de session
+                echo "<h6>Session Information:</h6>";
+                echo "<pre>";
+                print_r($_SESSION);
+                echo "</pre>";
+
+                // Debug: Afficher les suggestions brutes de la base de données
+                echo "<h6>Suggestions brutes de la base de données:</h6>";
+                $sql = "SELECT * FROM ai_suggestions WHERE user_id = ? AND suggestion_type IN ('repas', 'alimentation') ORDER BY created_at DESC";
+                $raw_suggestions = fetchAll($sql, [$_SESSION['user_id']]);
+                echo "<pre>";
+                print_r($raw_suggestions);
+                echo "</pre>";
+
+                // Debug: Afficher les suggestions formatées
+                echo "<h6>Suggestions formatées:</h6>";
+                $formatted_suggestions = getMealSuggestions($_SESSION['user_id']);
+                echo "<pre>";
+                print_r($formatted_suggestions);
+                echo "</pre>";
+
+                // Debug: Afficher les erreurs JSON si présentes
+                echo "<h6>Erreurs JSON:</h6>";
+                foreach ($raw_suggestions as $suggestion) {
+                    $json_data = json_decode($suggestion['content'], true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        echo "Erreur JSON pour la suggestion ID {$suggestion['id']}: " . json_last_error_msg() . "<br>";
+                    }
+                }
+                ?>
+            </div>
+        </div>
+
         <h1 class="mb-4">Mon Coach</h1>
 
         <?php if (!empty($errors)): ?>
