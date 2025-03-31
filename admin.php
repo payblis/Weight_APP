@@ -1610,11 +1610,172 @@ try {
                             </div>
                         </div>
                     </div>
-                <?php endif; ?>
-            </main>
-        </div>
-    </div>
+                <?php elseif ($section === 'predefined_meals'): ?>
+                    <!-- Predefined meals management -->
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">Gestion des repas prédéfinis</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createMealModal">
+                                <i class="fas fa-plus me-1"></i>Créer un nouveau repas
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <h6 class="m-0 font-weight-bold">Liste des repas prédéfinis</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Nom</th>
+                                            <th>Description</th>
+                                            <th>Calories</th>
+                                            <th>Protéines</th>
+                                            <th>Glucides</th>
+                                            <th>Lipides</th>
+                                            <th>Statut</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($predefined_meals as $meal): ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars($meal['name']); ?></td>
+                                                <td>
+                                                    <div style="max-height: 3em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                                        <?php echo htmlspecialchars($meal['description'] ?? ''); ?>
+                                                    </div>
+                                                </td>
+                                                <td><?php echo $meal['total_calories']; ?> kcal</td>
+                                                <td><?php echo $meal['total_protein']; ?>g</td>
+                                                <td><?php echo $meal['total_carbs']; ?>g</td>
+                                                <td><?php echo $meal['total_fat']; ?>g</td>
+                                                <td>
+                                                    <span class="badge <?php echo $meal['is_public'] ? 'bg-success' : 'bg-secondary'; ?>">
+                                                        <?php echo $meal['is_public'] ? 'Public' : 'Privé'; ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="editMeal(<?php echo $meal['id']; ?>)">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteMealModal<?php echo $meal['id']; ?>">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                        <?php if (empty($predefined_meals)): ?>
+                                            <tr>
+                                                <td colspan="8" class="text-center">Aucun repas prédéfini trouvé</td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
 
+                    <!-- Modals de suppression -->
+                    <?php foreach ($predefined_meals as $meal): ?>
+                    <div class="modal fade" id="deleteMealModal<?php echo $meal['id']; ?>" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Supprimer le repas</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Êtes-vous sûr de vouloir supprimer le repas "<?php echo htmlspecialchars($meal['name']); ?>" ?</p>
+                                    <p class="text-danger">Cette action est irréversible.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                    <button type="button" class="btn btn-danger" onclick="deleteMeal(<?php echo $meal['id']; ?>)">Supprimer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+
+                    <!-- Modal de création/édition -->
+                    <div class="modal fade" id="createMealModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="mealModalTitle">Créer un nouveau repas</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="mealForm">
+                                        <input type="hidden" id="meal_id" name="meal_id">
+                                        
+                                        <div class="mb-3">
+                                            <label for="meal_name" class="form-label">Nom du repas</label>
+                                            <input type="text" class="form-control" id="meal_name" name="name" required>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="meal_description" class="form-label">Description</label>
+                                            <textarea class="form-control" id="meal_description" name="description" rows="3"></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" id="is_public" name="is_public">
+                                                <label class="form-check-label" for="is_public">Rendre public</label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Aliments</label>
+                                            <div id="foodsList" class="list-group mb-3"></div>
+                                            <button type="button" class="btn btn-outline-primary" onclick="addFoodItem()">
+                                                <i class="fas fa-plus"></i> Ajouter un aliment
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                    <button type="button" class="btn btn-primary" onclick="saveMeal()">Enregistrer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                        let editMode = false;
+                        
+                        function addFoodItem(foodId = '', quantity = '') {
+                            const foodsList = document.getElementById('foodsList');
+                            const foodItem = document.createElement('div');
+                            foodItem.className = 'list-group-item';
+                            foodItem.innerHTML = `
+                                <div class="row g-2">
+                                    <div class="col-md-5">
+                                        <select class="form-select food-select" required>
+                                            <option value="">Sélectionner un aliment</option>
+                                            <?php foreach ($categories as $category): ?>
+                                                <optgroup label="<?php echo htmlspecialchars($category['name']); ?>">
+                                                    <?php
+                                                    $sql = "SELECT id, name FROM foods WHERE category_id = ? ORDER BY name";
+                                                    $foods = fetchAll($sql, [$category['id']]);
+                                                    foreach ($foods as $food):
+                                                    ?>
+                                                        <option value="<?php echo $food['id']; ?>" ${foodId == <?php echo $food['id']; ?> ? 'selected' : ''}>
+                                                            <?php echo htmlspecialchars($food['name']); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </optgroup>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Toggle API key visibility
