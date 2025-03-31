@@ -33,7 +33,6 @@ error_log("Action : " . $action);
 error_log("ID du repas : " . $meal_id);
 error_log("ID du repas prédéfini : " . $predefined_meal_id);
 error_log("GET : " . print_r($_GET, true));
-error_log("=== FIN DU TRAITEMENT ===");
 
 // Traitement des actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -1254,16 +1253,18 @@ function updateMealTotals($meal_id) {
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Type</th>
                                         <th>Date</th>
+                                        <th>Type</th>
                                         <th>Aliments</th>
+                                        <th>Calories</th>
+                                        <th>Notes</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php if (empty($meals)): ?>
                                         <tr>
-                                            <td colspan="8" class="text-center py-4">
+                                            <td colspan="6" class="text-center py-4">
                                                 <p class="text-muted mb-0">Aucun repas enregistré</p>
                                                 <small class="text-muted">Commencez à enregistrer vos repas pour suivre votre alimentation</small>
                                             </td>
