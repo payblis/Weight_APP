@@ -1598,113 +1598,26 @@ function getMealSuggestions($user_id) {
         // Ajouter les informations nutritionnelles pour chaque suggestion
         foreach ($suggestions as &$suggestion) {
             error_log("=== Traitement de la suggestion " . $suggestion['id'] . " ===");
-            $content = $suggestion['name'];
             
-            // Forcer l'encodage UTF-8
-            $content = mb_convert_encoding($content, 'UTF-8', 'auto');
+            // Parser le JSON de la suggestion
+            $data = json_decode($suggestion['name'], true);
             
-            error_log("Contenu brut : " . substr($content, 0, 200) . "...");
-            error_log("Contenu brut UTF-8 décodé : " . mb_convert_encoding($content, 'UTF-8', 'auto'));
-            error_log("Contenu complet : " . $content);
-            
-            // Rechercher les valeurs nutritionnelles dans le contenu
-            preg_match('/calories?\s*:?\s*environ\s*(\d+)\s*kcal/i', $content, $calories_match);
-            preg_match('/prot.*?:\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match);
-            preg_match('/prot.*?:\s*(\d+(?:\.\d+)?)\s*g/i', $content, $protein_match_alt);
-            preg_match('/prot.*?:\s*(\d+(?:\.\d+)?)\s*g(?:\s*\/\s*100g)?/i', $content, $protein_match_alt2);
-            preg_match('/glucides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $carbs_match);
-            preg_match('/lipides?\s*:?\s*environ\s*(\d+(?:\.\d+)?)\s*g/i', $content, $fat_match);
-            
-            error_log("Calories match : " . print_r($calories_match, true));
-            error_log("Protéines match : " . print_r($protein_match, true));
-            error_log("Protéines match alternatif 1 : " . print_r($protein_match_alt, true));
-            error_log("Protéines match alternatif 2 : " . print_r($protein_match_alt2, true));
-            error_log("Glucides match : " . print_r($carbs_match, true));
-            error_log("Lipides match : " . print_r($fat_match, true));
-            
-            // Stocker les valeurs nutritionnelles
-            $suggestion['totals'] = [
-                'calories' => isset($calories_match[1]) ? intval($calories_match[1]) : 0,
-                'protein' => isset($protein_match[1]) ? floatval($protein_match[1]) : 
-                           (isset($protein_match_alt[1]) ? floatval($protein_match_alt[1]) : 
-                           (isset($protein_match_alt2[1]) ? floatval($protein_match_alt2[1]) : 0)),
-                'carbs' => isset($carbs_match[1]) ? floatval($carbs_match[1]) : 0,
-                'fat' => isset($fat_match[1]) ? floatval($fat_match[1]) : 0
-            ];
-            error_log("Totaux nutritionnels : " . print_r($suggestion['totals'], true));
-            
-            // Extraire les ingrédients et les conseils
-            $ingredients = [];
-            $conseils = [];
-            
-            // Rechercher la section des ingrédients avec un pattern plus robuste
-            $ingredients_patterns = [
-                '/Ingr.?:\s*(.*?)\n(?:Valeurs|Calories)/si'
-            ];
-            
-            $ingredients_text = '';
-            foreach ($ingredients_patterns as $pattern) {
-                if (preg_match($pattern, $content, $ingredients_match)) {
-                    error_log("✅ Section ingrédients trouvée avec le pattern : " . $pattern);
-                    $ingredients_text = trim($ingredients_match[1]);
-                    break;
-                }
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log("❌ Erreur de parsing JSON : " . json_last_error_msg());
+                error_log("Contenu brut : " . $suggestion['name']);
+                continue;
             }
             
-            if (!empty($ingredients_text)) {
-                error_log("✅ Ingrédients détectés : " . $ingredients_text);
-                
-                // Extraire chaque ingrédient avec sa quantité
-                preg_match_all('/-\s*(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|unité|tasse|cuillère|pincée)?)?\s*(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list, PREG_SET_ORDER);
-                error_log("Ingrédients extraits : " . print_r($ingredients_list, true));
-                
-                foreach ($ingredients_list as $match) {
-                    $quantity = isset($match[1]) ? trim($match[1]) : '';
-                    $name = trim($match[2]);
-                    if (!empty($name)) {
-                        $ingredients[] = [
-                            'quantity' => $quantity,
-                            'name' => $name
-                        ];
-                    }
-                }
-            } else {
-                error_log("❌ Aucun ingrédient détecté malgré la section !");
-                error_log("Contenu complet pour debug : " . $content);
-            }
+            error_log("✅ JSON parsé avec succès : " . print_r($data, true));
             
-            // Rechercher la section des conseils avec différents formats possibles
-            $conseils_patterns = [
-                '/Conseils\s*:(.*?)$/s',
-                '/4\.\s*Conseils\s*:(.*?)$/s',
-                '/\*\*Conseils\s*:\*\*(.*?)$/s'
-            ];
-            
-            $conseils_text = '';
-            foreach ($conseils_patterns as $pattern) {
-                if (preg_match($pattern, $content, $conseils_match)) {
-                    error_log("Section conseils trouvée avec le pattern : " . $pattern);
-                    $conseils_text = $conseils_match[1];
-                    break;
-                }
-            }
-            
-            if (!empty($conseils_text)) {
-                error_log("Texte des conseils : " . $conseils_text);
-                
-                // Extraire chaque conseil
-                preg_match_all('/-\s*(.*?)(?=\n|$)/', $conseils_text, $conseils_list);
-                error_log("Conseils extraits : " . print_r($conseils_list, true));
-                $conseils = array_map('trim', $conseils_list[1]);
-            } else {
-                error_log("Section conseils non trouvée");
-            }
-            
-            // Formater la description pour l'affichage
+            // Formater la suggestion
+            $suggestion['name'] = $data['nom_du_repas'] ?? 'Repas sans nom';
+            $suggestion['totals'] = $data['valeurs_nutritionnelles'] ?? [];
             $suggestion['description'] = [
-                'ingredients' => $ingredients,
-                'conseils' => $conseils
+                'ingredients' => $data['ingredients'] ?? [],
+                'conseils' => []
             ];
+            
             error_log("Description finale : " . print_r($suggestion['description'], true));
             
             // Ajouter des informations sur la compatibilité avec l'objectif
@@ -1750,30 +1663,31 @@ function callChatGPTAPI($prompt, $api_key) {
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'Tu es un nutritionniste expert qui fournit des suggestions de repas personnalisées et équilibrées. Tu dois fournir une réponse EXACTEMENT dans le format suivant, sans aucune variation :
+                'content' => 'Tu es un nutritionniste expert. Donne-moi une suggestion de repas sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
 
-Nom du repas : [Nom]
-
-Ingrédients :
-- [Quantité] [Unité] [Ingrédient]
-- [Quantité] [Unité] [Ingrédient]
-...
-
-Valeurs nutritionnelles :
-Calories : environ [X] kcal
-Protéines : environ [X]g
-Glucides : environ [X]g
-Lipides : environ [X]g
+{
+  "nom_du_repas": "...",
+  "ingredients": [
+    {"quantité": "...", "nom": "..."},
+    ...
+  ],
+  "valeurs_nutritionnelles": {
+    "calories": ...,
+    "proteines": ...,
+    "glucides": ...,
+    "lipides": ...
+  }
+}
 
 RÈGLES STRICTES :
-1. Ne pas ajouter de texte avant ou après le format ci-dessus
+1. Ne rien ajouter avant ou après le JSON
 2. Ne pas inclure de conseils ou d\'instructions de préparation
-3. Ne pas ajouter de commentaires ou d\'explications supplémentaires
-4. Utiliser exactement les mêmes libellés que dans le format ci-dessus
-5. Les valeurs nutritionnelles doivent être précédées du mot "environ"
-6. Les unités doivent être exactement : kcal pour les calories, g pour les protéines/glucides/lipides
-7. Ne pas ajouter de sections supplémentaires
-8. Ne pas modifier la structure ou l\'ordre des sections'
+3. Ne pas ajouter de commentaires ou d\'explications
+4. Utiliser exactement les mêmes clés que dans le format ci-dessus
+5. Les valeurs nutritionnelles doivent être des nombres (pas de texte)
+6. Les unités doivent être incluses dans les quantités des ingrédients
+7. Ne pas ajouter de champs supplémentaires
+8. Ne pas modifier la structure ou l\'ordre des champs'
             ],
             [
                 'role' => 'user',
