@@ -35,13 +35,8 @@ if (!$profile) {
     redirect('goals.php');
 }
 
-// Calculer l'âge à partir de la date de naissance
-$birth_date = new DateTime($profile['birth_date']);
-$today = new DateTime();
-$age = $birth_date->diff($today)->y;
-
-// Calculer le BMR de base avec l'âge calculé
-$bmr = calculateBMR($current_weight, $profile['height'], $age, $profile['gender']);
+// Calculer le BMR de base avec la fonction de functions.php
+$bmr = calculateBMR($current_weight, $profile['height'], $profile['birth_date'], $profile['gender']);
 
 // Calculer le TDEE (calories de base)
 $tdee = calculateTDEE($bmr, $profile['activity_level']);
@@ -49,21 +44,33 @@ $tdee = calculateTDEE($bmr, $profile['activity_level']);
 // Calculer les calories nécessaires pour l'objectif
 $weight_diff = $pending_goal['target_weight'] - $current_weight;
 $target_date = new DateTime($pending_goal['target_date']);
+$today = new DateTime();
 $days_to_goal = $today->diff($target_date)->days;
+
+error_log("=== Début du calcul de l'ajustement calorique ===");
+error_log("Date cible : " . $pending_goal['target_date']);
+error_log("Date aujourd'hui : " . $today->format('Y-m-d'));
+error_log("Jours jusqu'à l'objectif (brut) : " . $days_to_goal);
 
 if ($days_to_goal <= 0) {
     $days_to_goal = 30; // Utiliser 30 jours comme valeur par défaut
+    error_log("Jours ajustés à 30 (valeur par défaut)");
 }
+
+error_log("Jours finaux jusqu'à l'objectif : " . $days_to_goal);
 
 // Calculer les calories totales nécessaires (1 kg = 7700 calories)
 $total_calories_needed = abs($weight_diff) * 7700;
+error_log("Calories totales nécessaires : " . $total_calories_needed . " (différence de poids : " . $weight_diff . " kg)");
 
 // Calculer l'ajustement quotidien nécessaire
 $daily_adjustment = $total_calories_needed / $days_to_goal;
+error_log("Ajustement quotidien initial : " . $daily_adjustment);
 
 // Ajuster le signe de l'ajustement quotidien en fonction du type d'objectif
 if ($weight_diff < 0) {
     $daily_adjustment = -$daily_adjustment; // Pour la perte de poids
+    error_log("Ajustement quotidien après inversion (perte de poids) : " . $daily_adjustment);
 }
 
 // Vérifier si un programme est actif
@@ -83,6 +90,18 @@ if ($active_program) {
 
 // Ajouter l'ajustement quotidien pour l'objectif
 $daily_calories = $tdee + $daily_adjustment;
+
+// Ajouter des logs pour le débogage
+error_log("=== Calcul des calories pour l'objectif ===");
+error_log("Poids actuel : " . $current_weight);
+error_log("Poids cible : " . $pending_goal['target_weight']);
+error_log("Différence de poids : " . $weight_diff);
+error_log("Jours jusqu'à l'objectif : " . $days_to_goal);
+error_log("Calories totales nécessaires : " . $total_calories_needed);
+error_log("Ajustement quotidien : " . $daily_adjustment);
+error_log("TDEE : " . $tdee);
+error_log("Calories finales : " . $daily_calories);
+error_log("=== Fin du calcul des calories ===");
 
 // Traitement de la confirmation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm'])) {
