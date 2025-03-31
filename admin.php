@@ -300,54 +300,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($post_action === 'create_meal') {
         if (!isset($_POST['name'], $_POST['foods'])) {
             setError("Données manquantes pour créer le repas");
-            break;
-        }
+        } else {
+            try {
+                $db->beginTransaction();
 
-        try {
-            $db->beginTransaction();
-
-            // Calculer les totaux nutritionnels
-            $totalCalories = $totalProteins = $totalCarbs = $totalFats = 0;
-            foreach ($_POST['foods'] as $food) {
-                $foodData = fetchOne("SELECT calories, proteins, carbs, fats FROM foods WHERE id = ?", [$food['food_id']]);
-                if ($foodData) {
-                    $quantity = floatval($food['quantity']) / 100;
-                    $totalCalories += $foodData['calories'] * $quantity;
-                    $totalProteins += $foodData['proteins'] * $quantity;
-                    $totalCarbs += $foodData['carbs'] * $quantity;
-                    $totalFats += $foodData['fats'] * $quantity;
+                // Calculer les totaux nutritionnels
+                $totalCalories = $totalProteins = $totalCarbs = $totalFats = 0;
+                foreach ($_POST['foods'] as $food) {
+                    $foodData = fetchOne("SELECT calories, proteins, carbs, fats FROM foods WHERE id = ?", [$food['food_id']]);
+                    if ($foodData) {
+                        $quantity = floatval($food['quantity']) / 100;
+                        $totalCalories += $foodData['calories'] * $quantity;
+                        $totalProteins += $foodData['proteins'] * $quantity;
+                        $totalCarbs += $foodData['carbs'] * $quantity;
+                        $totalFats += $foodData['fats'] * $quantity;
+                    }
                 }
+
+                // Insérer le repas
+                $sql = "INSERT INTO predefined_meals (name, description, notes, is_public, calories, proteins, carbs, fats, created_at, updated_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([
+                    $_POST['name'],
+                    $_POST['description'] ?? '',
+                    $_POST['notes'] ?? '',
+                    isset($_POST['is_public']) ? 1 : 0,
+                    round($totalCalories, 2),
+                    round($totalProteins, 2),
+                    round($totalCarbs, 2),
+                    round($totalFats, 2)
+                ]);
+                
+                $mealId = $db->lastInsertId();
+
+                // Insérer les aliments du repas
+                $sql = "INSERT INTO predefined_meal_items (meal_id, food_id, quantity) VALUES (?, ?, ?)";
+                $stmt = $db->prepare($sql);
+                foreach ($_POST['foods'] as $food) {
+                    $stmt->execute([$mealId, $food['food_id'], $food['quantity']]);
+                }
+
+                $db->commit();
+                setSuccess("Repas prédéfini créé avec succès");
+            } catch (Exception $e) {
+                $db->rollBack();
+                setError("Erreur lors de la création du repas : " . $e->getMessage());
             }
-
-            // Insérer le repas
-            $sql = "INSERT INTO predefined_meals (name, description, notes, is_public, calories, proteins, carbs, fats, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([
-                $_POST['name'],
-                $_POST['description'] ?? '',
-                $_POST['notes'] ?? '',
-                isset($_POST['is_public']) ? 1 : 0,
-                round($totalCalories, 2),
-                round($totalProteins, 2),
-                round($totalCarbs, 2),
-                round($totalFats, 2)
-            ]);
-            
-            $mealId = $db->lastInsertId();
-
-            // Insérer les aliments du repas
-            $sql = "INSERT INTO predefined_meal_items (meal_id, food_id, quantity) VALUES (?, ?, ?)";
-            $stmt = $db->prepare($sql);
-            foreach ($_POST['foods'] as $food) {
-                $stmt->execute([$mealId, $food['food_id'], $food['quantity']]);
-            }
-
-            $db->commit();
-            setSuccess("Repas prédéfini créé avec succès");
-        } catch (Exception $e) {
-            $db->rollBack();
-            setError("Erreur lors de la création du repas : " . $e->getMessage());
         }
     }
     
@@ -355,60 +354,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($post_action === 'update_meal') {
         if (!isset($_POST['meal_id'], $_POST['name'], $_POST['foods'])) {
             setError("Données manquantes pour modifier le repas");
-            break;
-        }
+        } else {
+            try {
+                $db->beginTransaction();
 
-        try {
-            $db->beginTransaction();
-
-            // Calculer les totaux nutritionnels
-            $totalCalories = $totalProteins = $totalCarbs = $totalFats = 0;
-            foreach ($_POST['foods'] as $food) {
-                $foodData = fetchOne("SELECT calories, proteins, carbs, fats FROM foods WHERE id = ?", [$food['food_id']]);
-                if ($foodData) {
-                    $quantity = floatval($food['quantity']) / 100;
-                    $totalCalories += $foodData['calories'] * $quantity;
-                    $totalProteins += $foodData['proteins'] * $quantity;
-                    $totalCarbs += $foodData['carbs'] * $quantity;
-                    $totalFats += $foodData['fats'] * $quantity;
+                // Calculer les totaux nutritionnels
+                $totalCalories = $totalProteins = $totalCarbs = $totalFats = 0;
+                foreach ($_POST['foods'] as $food) {
+                    $foodData = fetchOne("SELECT calories, proteins, carbs, fats FROM foods WHERE id = ?", [$food['food_id']]);
+                    if ($foodData) {
+                        $quantity = floatval($food['quantity']) / 100;
+                        $totalCalories += $foodData['calories'] * $quantity;
+                        $totalProteins += $foodData['proteins'] * $quantity;
+                        $totalCarbs += $foodData['carbs'] * $quantity;
+                        $totalFats += $foodData['fats'] * $quantity;
+                    }
                 }
+
+                // Mettre à jour le repas
+                $sql = "UPDATE predefined_meals 
+                        SET name = ?, description = ?, notes = ?, is_public = ?, 
+                            calories = ?, proteins = ?, carbs = ?, fats = ?, updated_at = NOW()
+                        WHERE id = ?";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([
+                    $_POST['name'],
+                    $_POST['description'] ?? '',
+                    $_POST['notes'] ?? '',
+                    isset($_POST['is_public']) ? 1 : 0,
+                    round($totalCalories, 2),
+                    round($totalProteins, 2),
+                    round($totalCarbs, 2),
+                    round($totalFats, 2),
+                    $_POST['meal_id']
+                ]);
+
+                // Supprimer les anciens aliments
+                $sql = "DELETE FROM predefined_meal_items WHERE meal_id = ?";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$_POST['meal_id']]);
+
+                // Insérer les nouveaux aliments
+                $sql = "INSERT INTO predefined_meal_items (meal_id, food_id, quantity) VALUES (?, ?, ?)";
+                $stmt = $db->prepare($sql);
+                foreach ($_POST['foods'] as $food) {
+                    $stmt->execute([$_POST['meal_id'], $food['food_id'], $food['quantity']]);
+                }
+
+                $db->commit();
+                setSuccess("Repas prédéfini modifié avec succès");
+            } catch (Exception $e) {
+                $db->rollBack();
+                setError("Erreur lors de la modification du repas : " . $e->getMessage());
             }
-
-            // Mettre à jour le repas
-            $sql = "UPDATE predefined_meals 
-                    SET name = ?, description = ?, notes = ?, is_public = ?, 
-                        calories = ?, proteins = ?, carbs = ?, fats = ?, updated_at = NOW()
-                    WHERE id = ?";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([
-                $_POST['name'],
-                $_POST['description'] ?? '',
-                $_POST['notes'] ?? '',
-                isset($_POST['is_public']) ? 1 : 0,
-                round($totalCalories, 2),
-                round($totalProteins, 2),
-                round($totalCarbs, 2),
-                round($totalFats, 2),
-                $_POST['meal_id']
-            ]);
-
-            // Supprimer les anciens aliments
-            $sql = "DELETE FROM predefined_meal_items WHERE meal_id = ?";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([$_POST['meal_id']]);
-
-            // Insérer les nouveaux aliments
-            $sql = "INSERT INTO predefined_meal_items (meal_id, food_id, quantity) VALUES (?, ?, ?)";
-            $stmt = $db->prepare($sql);
-            foreach ($_POST['foods'] as $food) {
-                $stmt->execute([$_POST['meal_id'], $food['food_id'], $food['quantity']]);
-            }
-
-            $db->commit();
-            setSuccess("Repas prédéfini modifié avec succès");
-        } catch (Exception $e) {
-            $db->rollBack();
-            setError("Erreur lors de la modification du repas : " . $e->getMessage());
         }
     }
     
@@ -416,27 +414,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($post_action === 'delete_meal') {
         if (!isset($_POST['meal_id'])) {
             setError("ID du repas manquant");
-            break;
-        }
+        } else {
+            try {
+                $db->beginTransaction();
 
-        try {
-            $db->beginTransaction();
+                // Supprimer les aliments du repas
+                $sql = "DELETE FROM predefined_meal_items WHERE meal_id = ?";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$_POST['meal_id']]);
 
-            // Supprimer les aliments du repas
-            $sql = "DELETE FROM predefined_meal_items WHERE meal_id = ?";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([$_POST['meal_id']]);
+                // Supprimer le repas
+                $sql = "DELETE FROM predefined_meals WHERE id = ?";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$_POST['meal_id']]);
 
-            // Supprimer le repas
-            $sql = "DELETE FROM predefined_meals WHERE id = ?";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([$_POST['meal_id']]);
-
-            $db->commit();
-            setSuccess("Repas prédéfini supprimé avec succès");
-        } catch (Exception $e) {
-            $db->rollBack();
-            setError("Erreur lors de la suppression du repas : " . $e->getMessage());
+                $db->commit();
+                setSuccess("Repas prédéfini supprimé avec succès");
+            } catch (Exception $e) {
+                $db->rollBack();
+                setError("Erreur lors de la suppression du repas : " . $e->getMessage());
+            }
         }
     }
 }
