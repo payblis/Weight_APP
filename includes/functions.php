@@ -1639,20 +1639,20 @@ function getMealSuggestions($user_id) {
             
             // Rechercher la section des ingrédients avec un pattern plus robuste
             $ingredients_patterns = [
-                '/Ingr.?:\s*(.*?)(?=\n(?:\w|V|P|C|$)|Valeurs|Calories)/si'
+                '/Ingr.?:\s*(.*?)\n(?:Valeurs|Calories)/si'
             ];
             
             $ingredients_text = '';
             foreach ($ingredients_patterns as $pattern) {
                 if (preg_match($pattern, $content, $ingredients_match)) {
-                    error_log("Section ingrédients trouvée avec le pattern : " . $pattern);
-                    $ingredients_text = $ingredients_match[1];
+                    error_log("✅ Section ingrédients trouvée avec le pattern : " . $pattern);
+                    $ingredients_text = trim($ingredients_match[1]);
                     break;
                 }
             }
             
             if (!empty($ingredients_text)) {
-                error_log("Texte des ingrédients : " . $ingredients_text);
+                error_log("✅ Ingrédients détectés : " . $ingredients_text);
                 
                 // Extraire chaque ingrédient avec sa quantité
                 preg_match_all('/-\s*(\d+(?:\.\d+)?\s*(?:g|kg|ml|l|unité|tasse|cuillère|pincée)?)?\s*(.*?)(?=\n|$)/', $ingredients_text, $ingredients_list, PREG_SET_ORDER);
@@ -1669,7 +1669,8 @@ function getMealSuggestions($user_id) {
                     }
                 }
             } else {
-                error_log("Section ingrédients non trouvée");
+                error_log("❌ Aucun ingrédient détecté malgré la section !");
+                error_log("Contenu complet pour debug : " . $content);
             }
             
             // Rechercher la section des conseils avec différents formats possibles
