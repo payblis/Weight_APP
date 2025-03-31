@@ -54,7 +54,10 @@ $suggestions = fetchAll($sql, [$user_id]);
                 // Debug: Afficher les suggestions brutes de la base de données
                 echo "<h6>Suggestions brutes de la base de données:</h6>";
                 $sql = "SELECT * FROM ai_suggestions WHERE user_id = ? AND suggestion_type IN ('repas', 'alimentation') ORDER BY created_at DESC";
+                error_log("SQL Query pour récupérer les suggestions: " . $sql);
+                error_log("User ID: " . $_SESSION['user_id']);
                 $raw_suggestions = fetchAll($sql, [$_SESSION['user_id']]);
+                error_log("Résultats de la requête: " . print_r($raw_suggestions, true));
                 echo "<pre>";
                 print_r($raw_suggestions);
                 echo "</pre>";
@@ -75,6 +78,7 @@ $suggestions = fetchAll($sql, [$user_id]);
                 // Debug: Afficher les suggestions formatées
                 echo "<h6>Suggestions formatées:</h6>";
                 $formatted_suggestions = getMealSuggestions($_SESSION['user_id']);
+                error_log("Suggestions formatées: " . print_r($formatted_suggestions, true));
                 echo "<pre>";
                 print_r($formatted_suggestions);
                 echo "</pre>";

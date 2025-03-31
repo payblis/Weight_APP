@@ -189,18 +189,31 @@ try {
     
     // Stocker la suggestion dans la base de données
     if (!empty($suggestion_content)) {
-        error_log("Insertion de la suggestion dans la base de données");
+        error_log("=== Début de l'insertion de la suggestion ===");
+        error_log("User ID: " . $user_id);
+        error_log("Type de suggestion: " . $suggestion_type);
+        error_log("Contenu à insérer: " . mb_convert_encoding($suggestion_content, 'UTF-8', 'auto'));
+        
         $sql = "INSERT INTO ai_suggestions (user_id, suggestion_type, content, created_at) VALUES (?, ?, ?, NOW())";
+        error_log("SQL Query: " . $sql);
+        error_log("Paramètres: " . print_r([$user_id, $suggestion_type, $suggestion_content], true));
+        
         $result = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
         
         if ($result) {
-            error_log("✅ Suggestion insérée avec succès");
+            error_log("✅ Suggestion insérée avec succès. ID: " . getLastInsertId());
+            // Vérifier que la suggestion a bien été insérée
+            $check_sql = "SELECT * FROM ai_suggestions WHERE id = ?";
+            $check_result = fetchOne($check_sql, [getLastInsertId()]);
+            error_log("Vérification de l'insertion: " . print_r($check_result, true));
+            
             // Rediriger vers my-coach.php avec un message de succès
             $_SESSION['success_message'] = "Suggestion générée avec succès";
             header('Location: my-coach.php');
             exit;
         } else {
             error_log("❌ Erreur lors de l'insertion de la suggestion");
+            error_log("Dernière erreur SQL: " . getLastError());
             throw new Exception("Erreur lors de l'enregistrement de la suggestion");
         }
     } else {
