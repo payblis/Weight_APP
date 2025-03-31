@@ -1,9 +1,9 @@
 <?php
 // Configuration de la base de données
 define('DB_HOST', 'localhost');
-define('DB_USER', 'test');
-define('DB_PASS', 'Bk7p8*o89');
-define('DB_NAME', 'test'); // Modifié pour correspondre à la base de données de l'utilisateur
+define('DB_USER', 'rt_adm_4515hji');
+define('DB_PASS', 'xS61ay*09');
+define('DB_NAME', 'myfity0001'); // Modifié pour correspondre à la base de données de l'utilisateur
 
 // Variable globale pour la connexion PDO (utilisée par functions.php)
 $GLOBALS['pdo'] = null;
