@@ -69,7 +69,7 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                     
                     // Si l'utilisateur est à moins de 1,2kg de son objectif
                     if ($weight_diff <= 1.2 && $weight_diff > 0.1) {
-                        $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1,2kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
+                        $_SESSION['encouragement_message'] = "Bravo ! Il ne vous reste plus que " . number_format($weight_diff, 1) . " kg à perdre pour atteindre votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
                     } else {
                         // Si l'utilisateur est à plus de 1,2kg de son objectif, supprimer le message d'encouragement
                         unset($_SESSION['encouragement_message']);
@@ -125,7 +125,7 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                     
                     // Si l'utilisateur est à moins de 1,2kg de son objectif
                     if ($weight_diff <= 1.2 && $weight_diff > 0.1) {
-                        $_SESSION['encouragement_message'] = "Bravo ! Vous êtes à moins de 1,2kg de votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
+                        $_SESSION['encouragement_message'] = "Bravo ! Il ne vous reste plus que " . number_format($weight_diff, 1) . " kg à perdre pour atteindre votre objectif de " . number_format($current_goal['target_weight'], 1) . " kg. Continuez comme ça !";
                     } else {
                         // Si l'utilisateur est à plus de 1,2kg de son objectif, supprimer le message d'encouragement
                         unset($_SESSION['encouragement_message']);

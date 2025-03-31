@@ -215,6 +215,10 @@ if ($action === 'delete' && isset($_GET['id'])) {
     redirect('programs.php');
 }
 
+// Récupérer l'objectif actuel de l'utilisateur
+$sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+$current_goal = fetchOne($sql, [$user_id]);
+
 // Récupérer le programme actif de l'utilisateur
 $sql = "SELECT p.* FROM user_programs up 
         JOIN programs p ON up.program_id = p.id 
@@ -269,6 +273,14 @@ $programs = fetchAll($sql, []);
                 echo $_SESSION['error'];
                 unset($_SESSION['error']);
                 ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!$current_goal): ?>
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Vous devez d'abord définir un objectif de poids avant de pouvoir rejoindre un programme.
+                <a href="goals.php" class="alert-link">Définir un objectif</a>
             </div>
         <?php endif; ?>
 
@@ -400,7 +412,7 @@ $programs = fetchAll($sql, []);
                                                     data-bs-target="#viewProgram<?php echo $program['id']; ?>">
                                                 <i class="fas fa-eye me-1"></i>Voir le détail
                                             </button>
-                                            <?php if (!$active_program): ?>
+                                            <?php if (!$active_program && $current_goal): ?>
                                                 <form method="post" action="" class="d-inline">
                                                     <input type="hidden" name="action" value="activate">
                                                     <input type="hidden" name="program_id" value="<?php echo $program['id']; ?>">
