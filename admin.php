@@ -1776,6 +1776,99 @@ try {
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
+                                    <div class="col-md-5">
+                                        <input type="number" class="form-control quantity-input" placeholder="Quantité (g)" min="0" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-danger" onclick="this.parentElement.parentElement.parentElement.remove()">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            foodsList.appendChild(foodItem);
+                        }
+
+                        function saveMeal() {
+                            const form = document.getElementById('createMealForm');
+                            const foods = [];
+                            
+                            document.querySelectorAll('#foodsList .list-group-item').forEach(item => {
+                                const foodId = item.querySelector('.food-select').value;
+                                const quantity = item.querySelector('.quantity-input').value;
+                                if (foodId && quantity) {
+                                    foods.push({
+                                        food_id: foodId,
+                                        quantity: quantity
+                                    });
+                                }
+                            });
+
+                            const data = {
+                                name: form.querySelector('[name="name"]').value,
+                                description: form.querySelector('[name="description"]').value,
+                                is_public: form.querySelector('[name="is_public"]').checked ? 1 : 0,
+                                foods: foods
+                            };
+
+                            fetch('admin/create-predefined-meal.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(data)
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    window.location.reload();
+                                } else {
+                                    alert(data.message || 'Erreur lors de la création du repas');
+                                }
+                            })
+                            .catch(error => {
+                                alert('Erreur: ' + error.message);
+                            });
+                        }
+
+                        function viewMealDetails(mealId) {
+                            // Implémenter la visualisation des détails
+                        }
+
+                        function editMeal(mealId) {
+                            // Implémenter la modification
+                        }
+
+                        function deleteMeal(mealId) {
+                            if (confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')) {
+                                fetch('admin/delete-predefined-meal.php', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        id: mealId
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        window.location.reload();
+                                    } else {
+                                        alert(data.message || 'Erreur lors de la suppression');
+                                    }
+                                })
+                                .catch(error => {
+                                    alert('Erreur: ' + error.message);
+                                });
+                            }
+                        }
+                    </script>
+                <?php endif; ?>
+            </main>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Toggle API key visibility
@@ -1824,3 +1917,4 @@ try {
     </script>
 </body>
 </html>
+<?php endif; // Fermeture de la condition if ($section === 'predefined_meals') ?>
