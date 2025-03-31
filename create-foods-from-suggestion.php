@@ -111,12 +111,27 @@ function calculateIngredientMacros($ingredient) {
     return null;
 }
 
+// Récupérer les catégories d'aliments
+$sql = "SELECT * FROM food_categories ORDER BY name";
+$categories = fetchAll($sql);
+
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        // Récupérer les catégories d'aliments
-        $sql = "SELECT * FROM food_categories ORDER BY name";
-        $categories = fetchAll($sql);
+        // Vérifier que toutes les catégories sont sélectionnées
+        $missing_categories = [];
+        foreach ($data['ingredients'] as $ingredient) {
+            if (!shouldExcludeIngredient($ingredient)) {
+                $name = $ingredient['nom'];
+                if (empty($_POST['category_id'][$name])) {
+                    $missing_categories[] = $name;
+                }
+            }
+        }
+
+        if (!empty($missing_categories)) {
+            throw new Exception("Veuillez sélectionner une catégorie pour les ingrédients suivants : " . implode(", ", $missing_categories));
+        }
 
         // Insérer chaque aliment
         foreach ($data['ingredients'] as $ingredient) {
@@ -141,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $macros['proteins'],
                     $macros['carbs'],
                     $macros['fats'],
-                    $_POST['category_id'][$name] ?? 7 // Catégorie par défaut : "Autres"
+                    $_POST['category_id'][$name]
                 ];
                 
                 insert($sql, $params);
@@ -220,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <td><?php echo $macros['fats']; ?>g</td>
                                             <td>
                                                 <select name="category_id[<?php echo htmlspecialchars($ingredient['nom']); ?>]" 
-                                                        class="form-select">
+                                                        class="form-select" required>
                                                     <option value="">Sélectionner une catégorie</option>
                                                     <?php foreach ($categories as $category): ?>
                                                         <option value="<?php echo $category['id']; ?>">
