@@ -56,6 +56,10 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
             $result = update($sql, [$weight, $notes, $existing_entry['id']]);
             
             if ($result) {
+                // Mettre à jour le poids dans user_profiles
+                $sql = "UPDATE user_profiles SET weight = ?, updated_at = NOW() WHERE user_id = ?";
+                update($sql, [$weight, $user_id]);
+                
                 // Vérifier si un objectif est atteint
                 if ($current_goal) {
                     // Vérifier et mettre à jour le poids dans le profil
@@ -135,6 +139,10 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
             $result = insert($sql, [$user_id, $weight, $log_date, $notes]);
             
             if ($result) {
+                // Mettre à jour le poids dans user_profiles
+                $sql = "UPDATE user_profiles SET weight = ?, updated_at = NOW() WHERE user_id = ?";
+                update($sql, [$weight, $user_id]);
+                
                 // Vérifier si un objectif est atteint
                 if ($current_goal) {
                     // Vérifier et mettre à jour le poids dans le profil

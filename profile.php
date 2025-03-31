@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $age = $birth_date_obj->diff($today)->y;
                     error_log("Âge calculé : " . $age);
                     
-                    // Calculer le BMR de base
+                    // Calculer le BMR de base avec le dernier poids
                     $bmr = calculateBMR($latest_weight['weight'], $profile['height'], $age, $profile['gender']);
                     error_log("BMR calculé : " . $bmr);
                     
@@ -67,15 +67,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $current_goal = fetchOne($sql, [$user_id]);
                     
                     $final_calories = $tdee;
+                    $protein_ratio = 0.3;
+                    $carbs_ratio = 0.4;
+                    $fat_ratio = 0.3;
                     
                     // Calculer les calories nécessaires pour l'objectif
                     if ($current_goal) {
                         error_log("=== Début du calcul des calories pour l'objectif ===");
-                        error_log("Poids actuel : " . $profile['weight']);
+                        error_log("Poids actuel : " . $latest_weight['weight']);
                         error_log("Poids cible : " . $current_goal['target_weight']);
                         
                         // Calculer la différence de poids
-                        $weight_diff = $current_goal['target_weight'] - $profile['weight'];
+                        $weight_diff = $current_goal['target_weight'] - $latest_weight['weight'];
                         error_log("Différence de poids : " . $weight_diff . " kg");
                         
                         // Calculer le nombre de jours jusqu'à l'objectif
@@ -103,6 +106,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             // Ajouter l'ajustement du programme aux calories de base
                             $tdee += $program_adjustment;
                             error_log("TDEE après ajustement programme : " . $tdee);
+                            
+                            // Utiliser les ratios du programme
+                            $protein_ratio = $active_program['protein_ratio'];
+                            $carbs_ratio = $active_program['carbs_ratio'];
+                            $fat_ratio = $active_program['fat_ratio'];
                         }
                         
                         // Ajouter l'ajustement quotidien pour l'objectif
@@ -111,10 +119,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("=== Fin du calcul des calories pour l'objectif ===");
                     }
                     
-                    // Mettre à jour les calories dans le profil
-                    $sql = "UPDATE user_profiles SET daily_calories = ?, updated_at = NOW() WHERE user_id = ?";
-                    update($sql, [$final_calories, $user_id]);
-                    error_log("Calories mises à jour dans le profil : " . $final_calories);
+                    // Mettre à jour les calories et les ratios dans le profil
+                    $sql = "UPDATE user_profiles SET 
+                            daily_calories = ?, 
+                            protein_ratio = ?,
+                            carbs_ratio = ?,
+                            fat_ratio = ?,
+                            updated_at = NOW() 
+                            WHERE user_id = ?";
+                    update($sql, [$final_calories, $protein_ratio, $carbs_ratio, $fat_ratio, $user_id]);
+                    error_log("Calories et ratios mis à jour dans le profil : " . $final_calories);
                     error_log("=== Fin du calcul des calories ===");
                     
                     $success_message = "Vos besoins caloriques ont été recalculés avec succès !";
