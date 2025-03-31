@@ -350,12 +350,12 @@ unset($_SESSION['error_message']);
                             <input type="number" class="form-control quantity-input" value="100" min="0">
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label">Valeurs nutritionnelles</label>
+                            <label class="form-label">Valeurs nutritionnelles (pour 100g)</label>
                             <div class="nutrition-values">
-                                Calories: ${food.calories} | 
-                                Protéines: ${food.protein}g | 
-                                Glucides: ${food.carbs}g | 
-                                Lipides: ${food.fat}g
+                                Calories: ${food.calories || 0} | 
+                                Protéines: ${food.protein || 0}g | 
+                                Glucides: ${food.carbs || 0}g | 
+                                Lipides: ${food.fat || 0}g
                             </div>
                         </div>
                     </div>
@@ -373,12 +373,15 @@ unset($_SESSION['error_message']);
             selectedFoods.forEach(item => {
                 if (item.querySelector('input[type="checkbox"]').checked) {
                     const quantity = parseFloat(item.querySelector('.quantity-input').value) / 100;
-                    const food = createdFoods.find(f => f.name === item.querySelector('strong').textContent);
+                    const foodName = item.querySelector('strong').textContent;
+                    const food = createdFoods.find(f => f.name === foodName);
                     
-                    totals.calories += food.calories * quantity;
-                    totals.protein += food.protein * quantity;
-                    totals.carbs += food.carbs * quantity;
-                    totals.fat += food.fat * quantity;
+                    if (food) {
+                        totals.calories += (food.calories || 0) * quantity;
+                        totals.protein += (food.protein || 0) * quantity;
+                        totals.carbs += (food.carbs || 0) * quantity;
+                        totals.fat += (food.fat || 0) * quantity;
+                    }
                 }
             });
             
