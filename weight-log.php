@@ -183,38 +183,63 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST[
                     }
                 }
                 
-                // Recalculer les calories de base
-                $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
-                $profile = fetchOne($sql, [$user_id]);
+                // Récupérer le poids initial (le plus ancien poids enregistré)
+                $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date ASC LIMIT 1";
+                $initial_weight = fetchOne($sql, [$user_id]);
                 
-                if ($profile) {
-                    // Calculer le BMR de base avec le nouveau poids
-                    $bmr = calculateBMR($weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+                if ($initial_weight) {
+                    $weight_change = abs($weight - $initial_weight['weight']);
+                    error_log("Variation de poids depuis le début : " . $weight_change . " kg");
                     
-                    // Calculer le TDEE (calories de base)
-                    $tdee = calculateTDEE($bmr, $profile['activity_level']);
-                    
-                    // Vérifier si l'utilisateur a un programme actif
-                    $sql = "SELECT * FROM user_programs WHERE user_id = ? AND status = 'actif'";
-                    $active_program = fetchOne($sql, [$user_id]);
-                    
-                    if ($active_program) {
-                        // Si un programme est actif, mettre à jour directement les calories
-                        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
-                        update($sql, [$tdee, $user_id]);
+                    // Si la variation de poids est supérieure à 2kg
+                    if ($weight_change > 2) {
+                        // Calculer le BMR de base avec le nouveau poids
+                        $bmr = calculateBMR($weight, $profile['height'], $profile['birth_date'], $profile['gender']);
+                        
+                        // Calculer le TDEE (calories de base)
+                        $tdee = calculateTDEE($bmr, $profile['activity_level']);
+                        
+                        // Vérifier si l'utilisateur a un programme actif
+                        $sql = "SELECT p.* FROM user_programs up 
+                                JOIN programs p ON up.program_id = p.id 
+                                WHERE up.user_id = ? AND up.status = 'actif'";
+                        $active_program = fetchOne($sql, [$user_id]);
+                        
+                        if ($active_program) {
+                            // Si un programme est actif, mettre à jour directement les calories
+                            $program_adjustment = $tdee * ($active_program['calorie_adjustment'] / 100);
+                            $final_calories = $tdee + $program_adjustment;
+                            
+                            $sql = "UPDATE user_profiles SET 
+                                    daily_calories = ?,
+                                    protein_ratio = ?,
+                                    carbs_ratio = ?,
+                                    fat_ratio = ?,
+                                    updated_at = NOW()
+                                    WHERE user_id = ?";
+                            update($sql, [
+                                $final_calories,
+                                $active_program['protein_ratio'],
+                                $active_program['carbs_ratio'],
+                                $active_program['fat_ratio'],
+                                $user_id
+                            ]);
+                            
+                            $success_message = "Votre poids a été enregistré avec succès ! Vos besoins caloriques ont été ajustés en fonction de votre nouveau poids.";
+                        } else {
+                            // Si pas de programme actif, demander confirmation
+                            $_SESSION['pending_calories_update'] = [
+                                'tdee' => $tdee,
+                                'weight' => $weight,
+                                'weight_change' => $weight_change
+                            ];
+                            $success_message = "Votre poids a été enregistré avec succès ! Une variation de " . number_format($weight_change, 1) . " kg a été détectée depuis le début. Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau poids ?";
+                        }
                     } else {
-                        // Si pas de programme actif, demander confirmation
-                        $_SESSION['pending_calories_update'] = [
-                            'tdee' => $tdee,
-                            'weight' => $weight
-                        ];
-                        $success_message = "Votre poids a été enregistré avec succès ! Voulez-vous mettre à jour vos besoins caloriques en fonction de votre nouveau poids ?";
-                        $weight = '';
-                        $notes = '';
+                        $success_message = "Votre poids a été enregistré avec succès !";
                     }
                 }
                 
-                $success_message = "Votre poids a été enregistré avec succès !";
                 $weight = '';
                 $notes = '';
             } else {
@@ -229,10 +254,31 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_calories' && isset($
     $pending_update = $_SESSION['pending_calories_update'];
     
     if ($_POST['confirm'] === 'yes') {
-        // Mettre à jour les calories
-        $sql = "UPDATE user_profiles SET daily_calories = ? WHERE user_id = ?";
-        update($sql, [$pending_update['tdee'], $user_id]);
-        $success_message = "Vos besoins caloriques ont été mis à jour avec succès !";
+        // Récupérer les ratios actuels
+        $sql = "SELECT protein_ratio, carbs_ratio, fat_ratio FROM user_profiles WHERE user_id = ?";
+        $current_ratios = fetchOne($sql, [$user_id]);
+        
+        // Calculer les macros en grammes avec les ratios actuels
+        $protein_grams = ($pending_update['tdee'] * $current_ratios['protein_ratio']) / 4;
+        $carbs_grams = ($pending_update['tdee'] * $current_ratios['carbs_ratio']) / 4;
+        $fat_grams = ($pending_update['tdee'] * $current_ratios['fat_ratio']) / 9;
+        
+        // Mettre à jour uniquement les calories et les macros en grammes
+        $sql = "UPDATE user_profiles SET 
+                daily_calories = ?,
+                protein_grams = ?,
+                carbs_grams = ?,
+                fat_grams = ?,
+                updated_at = NOW()
+                WHERE user_id = ?";
+        update($sql, [
+            $pending_update['tdee'],
+            $protein_grams,
+            $carbs_grams,
+            $fat_grams,
+            $user_id
+        ]);
+        $success_message = "Vos besoins caloriques et vos macronutriments ont été mis à jour avec succès !";
     }
     
     // Nettoyer la session
