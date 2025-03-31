@@ -399,7 +399,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     error_log("Action GET : " . $action);
     error_log("ID du repas : " . $meal_id);
     
-    if ($action === 'delete' && $meal_id > 0) {
+    if ($action === 'delete_meal' && $meal_id > 0) {
         error_log("=== DÉBUT DE LA SUPPRESSION DE REPAS VIA GET ===");
         try {
             // Vérifier si le repas existe et appartient à l'utilisateur
@@ -1172,7 +1172,7 @@ function updateMealTotals($meal_id) {
                                                            class="btn btn-sm btn-outline-secondary">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
-                                                        <a href="food-log.php?action=delete&meal_id=<?php echo $meal['id']; ?>" 
+                                                        <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" 
                                                            class="btn btn-sm btn-outline-danger"
                                                            onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
                                                             <i class="fas fa-trash"></i>
@@ -1294,7 +1294,7 @@ function updateMealTotals($meal_id) {
                                                            class="btn btn-sm btn-outline-secondary">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
-                                                        <a href="food-log.php?action=delete&id=<?php echo $meal['id']; ?>" 
+                                                        <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" 
                                                            class="btn btn-sm btn-outline-danger"
                                                            onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
                                                             <i class="fas fa-trash"></i>
