@@ -114,15 +114,15 @@ $suggestions = fetchAll($sql, [$user_id]);
                                                 <?php
                                                 $data = json_decode($suggestion['content'], true);
                                                 if ($data): ?>
-                                                    <h6><?php echo htmlspecialchars($data['nom_du_repas']); ?></h6>
+                                                    <h6><?php echo htmlspecialchars($data['nom_du_repas'] ?? 'Suggestion de repas'); ?></h6>
                                                     
                                                     <div class="mb-3">
                                                         <h6>Valeurs nutritionnelles :</h6>
                                                         <ul class="list-unstyled">
-                                                            <li>Calories : <?php echo $data['valeurs_nutritionnelles']['calories']; ?> kcal</li>
-                                                            <li>Protéines : <?php echo $data['valeurs_nutritionnelles']['proteines']; ?> g</li>
-                                                            <li>Glucides : <?php echo $data['valeurs_nutritionnelles']['glucides']; ?> g</li>
-                                                            <li>Lipides : <?php echo $data['valeurs_nutritionnelles']['lipides']; ?> g</li>
+                                                            <li>Calories : <?php echo $data['valeurs_nutritionnelles']['calories'] ?? 0; ?> kcal</li>
+                                                            <li>Protéines : <?php echo $data['valeurs_nutritionnelles']['proteines'] ?? 0; ?> g</li>
+                                                            <li>Glucides : <?php echo $data['valeurs_nutritionnelles']['glucides'] ?? 0; ?> g</li>
+                                                            <li>Lipides : <?php echo $data['valeurs_nutritionnelles']['lipides'] ?? 0; ?> g</li>
                                                         </ul>
                                                     </div>
 
@@ -131,8 +131,8 @@ $suggestions = fetchAll($sql, [$user_id]);
                                                         <ul class="list-unstyled">
                                                             <?php foreach ($data['ingredients'] as $ingredient): ?>
                                                                 <li>
-                                                                    <?php echo htmlspecialchars($ingredient['nom']); ?> 
-                                                                    (<?php echo htmlspecialchars($ingredient['quantite']); ?>)
+                                                                    <?php echo htmlspecialchars($ingredient['nom'] ?? 'Ingrédient inconnu'); ?> 
+                                                                    (<?php echo htmlspecialchars($ingredient['quantite'] ?? 'Quantité non spécifiée'); ?>)
                                                                 </li>
                                                             <?php endforeach; ?>
                                                         </ul>
@@ -141,7 +141,7 @@ $suggestions = fetchAll($sql, [$user_id]);
                                                     <div class="mb-3">
                                                         <h6>Instructions :</h6>
                                                         <ol>
-                                                            <?php foreach ($data['instructions'] as $instruction): ?>
+                                                            <?php foreach ($data['instructions'] ?? [] as $instruction): ?>
                                                                 <li><?php echo htmlspecialchars($instruction); ?></li>
                                                             <?php endforeach; ?>
                                                         </ol>

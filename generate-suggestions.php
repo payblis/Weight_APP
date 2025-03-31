@@ -128,10 +128,6 @@ try {
             $prompt .= "      \"glucides\": 0,\n";
             $prompt .= "      \"lipides\": 0\n";
             $prompt .= "    }\n";
-            $prompt .= "  ],\n";
-            $prompt .= "  \"instructions\": [\n";
-            $prompt .= "    \"Instruction 1\",\n";
-            $prompt .= "    \"Instruction 2\"\n";
             $prompt .= "  ]\n";
             $prompt .= "}\n";
             
@@ -152,6 +148,25 @@ try {
                 error_log("Erreur de parsing JSON : " . json_last_error_msg());
                 throw new Exception("La réponse de l'API n'est pas un JSON valide");
             }
+
+            // Vérifier la structure minimale requise
+            if (!isset($json_data['nom_du_repas']) || !isset($json_data['valeurs_nutritionnelles']) || !isset($json_data['ingredients'])) {
+                error_log("Structure JSON invalide : " . print_r($json_data, true));
+                throw new Exception("La réponse de l'API ne contient pas tous les champs requis");
+            }
+
+            // Ajouter des instructions par défaut si manquantes
+            if (!isset($json_data['instructions'])) {
+                $json_data['instructions'] = [
+                    "Préparer tous les ingrédients",
+                    "Assaisonner selon vos goûts",
+                    "Suivre les temps de cuisson recommandés"
+                ];
+            }
+
+            // Reconvertir en JSON pour le stockage
+            $suggestion_content = json_encode($json_data, JSON_UNESCAPED_UNICODE);
+            error_log("JSON final à stocker : " . $suggestion_content);
             break;
             
         default:
