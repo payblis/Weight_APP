@@ -120,19 +120,57 @@ function fetchAll($sql, $params = []) {
 
 // Fonction pour insérer des données et retourner l'ID
 function insert($sql, $params = []) {
-    global $pdo;
-    try {
-        error_log("Exécution de la requête insert : " . $sql);
-        error_log("Paramètres : " . print_r($params, true));
-        $stmt = $pdo->prepare($sql);
-        $result = $stmt->execute($params);
-        $lastId = $pdo->lastInsertId();
-        error_log("Résultat de insert : " . ($result ? "Succès" : "Échec") . ", ID : " . $lastId);
-        return $lastId;
-    } catch (Exception $e) {
-        error_log("Erreur dans insert: " . $e->getMessage());
+    $conn = connectDB();
+    $stmt = $conn->prepare($sql);
+    
+    if (!$stmt) {
+        error_log("Erreur de préparation de la requête: " . $conn->error . " - SQL: " . $sql);
         return 0;
     }
+    
+    if (!empty($params)) {
+        $types = '';
+        $bindParams = [];
+        
+        // Déterminer les types de paramètres
+        foreach ($params as $param) {
+            if (is_int($param)) {
+                $types .= 'i';
+            } elseif (is_float($param)) {
+                $types .= 'd';
+            } elseif (is_string($param)) {
+                $types .= 's';
+            } else {
+                $types .= 'b';
+            }
+        }
+        
+        // Créer un tableau de références pour bind_param
+        $bindParams[] = &$types;
+        
+        // Créer des références pour chaque paramètre
+        $paramRefs = [];
+        foreach ($params as $key => $value) {
+            $paramRefs[$key] = $value;
+            $bindParams[] = &$paramRefs[$key];
+        }
+        
+        // Lier les paramètres dynamiquement
+        call_user_func_array([$stmt, 'bind_param'], $bindParams);
+    }
+    
+    error_log("Exécution de la requête insert : " . $sql);
+    error_log("Paramètres : " . print_r($params, true));
+    
+    $stmt->execute();
+    $lastId = $conn->insert_id;
+    
+    error_log("Résultat de insert : " . ($lastId ? "Succès" : "Échec") . ", ID : " . $lastId);
+    
+    $stmt->close();
+    $conn->close();
+    
+    return $lastId;
 }
 
 // Fonction pour mettre à jour des données et retourner le nombre de lignes affectées
