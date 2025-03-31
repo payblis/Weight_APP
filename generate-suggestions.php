@@ -24,6 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $data = json_decode(file_get_contents('php://input'), true);
 $suggestion_type = $data['type'] ?? 'repas';
 
+// Définir l'encodage UTF-8 pour les logs
+mb_internal_encoding('UTF-8');
+
 // Récupérer les informations de l'utilisateur
 $user_id = $_SESSION['user_id'];
 
@@ -131,7 +134,7 @@ try {
             $prompt .= "  ]\n";
             $prompt .= "}\n";
             
-            error_log("Prompt généré : " . $prompt);
+            error_log("Prompt généré : " . mb_convert_encoding($prompt, 'UTF-8', 'auto'));
             
             // Appeler l'API ChatGPT
             $api_key = getSetting('chatgpt_api_key');
@@ -140,7 +143,7 @@ try {
             }
             
             $suggestion_content = callChatGPTAPI($prompt, $api_key);
-            error_log("Réponse de l'API : " . $suggestion_content);
+            error_log("Réponse de l'API : " . mb_convert_encoding($suggestion_content, 'UTF-8', 'auto'));
             
             // Vérifier que le contenu est un JSON valide
             $json_data = json_decode($suggestion_content, true);
@@ -166,7 +169,7 @@ try {
 
             // Reconvertir en JSON pour le stockage
             $suggestion_content = json_encode($json_data, JSON_UNESCAPED_UNICODE);
-            error_log("JSON final à stocker : " . $suggestion_content);
+            error_log("JSON final à stocker : " . mb_convert_encoding($suggestion_content, 'UTF-8', 'auto'));
             break;
             
         default:
@@ -195,7 +198,7 @@ try {
     }
     
 } catch (Exception $e) {
-    error_log("Erreur dans generate-suggestions.php: " . $e->getMessage());
+    error_log("Erreur dans generate-suggestions.php: " . mb_convert_encoding($e->getMessage(), 'UTF-8', 'auto'));
     $_SESSION['error_message'] = $e->getMessage();
     header('Location: my-coach.php');
     exit;
