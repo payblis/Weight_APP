@@ -8,14 +8,15 @@ error_log("User ID: " . $_SESSION['user_id']);
 // Vérifier que l'utilisateur est connecté
 if (!isLoggedIn()) {
     error_log("❌ Utilisateur non connecté");
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Vous devez être connecté pour effectuer cette action']);
+    $_SESSION['error_message'] = "Vous devez être connecté pour effectuer cette action";
+    header('Location: food-log.php');
     exit;
 }
 
 // Vérifier si la requête est de type POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     error_log("❌ Requête non-POST détectée");
+    $_SESSION['error_message'] = "Cette page ne peut être accédée que via un formulaire";
     header('Location: food-log.php');
     exit;
 }
@@ -33,7 +34,9 @@ try {
     
     if (!$suggestion_id || !$meal_type) {
         error_log("❌ Données manquantes");
-        throw new Exception("Données manquantes");
+        $_SESSION['error_message'] = "Les données du formulaire sont incomplètes";
+        header('Location: food-log.php');
+        exit;
     }
     
     // Récupérer la suggestion
@@ -42,7 +45,9 @@ try {
     
     if (!$suggestion) {
         error_log("❌ Suggestion non trouvée pour l'ID: " . $suggestion_id);
-        throw new Exception("Suggestion non trouvée");
+        $_SESSION['error_message'] = "La suggestion n'a pas été trouvée";
+        header('Location: food-log.php');
+        exit;
     }
     
     error_log("✅ Suggestion trouvée");
@@ -51,7 +56,9 @@ try {
     $data = json_decode($suggestion['content'], true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         error_log("❌ Erreur de parsing JSON: " . json_last_error_msg());
-        throw new Exception("Format de suggestion invalide");
+        $_SESSION['error_message'] = "Format de suggestion invalide";
+        header('Location: food-log.php');
+        exit;
     }
     
     error_log("✅ JSON parsé avec succès");
@@ -89,7 +96,9 @@ try {
     
     if (!$meal_id) {
         error_log("❌ Erreur lors de la création du repas");
-        throw new Exception("Erreur lors de la création du repas");
+        $_SESSION['error_message'] = "Erreur lors de la création du repas";
+        header('Location: food-log.php');
+        exit;
     }
     
     error_log("✅ Repas créé avec l'ID: " . $meal_id);
@@ -130,6 +139,9 @@ try {
             error_log("✅ Aliment ajouté au repas avec succès");
         } else {
             error_log("❌ Erreur lors de l'ajout de l'aliment au repas");
+            $_SESSION['error_message'] = "Erreur lors de l'ajout des ingrédients";
+            header('Location: food-log.php');
+            exit;
         }
     }
     error_log("=== Fin de l'ajout des ingrédients ===");
