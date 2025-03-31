@@ -27,9 +27,9 @@ $success_message = '';
 $errors = [];
 
 // Récupérer la clé API ChatGPT des paramètres globaux
-$sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+$sql = "SELECT value FROM settings WHERE setting_name = 'chatgpt_api_key'";
 $api_key_setting = fetchOne($sql, []);
-$api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
+$api_key = $api_key_setting ? $api_key_setting['value'] : '';
 
 // Traitement de l'ajout manuel d'un aliment
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_food') {

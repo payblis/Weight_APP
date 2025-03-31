@@ -1659,60 +1659,88 @@ function calculateGoalCompatibility($meal_totals, $goal) {
     $compatibility = 0;
     $max_compatibility = 100;
     
-    // Vérifier la compatibilité avec le programme si défini
-    if ($goal['program_id']) {
-        // Logique spécifique au programme
-        switch ($goal['program_name']) {
-            case 'Perte de poids':
-                // Vérifier que les calories sont raisonnables
-                if ($meal_totals['calories'] > 800) {
-                    $compatibility += 20; // Pénalité pour trop de calories
-                }
-                // Vérifier le ratio protéines/calories
-                $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
-                if ($protein_ratio > 0.3) {
-                    $compatibility += 30; // Bonus pour un bon ratio protéines
-                }
-                break;
-            case 'Prise de masse':
-                // Vérifier que les calories sont suffisantes
-                if ($meal_totals['calories'] < 500) {
-                    $compatibility += 20; // Pénalité pour trop peu de calories
-                }
-                // Vérifier le ratio protéines/calories
-                $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
-                if ($protein_ratio > 0.25) {
-                    $compatibility += 30; // Bonus pour un bon ratio protéines
-                }
-                break;
-            case 'Maintien':
-                // Vérifier que les calories sont modérées
-                if ($meal_totals['calories'] > 1000) {
-                    $compatibility += 20; // Pénalité pour trop de calories
-                }
-                // Vérifier l'équilibre des macronutriments
-                $total_macros = $meal_totals['protein'] + $meal_totals['carbs'] + $meal_totals['fat'];
-                if ($total_macros > 0) {
-                    $protein_ratio = $meal_totals['protein'] / $total_macros;
-                    $carbs_ratio = $meal_totals['carbs'] / $total_macros;
-                    $fat_ratio = $meal_totals['fat'] / $total_macros;
-                    
-                    // Vérifier si les ratios sont équilibrés
-                    if ($protein_ratio >= 0.2 && $protein_ratio <= 0.3 &&
-                        $carbs_ratio >= 0.4 && $carbs_ratio <= 0.5 &&
-                        $fat_ratio >= 0.2 && $fat_ratio <= 0.3) {
-                        $compatibility += 30; // Bonus pour un bon équilibre
-                    }
-                }
-                break;
-        }
-    }
+    // Récupérer les besoins caloriques et macronutriments de l'utilisateur
+    $sql = "SELECT * FROM user_calorie_needs WHERE user_id = ?";
+    $calorie_needs = fetchOne($sql, [$goal['user_id']]);
     
-    // Ajuster la compatibilité en fonction de l'objectif de calories
-    if ($goal['target_calories']) {
-        $calorie_diff = abs($meal_totals['calories'] - $goal['target_calories']);
-        $calorie_compatibility = max(0, 40 - ($calorie_diff / 100));
+    if ($calorie_needs) {
+        // Calculer la compatibilité calorique (40 points max)
+        $calorie_target = $calorie_needs['goal_calories'];
+        $calorie_diff = abs($meal_totals['calories'] - $calorie_target);
+        $calorie_compatibility = max(0, 40 - ($calorie_diff / ($calorie_target * 0.1)));
         $compatibility += $calorie_compatibility;
+        
+        // Calculer la compatibilité des macronutriments (60 points max)
+        $total_macros = $meal_totals['protein'] + $meal_totals['carbs'] + $meal_totals['fat'];
+        if ($total_macros > 0) {
+            $protein_ratio = ($meal_totals['protein'] * 4) / $meal_totals['calories'];
+            $carbs_ratio = ($meal_totals['carbs'] * 4) / $meal_totals['calories'];
+            $fat_ratio = ($meal_totals['fat'] * 9) / $meal_totals['calories'];
+            
+            $target_protein_ratio = $calorie_needs['protein_ratio'] / 100;
+            $target_carbs_ratio = $calorie_needs['carbs_ratio'] / 100;
+            $target_fat_ratio = $calorie_needs['fat_ratio'] / 100;
+            
+            // Calculer les différences de ratios
+            $protein_diff = abs($protein_ratio - $target_protein_ratio);
+            $carbs_diff = abs($carbs_ratio - $target_carbs_ratio);
+            $fat_diff = abs($fat_ratio - $target_fat_ratio);
+            
+            // Attribuer des points pour chaque macronutriment (20 points chacun)
+            $protein_compatibility = max(0, 20 - ($protein_diff * 100));
+            $carbs_compatibility = max(0, 20 - ($carbs_diff * 100));
+            $fat_compatibility = max(0, 20 - ($fat_diff * 100));
+            
+            $compatibility += $protein_compatibility + $carbs_compatibility + $fat_compatibility;
+        }
+    } else {
+        // Si pas de besoins caloriques définis, utiliser une logique simplifiée
+        if ($goal['program_id']) {
+            switch ($goal['program_name']) {
+                case 'Perte de poids':
+                    // Vérifier que les calories sont raisonnables
+                    if ($meal_totals['calories'] > 800) {
+                        $compatibility += 20; // Pénalité pour trop de calories
+                    }
+                    // Vérifier le ratio protéines/calories
+                    $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
+                    if ($protein_ratio > 0.3) {
+                        $compatibility += 30; // Bonus pour un bon ratio protéines
+                    }
+                    break;
+                case 'Prise de masse':
+                    // Vérifier que les calories sont suffisantes
+                    if ($meal_totals['calories'] < 500) {
+                        $compatibility += 20; // Pénalité pour trop peu de calories
+                    }
+                    // Vérifier le ratio protéines/calories
+                    $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
+                    if ($protein_ratio > 0.25) {
+                        $compatibility += 30; // Bonus pour un bon ratio protéines
+                    }
+                    break;
+                case 'Maintien':
+                    // Vérifier que les calories sont modérées
+                    if ($meal_totals['calories'] > 1000) {
+                        $compatibility += 20; // Pénalité pour trop de calories
+                    }
+                    // Vérifier l'équilibre des macronutriments
+                    $total_macros = $meal_totals['protein'] + $meal_totals['carbs'] + $meal_totals['fat'];
+                    if ($total_macros > 0) {
+                        $protein_ratio = $meal_totals['protein'] / $total_macros;
+                        $carbs_ratio = $meal_totals['carbs'] / $total_macros;
+                        $fat_ratio = $meal_totals['fat'] / $total_macros;
+                        
+                        // Vérifier si les ratios sont équilibrés
+                        if ($protein_ratio >= 0.2 && $protein_ratio <= 0.3 &&
+                            $carbs_ratio >= 0.4 && $carbs_ratio <= 0.5 &&
+                            $fat_ratio >= 0.2 && $fat_ratio <= 0.3) {
+                            $compatibility += 30; // Bonus pour un bon équilibre
+                        }
+                    }
+                    break;
+            }
+        }
     }
     
     return min($max_compatibility, $compatibility);

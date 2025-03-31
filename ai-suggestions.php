@@ -22,9 +22,14 @@ $success_message = '';
 $errors = [];
 
 // Récupérer la clé API ChatGPT
-$sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
-$api_key_setting = fetchOne($sql, []);
-$api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
+$api_key = '';
+try {
+    $sql = "SELECT value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+    $result = fetchOne($sql, []);
+    $api_key = $result ? $result['value'] : '';
+} catch (Exception $e) {
+    $errors[] = "Erreur lors de la récupération de la clé API: " . $e->getMessage();
+}
 
 // Récupérer le profil de l'utilisateur
 $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
@@ -128,16 +133,52 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
         return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.";
     }
     
+    // Récupérer les besoins caloriques et macronutriments de l'utilisateur
+    $sql = "SELECT * FROM user_calorie_needs WHERE user_id = ?";
+    $calorie_needs = fetchOne($sql, [$profile['user_id']]);
+    
     // Construire le prompt pour ChatGPT
-    $prompt = "En tant que nutritionniste expert, génère un plan de repas personnalisé avec les informations suivantes :\n\n";
-    $prompt .= "Profil : " . ($profile['gender'] === 'homme' ? 'Homme' : 'Femme') . ", " . 
-               (date('Y') - date('Y', strtotime($profile['birth_date']))) . " ans\n";
-    $prompt .= "Poids actuel : " . ($latest_weight ? $latest_weight['weight'] . " kg" : "Non renseigné") . "\n";
-    $prompt .= "Objectif : " . ($current_goal ? $current_goal['target_weight'] . " kg" : "Non défini") . "\n";
-    $prompt .= "Programme : " . ($active_program ? $active_program['name'] : "Aucun") . "\n";
-    $prompt .= "Aliments préférés : " . implode(", ", array_slice($favorite_foods, 0, 5)) . "\n";
-    $prompt .= "Aliments à éviter : " . implode(", ", array_slice($blacklisted_foods, 0, 5)) . "\n\n";
-    $prompt .= "Génère un plan de repas équilibré avec petit-déjeuner, déjeuner, dîner et collations. Inclus les calories et macronutriments pour chaque repas.";
+    $prompt = "En tant que nutritionniste expert, génère une suggestion de repas équilibré en tenant compte des informations suivantes :\n\n";
+    
+    if ($profile) {
+        $prompt .= "Profil : " . ($profile['gender'] === 'homme' ? 'Homme' : 'Femme') . ", " . 
+                  (date('Y') - date('Y', strtotime($profile['birth_date']))) . " ans\n";
+    }
+    
+    if ($latest_weight) {
+        $prompt .= "Poids actuel : " . number_format($latest_weight['weight'], 1) . " kg\n";
+    }
+    
+    if ($current_goal) {
+        $prompt .= "Objectif de poids : " . number_format($current_goal['target_weight'], 1) . " kg\n";
+    }
+    
+    if ($active_program) {
+        $prompt .= "Programme actif : " . $active_program['name'] . "\n";
+    }
+    
+    if ($calorie_needs) {
+        $prompt .= "Objectif calorique quotidien : " . $calorie_needs['goal_calories'] . " kcal\n";
+        $prompt .= "Répartition des macronutriments :\n";
+        $prompt .= "- Protéines : " . $calorie_needs['protein_ratio'] . "%\n";
+        $prompt .= "- Glucides : " . $calorie_needs['carbs_ratio'] . "%\n";
+        $prompt .= "- Lipides : " . $calorie_needs['fat_ratio'] . "%\n";
+    }
+    
+    if (!empty($favorite_foods)) {
+        $prompt .= "Aliments préférés : " . implode(", ", $favorite_foods) . "\n";
+    }
+    
+    if (!empty($blacklisted_foods)) {
+        $prompt .= "Aliments à éviter : " . implode(", ", $blacklisted_foods) . "\n";
+    }
+    
+    $prompt .= "\nVeuillez fournir :\n";
+    $prompt .= "1. Une liste d'ingrédients avec leurs quantités\n";
+    $prompt .= "2. Les étapes de préparation\n";
+    $prompt .= "3. Les valeurs nutritionnelles exactes (calories, protéines, glucides, lipides)\n";
+    $prompt .= "4. Des conseils pour personnaliser le repas selon les préférences\n";
+    $prompt .= "5. Une explication de la compatibilité avec l'objectif de l'utilisateur\n";
     
     // Appeler l'API ChatGPT
     $response = callChatGPTAPI($prompt, $api_key);
