@@ -264,7 +264,7 @@ unset($_SESSION['error_message']);
                     <div class="row g-2">
                         <div class="col-md-3">
                             <label class="form-label">Calories</label>
-                            <input type="number" class="form-control" value="${ing.calories}" min="0">
+                            <input type="number" class="form-control" value="${ing.calories}" min="0" step="any">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Protéines (g)</label>
