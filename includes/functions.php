@@ -1576,3 +1576,144 @@ function getExerciseStats($user_id) {
         ];
     }
 }
+
+// Fonction pour obtenir les suggestions de repas
+function getMealSuggestions($user_id) {
+    try {
+        // Récupérer les préférences alimentaires de l'utilisateur
+        $sql = "SELECT food_id FROM food_preferences WHERE user_id = ?";
+        $preferences = fetchAll($sql, [$user_id]);
+        $preferred_foods = array_column($preferences, 'food_id');
+        
+        // Récupérer l'objectif de l'utilisateur
+        $sql = "SELECT g.*, p.name as program_name, p.description as program_description 
+                FROM goals g 
+                LEFT JOIN programs p ON g.program_id = p.id 
+                WHERE g.user_id = ? AND g.status = 'active'";
+        $goal = fetchOne($sql, [$user_id]);
+        
+        // Récupérer les repas prédéfinis qui correspondent aux préférences
+        $sql = "SELECT DISTINCT pm.*, 
+                (SELECT COUNT(*) FROM predefined_meal_foods pmf 
+                 WHERE pmf.predefined_meal_id = pm.id 
+                 AND pmf.food_id IN (" . implode(',', array_fill(0, count($preferred_foods), '?')) . ")) as matching_foods
+                FROM predefined_meals pm
+                WHERE pm.is_public = 1 OR pm.user_id = ?
+                ORDER BY matching_foods DESC, pm.created_at DESC
+                LIMIT 5";
+        
+        $params = array_merge($preferred_foods, [$user_id]);
+        $suggestions = fetchAll($sql, $params);
+        
+        // Ajouter les informations sur les aliments pour chaque suggestion
+        foreach ($suggestions as &$suggestion) {
+            $sql = "SELECT pmf.*, f.name as food_name, f.calories as food_calories, 
+                    f.protein as food_protein, f.carbs as food_carbs, f.fat as food_fat
+                    FROM predefined_meal_foods pmf
+                    LEFT JOIN foods f ON pmf.food_id = f.id
+                    WHERE pmf.predefined_meal_id = ?";
+            $suggestion['foods'] = fetchAll($sql, [$suggestion['id']]);
+            
+            // Calculer les totaux nutritionnels
+            $total_calories = 0;
+            $total_protein = 0;
+            $total_carbs = 0;
+            $total_fat = 0;
+            
+            foreach ($suggestion['foods'] as $food) {
+                if ($food['food_id']) {
+                    $total_calories += ($food['food_calories'] * $food['quantity']) / 100;
+                    $total_protein += ($food['food_protein'] * $food['quantity']) / 100;
+                    $total_carbs += ($food['food_carbs'] * $food['quantity']) / 100;
+                    $total_fat += ($food['food_fat'] * $food['quantity']) / 100;
+                } else {
+                    $total_calories += $food['custom_calories'];
+                    $total_protein += $food['custom_protein'];
+                    $total_carbs += $food['custom_carbs'];
+                    $total_fat += $food['custom_fat'];
+                }
+            }
+            
+            $suggestion['totals'] = [
+                'calories' => round($total_calories),
+                'protein' => round($total_protein, 1),
+                'carbs' => round($total_carbs, 1),
+                'fat' => round($total_fat, 1)
+            ];
+            
+            // Ajouter des informations sur la compatibilité avec l'objectif
+            if ($goal) {
+                $suggestion['goal_compatibility'] = calculateGoalCompatibility($suggestion['totals'], $goal);
+            }
+        }
+        
+        return $suggestions;
+    } catch (Exception $e) {
+        error_log("Erreur dans getMealSuggestions: " . $e->getMessage());
+        return [];
+    }
+}
+
+// Fonction pour calculer la compatibilité avec l'objectif
+function calculateGoalCompatibility($meal_totals, $goal) {
+    $compatibility = 0;
+    $max_compatibility = 100;
+    
+    // Vérifier la compatibilité avec le programme si défini
+    if ($goal['program_id']) {
+        // Logique spécifique au programme
+        switch ($goal['program_name']) {
+            case 'Perte de poids':
+                // Vérifier que les calories sont raisonnables
+                if ($meal_totals['calories'] > 800) {
+                    $compatibility += 20; // Pénalité pour trop de calories
+                }
+                // Vérifier le ratio protéines/calories
+                $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
+                if ($protein_ratio > 0.3) {
+                    $compatibility += 30; // Bonus pour un bon ratio protéines
+                }
+                break;
+            case 'Prise de masse':
+                // Vérifier que les calories sont suffisantes
+                if ($meal_totals['calories'] < 500) {
+                    $compatibility += 20; // Pénalité pour trop peu de calories
+                }
+                // Vérifier le ratio protéines/calories
+                $protein_ratio = $meal_totals['protein'] / ($meal_totals['calories'] / 100);
+                if ($protein_ratio > 0.25) {
+                    $compatibility += 30; // Bonus pour un bon ratio protéines
+                }
+                break;
+            case 'Maintien':
+                // Vérifier que les calories sont modérées
+                if ($meal_totals['calories'] > 1000) {
+                    $compatibility += 20; // Pénalité pour trop de calories
+                }
+                // Vérifier l'équilibre des macronutriments
+                $total_macros = $meal_totals['protein'] + $meal_totals['carbs'] + $meal_totals['fat'];
+                if ($total_macros > 0) {
+                    $protein_ratio = $meal_totals['protein'] / $total_macros;
+                    $carbs_ratio = $meal_totals['carbs'] / $total_macros;
+                    $fat_ratio = $meal_totals['fat'] / $total_macros;
+                    
+                    // Vérifier si les ratios sont équilibrés
+                    if ($protein_ratio >= 0.2 && $protein_ratio <= 0.3 &&
+                        $carbs_ratio >= 0.4 && $carbs_ratio <= 0.5 &&
+                        $fat_ratio >= 0.2 && $fat_ratio <= 0.3) {
+                        $compatibility += 30; // Bonus pour un bon équilibre
+                    }
+                }
+                break;
+        }
+    }
+    
+    // Ajuster la compatibilité en fonction de l'objectif de calories
+    if ($goal['target_calories']) {
+        $calorie_diff = abs($meal_totals['calories'] - $goal['target_calories']);
+        $calorie_compatibility = max(0, 40 - ($calorie_diff / 100));
+        $compatibility += $calorie_compatibility;
+    }
+    
+    return min($max_compatibility, $compatibility);
+}

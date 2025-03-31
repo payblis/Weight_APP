@@ -1188,6 +1188,64 @@ function updateMealTotals($meal_id) {
                 </div>
                 
                 <div class="col-md-6">
+                    <!-- Suggestions de repas -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="card-title mb-0">Suggestions de repas</h5>
+                        </div>
+                        <div class="card-body">
+                            <?php
+                            $suggestions = getMealSuggestions($user_id);
+                            if (empty($suggestions)): ?>
+                                <div class="text-center py-4">
+                                    <p class="mb-3">Aucune suggestion de repas disponible.</p>
+                                    <p class="text-muted small">Ajoutez des préférences alimentaires pour recevoir des suggestions personnalisées.</p>
+                                </div>
+                            <?php else: ?>
+                                <div class="list-group">
+                                    <?php foreach ($suggestions as $suggestion): ?>
+                                        <div class="card mb-3">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="card-title mb-1">
+                                                            <?php echo htmlspecialchars($suggestion['name']); ?>
+                                                            <?php if ($suggestion['goal_compatibility']): ?>
+                                                                <span class="badge bg-<?php echo $suggestion['goal_compatibility'] >= 70 ? 'success' : ($suggestion['goal_compatibility'] >= 40 ? 'warning' : 'danger'); ?>">
+                                                                    <?php echo $suggestion['goal_compatibility']; ?>% compatible
+                                                                </span>
+                                                            <?php endif; ?>
+                                                        </h6>
+                                                        <p class="card-text mb-1">
+                                                            <strong>Calories:</strong> <?php echo number_format($suggestion['totals']['calories']); ?> kcal
+                                                        </p>
+                                                        <p class="card-text mb-1">
+                                                            <strong>Protéines:</strong> <?php echo $suggestion['totals']['protein']; ?>g
+                                                            <strong>Glucides:</strong> <?php echo $suggestion['totals']['carbs']; ?>g
+                                                            <strong>Lipides:</strong> <?php echo $suggestion['totals']['fat']; ?>g
+                                                        </p>
+                                                        <?php if ($suggestion['description']): ?>
+                                                            <p class="card-text small text-muted mb-1">
+                                                                <?php echo htmlspecialchars($suggestion['description']); ?>
+                                                            </p>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-primary add-suggestion-btn"
+                                                            data-suggestion-id="<?php echo $suggestion['id']; ?>"
+                                                            data-suggestion-name="<?php echo htmlspecialchars($suggestion['name']); ?>">
+                                                        <i class="fas fa-plus me-1"></i>Ajouter
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <!-- Repas prédéfinis -->
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-white">
                             <h5 class="card-title mb-0">Repas prédéfinis</h5>
@@ -1415,6 +1473,48 @@ function updateMealTotals($meal_id) {
         </div>
     </div>
 
+    <!-- Modal de confirmation d'ajout de suggestion -->
+    <div class="modal fade" id="confirmSuggestionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ajouter le repas suggéré</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="food-log.php" method="POST">
+                    <input type="hidden" name="action" value="use_predefined_meal">
+                    <input type="hidden" name="predefined_meal_id" id="confirm_suggestion_id">
+                    
+                    <div class="modal-body">
+                        <p>Voulez-vous ajouter <strong id="confirm_suggestion_name"></strong> à votre journal alimentaire ?</p>
+                        
+                        <div class="mb-3">
+                            <label for="meal_type_suggestion" class="form-label">Type de repas</label>
+                            <select class="form-select" id="meal_type_suggestion" name="meal_type" required>
+                                <option value="">Sélectionnez un type de repas</option>
+                                <option value="petit_dejeuner">Petit déjeuner</option>
+                                <option value="dejeuner">Déjeuner</option>
+                                <option value="diner">Dîner</option>
+                                <option value="collation">Collation</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="log_date_suggestion" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="log_date_suggestion" name="log_date" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Ajouter le repas</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -1504,6 +1604,21 @@ function updateMealTotals($meal_id) {
                     }
                 });
             }
+
+            // Gestion des suggestions de repas
+            const confirmSuggestionModal = new bootstrap.Modal(document.getElementById('confirmSuggestionModal'));
+            
+            document.querySelectorAll('.add-suggestion-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const suggestionId = this.dataset.suggestionId;
+                    const suggestionName = this.dataset.suggestionName;
+                    
+                    document.getElementById('confirm_suggestion_id').value = suggestionId;
+                    document.getElementById('confirm_suggestion_name').textContent = suggestionName;
+                    
+                    confirmSuggestionModal.show();
+                });
+            });
         });
     </script>
 </body>
