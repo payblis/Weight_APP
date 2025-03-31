@@ -94,7 +94,7 @@ if (!isset($_SESSION)) {
                 
                 <!-- Menu Objectifs et IA -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?php echo in_array($current_page, ['goals.php', 'ai-suggestions.php']) ? 'active' : ''; ?>" href="#" id="objectifsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle <?php echo in_array($current_page, ['goals.php', 'ai-suggestions.php', 'my-coach.php']) ? 'active' : ''; ?>" href="#" id="objectifsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-bullseye me-1"></i>Objectifs & IA
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="objectifsDropdown">
@@ -104,8 +104,13 @@ if (!isset($_SESSION)) {
                             </a>
                         </li>
                         <li>
+                            <a class="dropdown-item <?php echo $current_page === 'my-coach.php' ? 'active' : ''; ?>" href="my-coach.php">
+                                <i class="fas fa-robot me-1"></i>Mon Coach
+                            </a>
+                        </li>
+                        <li>
                             <a class="dropdown-item <?php echo $current_page === 'ai-suggestions.php' ? 'active' : ''; ?>" href="ai-suggestions.php">
-                                <i class="fas fa-robot me-1"></i>Suggestions IA
+                                <i class="fas fa-lightbulb me-1"></i>Suggestions IA
                             </a>
                         </li>
                     </ul>
