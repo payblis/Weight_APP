@@ -1612,7 +1612,12 @@ function getMealSuggestions($user_id) {
             
             // Formater la suggestion
             $suggestion['name'] = $data['nom_du_repas'] ?? 'Repas sans nom';
-            $suggestion['totals'] = $data['valeurs_nutritionnelles'] ?? [];
+            $suggestion['totals'] = [
+                'calories' => $data['valeurs_nutritionnelles']['calories'] ?? 0,
+                'protein' => $data['valeurs_nutritionnelles']['proteines'] ?? 0,
+                'carbs' => $data['valeurs_nutritionnelles']['glucides'] ?? 0,
+                'fat' => $data['valeurs_nutritionnelles']['lipides'] ?? 0
+            ];
             $suggestion['description'] = [
                 'ingredients' => $data['ingredients'] ?? [],
                 'conseils' => []
