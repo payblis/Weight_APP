@@ -7,94 +7,101 @@ if (!isset($_SESSION)) {
     session_start();
 }
 ?>
-<!-- Barre de navigation desktop -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary d-none d-lg-block">
+<!-- Barre supérieure avec logo et paramètres -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom d-none d-lg-block top-nav">
     <div class="container">
         <a class="navbar-brand" href="dashboard.php">
             <i class="fas fa-weight me-2"></i>MyFity
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <!-- Tableau de bord -->
+        <div class="d-flex align-items-center">
+            <a href="messages.php" class="nav-link position-relative me-3">
+                <i class="far fa-envelope"></i>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">1</span>
+            </a>
+            <a href="#" class="nav-link me-3">
+                <i class="far fa-user me-1"></i>
+                <?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?>
+            </a>
+            <a href="settings.php" class="nav-link me-3">Paramètres</a>
+            <a href="logout.php" class="nav-link">Déconnexion</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Barre de navigation principale -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary d-none d-lg-block main-nav">
+    <div class="container">
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">
                         Mon Accueil
                     </a>
                 </li>
-                
-                <!-- Menu Aliments -->
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'food-log.php' ? 'active' : ''; ?>" href="food-log.php">
                         Aliments
                     </a>
                 </li>
-
-                <!-- Menu Exercices -->
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'exercise-log.php' ? 'active' : ''; ?>" href="exercise-log.php">
                         Exercices
                     </a>
                 </li>
-
-                <!-- Menu Rapports -->
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'reports.php' ? 'active' : ''; ?>" href="reports.php">
                         Rapports
                     </a>
                 </li>
-
-                <!-- Menu Applis -->
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'apps.php' ? 'active' : ''; ?>" href="apps.php">
                         Applis
                     </a>
                 </li>
-
-                <!-- Menu Communauté -->
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'community.php' ? 'active' : ''; ?>" href="community.php">
                         Communauté
                     </a>
                 </li>
-
-                <!-- Menu Blog -->
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'blog.php' ? 'active' : ''; ?>" href="blog.php">
                         Blog
                     </a>
                 </li>
-
-                <!-- Menu Premium -->
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'premium.php' ? 'active' : ''; ?>" href="premium.php">
                         Premium
                     </a>
                 </li>
             </ul>
-            
-            <!-- Menu utilisateur -->
+        </div>
+    </div>
+</nav>
+
+<!-- Sous-navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary-dark d-none d-lg-block sub-nav">
+    <div class="container">
+        <div class="collapse navbar-collapse">
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a href="messages.php" class="nav-link position-relative">
-                        <i class="far fa-envelope"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                            1
-                        </span>
+                    <a class="nav-link <?php echo $current_page === 'exercise-log.php' ? 'active' : ''; ?>" href="exercise-log.php">
+                        Journal d'exercices
                     </a>
                 </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-user-circle me-1"></i><?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?>
+                <li class="nav-item">
+                    <a class="nav-link <?php echo $current_page === 'exercise-database.php' ? 'active' : ''; ?>" href="exercise-database.php">
+                        Base de données
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                        <li><a class="dropdown-item <?php echo $current_page === 'profile.php' ? 'active' : ''; ?>" href="profile.php"><i class="fas fa-user-edit me-1"></i>Profil</a></li>
-                        <li><a class="dropdown-item <?php echo $current_page === 'settings.php' ? 'active' : ''; ?>" href="settings.php"><i class="fas fa-cog me-1"></i>Paramètres</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-1"></i>Déconnexion</a></li>
-                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php echo $current_page === 'my-exercises.php' ? 'active' : ''; ?>" href="my-exercises.php">
+                        Mes exercices
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php echo $current_page === 'exercise-settings.php' ? 'active' : ''; ?>" href="exercise-settings.php">
+                        Paramètres
+                    </a>
                 </li>
             </ul>
         </div>
@@ -150,46 +157,44 @@ if (!isset($_SESSION)) {
 
 <style>
 /* Styles pour la navigation desktop */
-.navbar.bg-primary {
+.top-nav {
+    padding: 0.5rem 0;
+}
+
+.top-nav .nav-link {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.top-nav .navbar-brand {
+    color: #0066ee;
+    font-weight: bold;
+}
+
+.main-nav {
     background-color: #0066ee !important;
+    padding: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.sub-nav {
+    background-color: #004fc4 !important;
     padding: 0;
 }
 
-.navbar .nav-link {
+.main-nav .nav-link,
+.sub-nav .nav-link {
     padding: 1rem 1.25rem !important;
     font-size: 0.9rem;
     font-weight: 600;
+    color: white !important;
 }
 
-.navbar .nav-link:hover,
-.navbar .nav-link.active {
+.main-nav .nav-link:hover,
+.main-nav .nav-link.active,
+.sub-nav .nav-link:hover,
+.sub-nav .nav-link.active {
     background-color: rgba(255,255,255,0.1);
-}
-
-.navbar .navbar-brand {
-    color: white;
-    font-weight: bold;
-    padding: 0.5rem 1rem;
-}
-
-.navbar .dropdown-menu {
-    margin-top: 0.5rem;
-    border: none;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.navbar .dropdown-item {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-}
-
-.navbar .dropdown-item:hover {
-    background-color: #f8f9fa;
-}
-
-.navbar .dropdown-item.active {
-    background-color: #0066ee;
-    color: white;
 }
 
 /* Ajuster le padding du body pour la barre de navigation fixe en bas */
