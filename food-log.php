@@ -485,8 +485,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         // Récupérer l'objectif calorique
         $sql = "SELECT daily_calories as goal_calories FROM user_profiles WHERE user_id = ?";
+        echo "<div class='debug-message'>";
+        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+        echo "<span class='debug-category'>[SQL]</span> ";
+        echo "Requête objectif calorique : " . $sql;
+        echo "<br>Paramètres : user_id=" . $user_id;
+        echo "</div>";
+
         $daily_goal_result = fetchOne($sql, [$user_id]);
+        echo "<div class='debug-message'>";
+        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+        echo "<span class='debug-category'>[OBJECTIF]</span> ";
+        echo "Résultat de la requête objectif : " . print_r($daily_goal_result, true);
+        echo "</div>";
+
         $daily_goal = $daily_goal_result ? $daily_goal_result['goal_calories'] : 0;
+        echo "<div class='debug-message'>";
+        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+        echo "<span class='debug-category'>[OBJECTIF]</span> ";
+        echo "Objectif calorique final : " . $daily_goal;
+        echo "</div>";
+
+        // Vérifier la structure de la table user_profiles
+        $sql = "DESCRIBE user_profiles";
+        echo "<div class='debug-message'>";
+        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+        echo "<span class='debug-category'>[SQL]</span> ";
+        echo "Structure de la table user_profiles : " . $sql;
+        echo "</div>";
+
+        $user_profiles_structure = fetchAll($sql, []);
+        echo "<div class='debug-message'>";
+        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+        echo "<span class='debug-category'>[STRUCTURE]</span> ";
+        echo "Structure de la table user_profiles :";
+        if (!empty($user_profiles_structure)) {
+            foreach ($user_profiles_structure as $column) {
+                echo "<br>- " . $column['Field'] . " : " . $column['Type'];
+            }
+        } else {
+            echo "<br>Structure non trouvée";
+        }
+        echo "</div>";
+
+        // Vérifier si l'utilisateur a un profil
+        $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
+        echo "<div class='debug-message'>";
+        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+        echo "<span class='debug-category'>[SQL]</span> ";
+        echo "Vérification du profil utilisateur : " . $sql;
+        echo "<br>Paramètres : user_id=" . $user_id;
+        echo "</div>";
+
+        $user_profile = fetchOne($sql, [$user_id]);
+        echo "<div class='debug-message'>";
+        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+        echo "<span class='debug-category'>[PROFIL]</span> ";
+        echo "Profil utilisateur complet : " . print_r($user_profile, true);
+        echo "</div>";
         
         echo "<div class='debug-message'>";
         echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
