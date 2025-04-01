@@ -316,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Supprimer l'aliment
                     $sql = "DELETE FROM food_logs WHERE id = ?";
-                    $result = update($sql, [$food_log_id]);
+                    $result = delete($sql, [$food_log_id]);
                     
                     if ($result) {
                         // Debug: Afficher l'ID de l'aliment supprimé
@@ -369,14 +369,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sql = "DELETE FROM food_logs WHERE meal_id = ?";
                     error_log("SQL de suppression des aliments : " . $sql);
                     error_log("Paramètres : meal_id=" . $meal_id);
-                    $food_delete_result = update($sql, [$meal_id]);
+                    $food_delete_result = delete($sql, [$meal_id]);
                     error_log("Résultat de la suppression des aliments : " . ($food_delete_result ? "Succès" : "Échec"));
                     
                     // Supprimer le repas
                     $sql = "DELETE FROM meals WHERE id = ?";
                     error_log("SQL de suppression du repas : " . $sql);
                     error_log("Paramètres : meal_id=" . $meal_id);
-                    $result = update($sql, [$meal_id]);
+                    $result = delete($sql, [$meal_id]);
                     error_log("Résultat de la suppression du repas : " . ($result ? "Succès" : "Échec"));
                     
                     if ($result) {
@@ -464,14 +464,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $sql = "DELETE FROM food_logs WHERE meal_id = ?";
                 error_log("SQL de suppression des aliments : " . $sql);
                 error_log("Paramètres : meal_id=" . $meal_id);
-                $food_delete_result = update($sql, [$meal_id]);
+                $food_delete_result = delete($sql, [$meal_id]);
                 error_log("Résultat de la suppression des aliments : " . ($food_delete_result ? "Succès" : "Échec"));
                 
                 // Supprimer le repas
                 $sql = "DELETE FROM meals WHERE id = ?";
                 error_log("SQL de suppression du repas : " . $sql);
                 error_log("Paramètres : meal_id=" . $meal_id);
-                $result = update($sql, [$meal_id]);
+                $result = delete($sql, [$meal_id]);
                 error_log("Résultat de la suppression du repas : " . ($result ? "Succès" : "Échec"));
                 
                 if ($result) {
