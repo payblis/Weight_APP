@@ -1879,7 +1879,7 @@ function deleteRecord($sql, $params = []) {
  * @param array $blacklisted_foods Aliments à éviter
  * @return string Suggestion de repas
  */
-function generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods) {
+function generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods, $meal_type) {
     try {
         // Récupérer la clé API ChatGPT
         $sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
@@ -1890,8 +1890,25 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
             return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
         }
 
+        // Récupérer les objectifs nutritionnels de l'utilisateur
+        $sql = "SELECT daily_calories, protein_ratio, carbs_ratio, fat_ratio FROM user_profiles WHERE user_id = ?";
+        $nutrition_goals = fetchOne($sql, [$profile['user_id']]);
+
+        // Calculer les calories et macros maximales pour ce repas selon le type
+        $meal_ratios = [
+            'petit_dejeuner' => 0.25,  // 25% des calories quotidiennes
+            'dejeuner' => 0.35,        // 35% des calories quotidiennes
+            'diner' => 0.30,           // 30% des calories quotidiennes
+            'collation' => 0.10        // 10% des calories quotidiennes
+        ];
+
+        $max_calories = round($nutrition_goals['daily_calories'] * $meal_ratios[$meal_type]);
+        $max_protein = round(($max_calories * $nutrition_goals['protein_ratio']) / 4);  // 4 calories par gramme de protéine
+        $max_carbs = round(($max_calories * $nutrition_goals['carbs_ratio']) / 4);      // 4 calories par gramme de glucide
+        $max_fat = round(($max_calories * $nutrition_goals['fat_ratio']) / 9);          // 9 calories par gramme de lipide
+
         // Construire le prompt
-        $prompt = "Tu es un nutritionniste expert. Donne-moi une suggestion de repas sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
+        $prompt = "Tu es un nutritionniste expert. Donne-moi une suggestion de {$meal_type} sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
 
 {
   \"nom_du_repas\": \"...\",
@@ -1914,7 +1931,16 @@ Profil de l'utilisateur :
 - Niveau d'activité : {$profile['activity_level']}
 - Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
 
-N'ajoute rien d'autre que ce JSON dans ta réponse.";
+Limites nutritionnelles pour ce repas :
+- Calories maximales : {$max_calories} kcal
+- Protéines maximales : {$max_protein} g
+- Glucides maximaux : {$max_carbs} g
+- Lipides maximaux : {$max_fat} g
+
+Aliments préférés : " . implode(", ", $favorite_foods) . "
+Aliments à éviter : " . implode(", ", $blacklisted_foods) . "
+
+N'ajoute rien d'autre que ce JSON dans ta réponse. Assure-toi que les valeurs nutritionnelles respectent les limites maximales.";
 
         // Logger le prompt
         error_log("=== Prompt envoyé à l'API pour generateMealSuggestion ===");
@@ -1948,8 +1974,18 @@ N'ajoute rien d'autre que ce JSON dans ta réponse.";
             return "La suggestion générée est incomplète.";
         }
 
+        // Vérifier que les valeurs nutritionnelles respectent les limites
+        $nutrition = $data['valeurs_nutritionnelles'];
+        if ($nutrition['calories'] > $max_calories || 
+            $nutrition['proteines'] > $max_protein || 
+            $nutrition['glucides'] > $max_carbs || 
+            $nutrition['lipides'] > $max_fat) {
+            error_log("Les valeurs nutritionnelles dépassent les limites maximales");
+            return "La suggestion générée dépasse les limites nutritionnelles autorisées.";
+        }
+
         // Formater la suggestion pour l'affichage
-        $suggestion = "SUGGESTION DE REPAS : {$data['nom_du_repas']}\n\n";
+        $suggestion = "SUGGESTION DE " . strtoupper(str_replace('_', ' ', $meal_type)) . " : {$data['nom_du_repas']}\n\n";
         $suggestion .= "Valeurs nutritionnelles :\n";
         $suggestion .= "- Calories : {$data['valeurs_nutritionnelles']['calories']} kcal\n";
         $suggestion .= "- Protéines : {$data['valeurs_nutritionnelles']['proteines']} g\n";
