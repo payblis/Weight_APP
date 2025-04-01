@@ -1845,7 +1845,7 @@ function fetchSuggestion($suggestion_id, $user_id) {
 function calculateAge($birth_date) {
     $birth = new DateTime($birth_date);
     $today = new DateTime();
-    $age = $today->diff($birth);
+    $age = $birth->diff($today);
     return $age->y;
 }
 
@@ -1856,7 +1856,7 @@ function calculateAge($birth_date) {
  * @param array $params Paramètres de la requête
  * @return bool True si la suppression a réussi, false sinon
  */
-function delete($sql, $params = []) {
+function deleteRecord($sql, $params = []) {
     global $pdo;
     
     try {
