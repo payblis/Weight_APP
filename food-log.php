@@ -27,6 +27,8 @@ $meal_id = isset($_GET['meal_id']) ? intval($_GET['meal_id']) : 0;
 $predefined_meal_id = isset($_GET['predefined_meal_id']) ? intval($_GET['predefined_meal_id']) : 0;
 $success_message = '';
 $errors = [];
+$daily_goal = 0;
+$exercise_calories = 0;
 
 error_log("=== DÉBUT DU TRAITEMENT ===");
 error_log("Action : " . $action);
@@ -478,10 +480,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $sql = "SELECT COALESCE(SUM(calories_burned), 0) as total_burned 
                 FROM exercise_logs 
                 WHERE user_id = ? AND DATE(log_date) = ?";
-        $exercise_calories = fetchOne($sql, [$user_id, $date])['total_burned'] ?? 0;
+        $exercise_result = fetchOne($sql, [$user_id, $date]);
+        $exercise_calories = $exercise_result ? $exercise_result['total_burned'] : 0;
         
         // Récupérer l'objectif calorique
         $sql = "SELECT daily_calories as goal_calories FROM user_profiles WHERE user_id = ?";
+        $daily_goal_result = fetchOne($sql, [$user_id]);
+        $daily_goal = $daily_goal_result ? $daily_goal_result['goal_calories'] : 0;
+        
         echo "<div class='debug-message'>";
         echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
         echo "<span class='debug-category'>[SQL]</span> ";
@@ -938,7 +944,7 @@ echo "<br>Résultat complet : " . print_r($today_exercise, true);
 echo "</div>";
 
 // Ajouter une requête pour voir les exercices individuels
-$sql = "SELECT exercise_name, duration, calories_burned, log_date 
+$sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
        FROM exercise_logs 
        WHERE user_id = ? AND log_date = ? 
        ORDER BY log_date DESC";
@@ -1154,7 +1160,7 @@ echo "</div>";
                 echo "</div>";
 
                 // Ajouter une requête pour voir les exercices individuels
-                $sql = "SELECT exercise_name, duration, calories_burned, log_date 
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
                        FROM exercise_logs 
                        WHERE user_id = ? AND log_date = ? 
                        ORDER BY log_date DESC";
