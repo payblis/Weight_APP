@@ -20,88 +20,71 @@ if (!isset($_SESSION)) {
             <ul class="navbar-nav me-auto">
                 <!-- Tableau de bord -->
                 <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">
-                        <i class="fas fa-home me-1"></i>Tableau de bord
+                    <a class="nav-link text-uppercase <?php echo $current_page === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">
+                        Mon Accueil
                     </a>
                 </li>
                 
-                <!-- Menu Suivi -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?php echo in_array($current_page, ['weight-log.php', 'calorie-history.php', 'reports.php']) ? 'active' : ''; ?>" href="#" id="suiviDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-weight me-1"></i>Suivi
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="suiviDropdown">
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'weight-log.php' ? 'active' : ''; ?>" href="weight-log.php">
-                                <i class="fas fa-weight me-1"></i>Suivi de poids
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'calorie-history.php' ? 'active' : ''; ?>" href="calorie-history.php">
-                                <i class="fas fa-fire me-1"></i>Historique calorique
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'reports.php' ? 'active' : ''; ?>" href="reports.php">
-                                <i class="fas fa-chart-bar me-1"></i>Rapports & Statistiques
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                
-                <!-- Menu Nutrition -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?php echo in_array($current_page, ['food-log.php', 'food-management.php', 'preferences.php']) ? 'active' : ''; ?>" href="#" id="nutritionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-utensils me-1"></i>Nutrition
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="nutritionDropdown">
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'food-log.php' ? 'active' : ''; ?>" href="food-log.php">
-                                <i class="fas fa-book me-1"></i>Journal alimentaire
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'food-management.php' ? 'active' : ''; ?>" href="food-management.php">
-                                <i class="fas fa-apple-alt me-1"></i>Gestion des aliments
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'preferences.php' ? 'active' : ''; ?>" href="preferences.php">
-                                <i class="fas fa-heart me-1"></i>Préférences alimentaires
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                
-                <!-- Menu Activité physique -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?php echo in_array($current_page, ['exercise-log.php', 'programs.php']) ? 'active' : ''; ?>" href="#" id="activiteDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-running me-1"></i>Activité physique
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="activiteDropdown">
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'exercise-log.php' ? 'active' : ''; ?>" href="exercise-log.php">
-                                <i class="fas fa-dumbbell me-1"></i>Journal d'exercices
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item <?php echo $current_page === 'programs.php' ? 'active' : ''; ?>" href="programs.php">
-                                <i class="fas fa-calendar-alt me-1"></i>Programmes d'entraînement
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                
-                <!-- Menu Objectifs -->
+                <!-- Menu Aliments -->
                 <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'goals.php' ? 'active' : ''; ?>" href="goals.php">
-                        <i class="fas fa-bullseye me-1"></i>Objectifs
+                    <a class="nav-link text-uppercase <?php echo $current_page === 'food-log.php' ? 'active' : ''; ?>" href="food-log.php">
+                        Aliments
+                    </a>
+                </li>
+
+                <!-- Menu Exercices -->
+                <li class="nav-item">
+                    <a class="nav-link text-uppercase <?php echo $current_page === 'exercise-log.php' ? 'active' : ''; ?>" href="exercise-log.php">
+                        Exercices
+                    </a>
+                </li>
+
+                <!-- Menu Rapports -->
+                <li class="nav-item">
+                    <a class="nav-link text-uppercase <?php echo $current_page === 'reports.php' ? 'active' : ''; ?>" href="reports.php">
+                        Rapports
+                    </a>
+                </li>
+
+                <!-- Menu Applis -->
+                <li class="nav-item">
+                    <a class="nav-link text-uppercase <?php echo $current_page === 'apps.php' ? 'active' : ''; ?>" href="apps.php">
+                        Applis
+                    </a>
+                </li>
+
+                <!-- Menu Communauté -->
+                <li class="nav-item">
+                    <a class="nav-link text-uppercase <?php echo $current_page === 'community.php' ? 'active' : ''; ?>" href="community.php">
+                        Communauté
+                    </a>
+                </li>
+
+                <!-- Menu Blog -->
+                <li class="nav-item">
+                    <a class="nav-link text-uppercase <?php echo $current_page === 'blog.php' ? 'active' : ''; ?>" href="blog.php">
+                        Blog
+                    </a>
+                </li>
+
+                <!-- Menu Premium -->
+                <li class="nav-item">
+                    <a class="nav-link text-uppercase <?php echo $current_page === 'premium.php' ? 'active' : ''; ?>" href="premium.php">
+                        Premium
                     </a>
                 </li>
             </ul>
             
             <!-- Menu utilisateur -->
             <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a href="messages.php" class="nav-link position-relative">
+                        <i class="far fa-envelope"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            1
+                        </span>
+                    </a>
+                </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-user-circle me-1"></i><?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?>
@@ -166,6 +149,49 @@ if (!isset($_SESSION)) {
 </nav>
 
 <style>
+/* Styles pour la navigation desktop */
+.navbar.bg-primary {
+    background-color: #0066ee !important;
+    padding: 0;
+}
+
+.navbar .nav-link {
+    padding: 1rem 1.25rem !important;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link.active {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.navbar .navbar-brand {
+    color: white;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+}
+
+.navbar .dropdown-menu {
+    margin-top: 0.5rem;
+    border: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.navbar .dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.navbar .dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.navbar .dropdown-item.active {
+    background-color: #0066ee;
+    color: white;
+}
+
 /* Ajuster le padding du body pour la barre de navigation fixe en bas */
 @media (max-width: 991.98px) {
     body {
