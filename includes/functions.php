@@ -1896,10 +1896,11 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
 
         $ratio = $meal_ratios[$meal_type] ?? 0.35; // Par défaut 35% pour le déjeuner
 
+        // Calculer les macros en fonction des ratios du profil
         $max_calories = round($profile['daily_calories'] * $ratio);
-        $max_proteins = round($profile['daily_proteins'] * $ratio);
-        $max_carbs = round($profile['daily_carbs'] * $ratio);
-        $max_fats = round($profile['daily_fats'] * $ratio);
+        $max_proteins = round(($max_calories * $profile['protein_ratio']) / 4);  // 4 calories par gramme de protéine
+        $max_carbs = round(($max_calories * $profile['carbs_ratio']) / 4);      // 4 calories par gramme de glucide
+        $max_fats = round(($max_calories * $profile['fat_ratio']) / 9);         // 9 calories par gramme de lipide
 
         // Règles spécifiques pour chaque type de repas
         $meal_rules = [
@@ -1951,8 +1952,8 @@ PROFIL UTILISATEUR :
 - Taille : {$profile['height']}cm
 - Niveau d'activité : {$profile['activity_level']}
 - Poids actuel : {$latest_weight}kg
-- Objectif : {$current_goal}
-- Programme actif : {$active_program}
+- Objectif : " . (is_array($current_goal) ? $current_goal['name'] : $current_goal) . "
+- Programme actif : " . (is_array($active_program) ? $active_program['name'] : $active_program) . "
 
 PREFERENCES ALIMENTAIRES :
 - Aliments préférés : " . implode(", ", $favorite_foods) . "
@@ -1975,12 +1976,12 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
     \"instructions\": [\"étape 1\", \"étape 2\", ...]
 }";
 
-        // Appeler l'API OpenAI
-        $response = callOpenAI($prompt);
+        // Appeler l'API ChatGPT
+        $response = callChatGPTAPI($prompt, getSetting('chatgpt_api_key'));
         
         // Vérifier la réponse
         if (!$response) {
-            throw new Exception("Erreur lors de l'appel à l'API OpenAI");
+            throw new Exception("Erreur lors de l'appel à l'API ChatGPT");
         }
 
         // Vérifier que la réponse est un JSON valide
