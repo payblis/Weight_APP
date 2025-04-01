@@ -1848,3 +1848,22 @@ function calculateAge($birth_date) {
     $age = $today->diff($birth);
     return $age->y;
 }
+
+/**
+ * Exécute une requête de suppression
+ * 
+ * @param string $sql Requête SQL
+ * @param array $params Paramètres de la requête
+ * @return bool True si la suppression a réussi, false sinon
+ */
+function delete($sql, $params = []) {
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute($params);
+    } catch (Exception $e) {
+        error_log("Erreur SQL: " . $e->getMessage());
+        return false;
+    }
+}

@@ -1103,7 +1103,12 @@ function updateMealTotals($meal_id) {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
                         })
-                        .then(response => response.json())
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Erreur réseau');
+                            }
+                            return response.json();
+                        })
                         .then(data => {
                             if (data.success) {
                                 if (action === 'remove_food_from_meal') {
@@ -1116,12 +1121,12 @@ function updateMealTotals($meal_id) {
                                 // Mettre à jour les stats
                                 updateStats();
                             } else {
-                                alert(data.error || 'Une erreur est survenue');
+                                throw new Error(data.error || 'Une erreur est survenue lors de la suppression');
                             }
                         })
                         .catch(error => {
                             console.error('Erreur:', error);
-                            alert('Une erreur est survenue lors de la suppression');
+                            alert(error.message || 'Une erreur est survenue lors de la suppression');
                         });
                     }
                 });
