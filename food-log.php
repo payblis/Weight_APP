@@ -1135,261 +1135,11 @@ echo "</div>";
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
-    <style>
-        .debug-panel {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-family: monospace;
-            font-size: 12px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .debug-panel h4 {
-            margin-bottom: 10px;
-            color: #495057;
-        }
-        .debug-message {
-            margin-bottom: 5px;
-            padding: 5px;
-            border-bottom: 1px solid #dee2e6;
-        }
-        .debug-message:last-child {
-            border-bottom: none;
-        }
-        .debug-time {
-            color: #6c757d;
-            margin-right: 5px;
-        }
-        .debug-category {
-            color: #0d6efd;
-            margin-right: 5px;
-            font-weight: bold;
-        }
-        .debug-error {
-            color: #dc3545;
-            background-color: #f8d7da;
-        }
-        .debug-success {
-            color: #28a745;
-            background-color: #d4edda;
-        }
-        .debug-data {
-            margin-top: 5px;
-            padding: 5px;
-            background: #fff;
-            border: 1px solid #dee2e6;
-            border-radius: 3px;
-            font-size: 11px;
-            white-space: pre-wrap;
-        }
-    </style>
 </head>
 <body>
     <?php include 'navigation.php'; ?>
 
     <div class="container py-4">
-        <!-- Panneau de débogage des calories et exercices -->
-        <div class="debug-panel">
-            <h4>Debug Calories & Exercices</h4>
-            <div id="debugContent">
-                <?php
-                // Déboguer les calories consommées
-                $sql = "SELECT 
-                    SUM(m.total_calories) as calories_in,
-                    SUM(m.total_protein) as protein_in,
-                    SUM(m.total_carbs) as carbs_in,
-                    SUM(m.total_fat) as fat_in
-                FROM meals m
-                WHERE m.user_id = ? AND m.log_date = ?";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête calories consommées : " . $sql;
-                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-                echo "</div>";
-                
-                $today_food = fetchOne($sql, [$user_id, $date_filter]);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[CALORIES]</span> ";
-                echo "Calories consommées aujourd'hui : " . ($today_food ? round($today_food['calories_in'] ?? 0) : 0);
-                echo "<br>Résultat complet : " . print_r($today_food, true);
-                echo "</div>";
-
-                // Déboguer les calories brûlées
-                $sql = "SELECT SUM(calories_burned) as calories_out FROM exercise_logs WHERE user_id = ? AND log_date = ?";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête calories brûlées : " . $sql;
-                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-                echo "</div>";
-                
-                $today_exercise = fetchOne($sql, [$user_id, $date_filter]);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[EXERCICES]</span> ";
-                echo "Calories brûlées aujourd'hui : " . ($today_exercise ? round($today_exercise['calories_out'] ?? 0) : 0);
-                echo "<br>Résultat complet : " . print_r($today_exercise, true);
-                echo "</div>";
-
-                // Ajouter une requête pour voir les exercices individuels
-                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
-                       FROM exercise_logs 
-                       WHERE user_id = ? AND log_date = ? 
-                       ORDER BY log_date DESC";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête détails exercices : " . $sql;
-                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-                echo "</div>";
-                
-                $exercises = fetchAll($sql, [$user_id, $date_filter]);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[EXERCICES]</span> ";
-                echo "Liste des exercices du jour :";
-                if (!empty($exercises)) {
-                    foreach ($exercises as $exercise) {
-                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
-                             $exercise['duration'] . " min, " . 
-                             $exercise['calories_burned'] . " kcal";
-                    }
-                } else {
-                    echo "<br>Aucun exercice enregistré pour cette date";
-                }
-                echo "</div>";
-
-                // Vérifier la table exercise_logs
-                $sql = "SELECT COUNT(*) as total FROM exercise_logs WHERE user_id = ?";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête total exercices : " . $sql;
-                echo "<br>Paramètres : user_id=" . $user_id;
-                echo "</div>";
-                
-                $total_exercises = fetchOne($sql, [$user_id]);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[EXERCICES]</span> ";
-                echo "Total des exercices enregistrés : " . ($total_exercises ? $total_exercises['total'] : 0);
-                echo "<br>Résultat complet : " . print_r($total_exercises, true);
-                echo "</div>";
-
-                // Vérifier les exercices avec les colonnes correctes
-                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
-                        FROM exercise_logs 
-                        WHERE user_id = ? AND log_date = ? 
-                        ORDER BY log_date DESC";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête détails exercices : " . $sql;
-                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-                echo "</div>";
-                
-                $exercises = fetchAll($sql, [$user_id, $date_filter]);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[EXERCICES]</span> ";
-                echo "Liste des exercices du jour :";
-                if (!empty($exercises)) {
-                    foreach ($exercises as $exercise) {
-                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
-                             $exercise['duration'] . " min, " . 
-                             $exercise['calories_burned'] . " kcal";
-                    }
-                } else {
-                    echo "<br>Aucun exercice enregistré pour cette date";
-                }
-                echo "</div>";
-
-                // Vérifier tous les exercices de l'utilisateur sans filtre de date
-                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
-                       FROM exercise_logs 
-                       WHERE user_id = ? 
-                       ORDER BY log_date DESC";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête tous les exercices : " . $sql;
-                echo "<br>Paramètres : user_id=" . $user_id;
-                echo "</div>";
-                
-                $all_exercises = fetchAll($sql, [$user_id]);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[EXERCICES]</span> ";
-                echo "Liste de tous les exercices :";
-                if (!empty($all_exercises)) {
-                    foreach ($all_exercises as $exercise) {
-                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
-                             $exercise['duration'] . " min, " . 
-                             $exercise['calories_burned'] . " kcal, " .
-                             "date: " . $exercise['log_date'];
-                    }
-                } else {
-                    echo "<br>Aucun exercice enregistré";
-                }
-                echo "</div>";
-
-                // Vérifier le format de la date dans la base de données
-                $sql = "SELECT DATE_FORMAT(log_date, '%Y-%m-%d') as formatted_date, COUNT(*) as count 
-                       FROM exercise_logs 
-                       WHERE user_id = ? 
-                       GROUP BY DATE(log_date)";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête format dates : " . $sql;
-                echo "<br>Paramètres : user_id=" . $user_id;
-                echo "</div>";
-                
-                $date_counts = fetchAll($sql, [$user_id]);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[EXERCICES]</span> ";
-                echo "Nombre d'exercices par date :";
-                if (!empty($date_counts)) {
-                    foreach ($date_counts as $count) {
-                        echo "<br>- Date: " . $count['formatted_date'] . 
-                             ", Nombre d'exercices: " . $count['count'];
-                    }
-                } else {
-                    echo "<br>Aucune date trouvée";
-                }
-                echo "</div>";
-
-                // Vérifier la structure de la table exercise_logs
-                $sql = "DESCRIBE exercise_logs";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Structure de la table exercise_logs : " . $sql;
-                echo "</div>";
-                
-                $table_structure = fetchAll($sql, []);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[STRUCTURE]</span> ";
-                echo "Structure de la table :";
-                if (!empty($table_structure)) {
-                    foreach ($table_structure as $column) {
-                        echo "<br>- " . $column['Field'] . " : " . $column['Type'];
-                    }
-                } else {
-                    echo "<br>Structure non trouvée";
-                }
-                echo "</div>";
-                ?>
-            </div>
-        </div>
-
         <!-- Stats globales -->
         <div class="global-stats">
             <div class="stats-grid">
@@ -1717,6 +1467,61 @@ echo "</div>";
                     .catch(error => {
                         console.error('Erreur lors de la mise à jour des stats:', error);
                     });
+            }
+
+            // Mise à jour des macros lors de la sélection d'un aliment
+            const foodSelect = document.getElementById('food_id');
+            if (foodSelect) {
+                foodSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    if (selectedOption && selectedOption.value) {
+                        const quantity = document.getElementById('quantity').value;
+                        const calories = selectedOption.dataset.calories;
+                        const protein = selectedOption.dataset.protein;
+                        const carbs = selectedOption.dataset.carbs;
+                        const fat = selectedOption.dataset.fat;
+
+                        // Calculer les valeurs en fonction de la quantité
+                        const calculatedCalories = (calories * quantity) / 100;
+                        const calculatedProtein = (protein * quantity) / 100;
+                        const calculatedCarbs = (carbs * quantity) / 100;
+                        const calculatedFat = (fat * quantity) / 100;
+
+                        // Mettre à jour les champs
+                        document.getElementById('custom_calories').value = Math.round(calculatedCalories);
+                        document.getElementById('custom_protein').value = calculatedProtein.toFixed(1);
+                        document.getElementById('custom_carbs').value = calculatedCarbs.toFixed(1);
+                        document.getElementById('custom_fat').value = calculatedFat.toFixed(1);
+                    }
+                });
+            }
+
+            // Mise à jour des macros lors du changement de quantité
+            const quantityInput = document.getElementById('quantity');
+            if (quantityInput) {
+                quantityInput.addEventListener('input', function() {
+                    const foodSelect = document.getElementById('food_id');
+                    if (foodSelect && foodSelect.value) {
+                        const selectedOption = foodSelect.options[foodSelect.selectedIndex];
+                        const quantity = this.value;
+                        const calories = selectedOption.dataset.calories;
+                        const protein = selectedOption.dataset.protein;
+                        const carbs = selectedOption.dataset.carbs;
+                        const fat = selectedOption.dataset.fat;
+
+                        // Calculer les valeurs en fonction de la quantité
+                        const calculatedCalories = (calories * quantity) / 100;
+                        const calculatedProtein = (protein * quantity) / 100;
+                        const calculatedCarbs = (carbs * quantity) / 100;
+                        const calculatedFat = (fat * quantity) / 100;
+
+                        // Mettre à jour les champs
+                        document.getElementById('custom_calories').value = Math.round(calculatedCalories);
+                        document.getElementById('custom_protein').value = calculatedProtein.toFixed(1);
+                        document.getElementById('custom_carbs').value = calculatedCarbs.toFixed(1);
+                        document.getElementById('custom_fat').value = calculatedFat.toFixed(1);
+                    }
+                });
             }
 
             // Modifier les gestionnaires d'événements pour la suppression
