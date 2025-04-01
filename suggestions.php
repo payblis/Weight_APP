@@ -100,83 +100,36 @@ $active_program = fetchOne($sql, [$user_id]);
 
 // Traitement de la demande de suggestion
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $suggestion_type = sanitizeInput($_POST['suggestion_type'] ?? 'alimentation');
-    
-    if (!in_array($suggestion_type, ['alimentation', 'exercice', 'programme'])) {
-        $errors[] = "Type de suggestion invalide";
-    } else {
-        try {
-            $suggestion_content = '';
-            
-            // Vérifier que le profil est complet
-            if (empty($user_profile) || !isset($user_profile['age'])) {
-                $errors[] = "Veuillez compléter votre profil avant d'utiliser les suggestions.";
-            } else {
-                switch ($suggestion_type) {
-                    case 'alimentation':
-                        // Récupérer le dernier poids enregistré
-                        $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
-                        $latest_weight = fetchOne($sql, [$user_id]);
-
-                        // Récupérer l'objectif actif
-                        $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
-                        $current_goal = fetchOne($sql, [$user_id]);
-
-                        // Récupérer le programme actif
-                        $sql = "SELECT p.* FROM user_programs up 
-                                JOIN programs p ON up.program_id = p.id 
-                                WHERE up.user_id = ? AND up.status = 'actif' 
-                                ORDER BY up.created_at DESC LIMIT 1";
-                        $active_program = fetchOne($sql, [$user_id]);
-
-                        // Générer la suggestion
-                        $meal_type = isset($_GET['meal_type']) ? $_GET['meal_type'] : 'dejeuner';
-                        
-                        if ($meal_type === 'liste_courses') {
-                            $suggestion_content = generateShoppingList($profile, $favorite_foods, $blacklisted_foods);
-                        } else {
-                            $suggestion_content = generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods, $meal_type);
-                        }
-                        break;
-                        
-                    case 'exercice':
-                        $suggestion_content = generateExerciseSuggestion($user_profile, $latest_weight, $current_goal, $active_program);
-                        break;
-                        
-                    case 'programme':
-                        if (empty($api_key)) {
-                            $errors[] = "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
-                            break;
-                        }
-                        $meal_suggestion = generateMealSuggestion($user_profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods);
-                        $exercise_suggestion = generateExerciseSuggestion($user_profile, $latest_weight, $current_goal, $active_program);
-                        
-                        if (strpos($meal_suggestion, "La clé API ChatGPT n'est pas configurée") !== false || 
-                            strpos($exercise_suggestion, "La clé API ChatGPT n'est pas configurée") !== false) {
-                            $errors[] = "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
-                            break;
-                        }
-                        
-                        $suggestion_content = "PROGRAMME ALIMENTAIRE :\n\n" . $meal_suggestion . "\n\n" . 
-                                            "PROGRAMME D'EXERCICES :\n\n" . $exercise_suggestion;
-                        break;
+    if (isset($_POST['action'])) {
+        switch ($_POST['action']) {
+            case 'generate_meal':
+                try {
+                    $meal_type = $_POST['meal_type'];
+                    $suggestion = generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods, $meal_type);
+                    $success = "Suggestion générée avec succès !";
+                } catch (Exception $e) {
+                    $error = "Erreur lors de la génération de la suggestion : " . $e->getMessage();
                 }
-                
-                if (!empty($suggestion_content) && empty($errors)) {
-                    $sql = "INSERT INTO ai_suggestions (user_id, suggestion_type, content, is_read, is_implemented, created_at) 
-                            VALUES (?, ?, ?, 0, 0, NOW())";
-                    $result = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
-                    
-                    if ($result) {
-                        $success_message = "Votre suggestion a été générée avec succès !";
-                    } else {
-                        $errors[] = "Une erreur s'est produite lors de l'enregistrement de la suggestion. Veuillez réessayer.";
-                    }
+                break;
+
+            case 'generate_exercise':
+                try {
+                    $exercise_type = $_POST['exercise_type'];
+                    $suggestion = generateExerciseSuggestion($profile, $latest_weight, $current_goal, $active_program, $exercise_type);
+                    $success = "Suggestion générée avec succès !";
+                } catch (Exception $e) {
+                    $error = "Erreur lors de la génération de la suggestion : " . $e->getMessage();
                 }
-            }
-        } catch (Exception $e) {
-            $errors[] = "Une erreur s'est produite: " . $e->getMessage();
-            error_log("Erreur dans suggestions.php: " . $e->getMessage());
+                break;
+
+            case 'generate_shopping_list':
+                try {
+                    $shopping_list = generateShoppingListSuggestion($profile, $favorite_foods, $blacklisted_foods);
+                    $shopping_list_success = "Liste de courses générée avec succès !";
+                } catch (Exception $e) {
+                    $shopping_list_error = "Erreur lors de la génération de la liste de courses : " . $e->getMessage();
+                }
+                break;
         }
     }
 }
@@ -278,6 +231,14 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                 padding-top: 1rem !important;
                 padding-bottom: 1rem !important;
             }
+        }
+        .shopping-list {
+            white-space: pre-wrap;
+            font-family: monospace;
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            margin: 0;
         }
     </style>
 </head>
@@ -602,6 +563,62 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                             <strong>Conseil :</strong> La clé API ChatGPT est gérée par l'administrateur de l'application.
                             Contactez-le si vous souhaitez utiliser les fonctionnalités d'IA.
                         </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Liste de courses -->
+        <div class="row mt-4">
+            <div class="col-md-8 offset-md-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="mb-0">Liste de courses personnalisée</h2>
+                    </div>
+                    <div class="card-body">
+                        <?php if (isset($shopping_list_error)): ?>
+                            <div class="alert alert-danger"><?php echo $shopping_list_error; ?></div>
+                        <?php endif; ?>
+                        
+                        <?php if (isset($shopping_list_success)): ?>
+                            <div class="alert alert-success"><?php echo $shopping_list_success; ?></div>
+                        <?php endif; ?>
+                        
+                        <form method="POST" action="">
+                            <input type="hidden" name="action" value="generate_shopping_list">
+                            <div class="mb-3">
+                                <p class="text-muted">
+                                    Cette liste de courses sera générée en fonction de :
+                                </p>
+                                <ul>
+                                    <li>Votre profil (âge, taille, poids, niveau d'activité)</li>
+                                    <li>Vos préférences alimentaires</li>
+                                    <li>Vos objectifs nutritionnels</li>
+                                    <li>Les aliments à éviter</li>
+                                </ul>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-shopping-cart"></i> Générer ma liste de courses
+                            </button>
+                        </form>
+                        
+                        <?php if (isset($shopping_list)): ?>
+                            <div class="mt-4">
+                                <h3>Votre liste de courses personnalisée</h3>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <pre class="shopping-list"><?php echo htmlspecialchars($shopping_list); ?></pre>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <button class="btn btn-success" onclick="window.print()">
+                                        <i class="fas fa-print"></i> Imprimer la liste
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

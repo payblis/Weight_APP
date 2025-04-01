@@ -2031,10 +2031,6 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
             $suggestion_text .= ($index + 1) . ". {$instruction}\n";
         }
 
-        // Générer la liste de courses
-        $shopping_list = generateShoppingList($profile, $favorite_foods, $blacklisted_foods);
-        $suggestion_text .= "\n\nLISTE DE COURSES :\n" . $shopping_list;
-
         return $suggestion_text;
 
     } catch (Exception $e) {
@@ -2043,7 +2039,15 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
     }
 }
 
-function generateShoppingList($profile, $favorite_foods, $blacklisted_foods) {
+/**
+ * Génère une suggestion de liste de courses personnalisée
+ * 
+ * @param array $profile Profil de l'utilisateur
+ * @param array $favorite_foods Aliments préférés
+ * @param array $blacklisted_foods Aliments à éviter
+ * @return string Suggestion de liste de courses
+ */
+function generateShoppingListSuggestion($profile, $favorite_foods, $blacklisted_foods) {
     try {
         // Construire le prompt pour la liste de courses
         $prompt = "Tu es un expert en nutrition et en planification de repas. Je vais te donner les informations nécessaires pour générer une liste de courses adaptée au profil de l'utilisateur.
@@ -2133,7 +2137,7 @@ Génère une liste de courses au format JSON avec la structure suivante :
         return $list_text;
 
     } catch (Exception $e) {
-        error_log("Erreur dans generateShoppingList : " . $e->getMessage());
+        error_log("Erreur dans generateShoppingListSuggestion : " . $e->getMessage());
         return "Erreur lors de la génération de la liste de courses : " . $e->getMessage();
     }
 }
