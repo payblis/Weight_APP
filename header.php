@@ -15,39 +15,45 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="./assets/css/style.css" rel="stylesheet">
     <style>
-        .main-header {
+        .app-header {
             background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #e5e5e5;
+            padding: 0.5rem 0;
         }
-        .main-nav {
+        .app-nav {
             background-color: #0066ee;
+            padding: 0;
         }
-        .main-nav .nav-link {
+        .app-nav .nav-link {
             color: white !important;
-            padding: 1rem 1.5rem !important;
-            font-weight: 500;
+            padding: 0.75rem 1.25rem !important;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
         }
-        .main-nav .nav-link:hover {
+        .app-nav .nav-link:hover,
+        .app-nav .nav-link.active {
             background-color: rgba(255,255,255,0.1);
         }
-        .notification-badge {
-            background-color: #ff0000;
-            color: white;
-            border-radius: 50%;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.75rem;
-            position: absolute;
-            top: -5px;
-            right: -5px;
-        }
-        .user-menu {
+        .user-controls {
             display: flex;
             align-items: center;
             gap: 1.5rem;
         }
-        .user-menu a {
+        .user-controls a {
             color: #666;
             text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .notification-count {
+            background-color: #ff0000;
+            color: white;
+            border-radius: 50%;
+            padding: 0.15rem 0.4rem;
+            font-size: 0.75rem;
         }
         .logo {
             color: #0066ee;
@@ -55,61 +61,88 @@
             font-weight: bold;
             text-decoration: none;
         }
+        .logo:hover {
+            color: #0056d6;
+            text-decoration: none;
+        }
+        .user-controls .btn-outline-primary {
+            border-color: #0066ee;
+            color: #0066ee;
+        }
+        .user-controls .btn-outline-primary:hover {
+            background-color: #0066ee;
+            color: white;
+        }
     </style>
 </head>
 <body>
+    <?php if (!isset($_SESSION)) { session_start(); } ?>
+    
     <!-- Header principal -->
-    <header class="main-header">
-        <div class="container py-2 d-flex justify-content-between align-items-center">
-            <a href="index.php" class="logo">
+    <header class="app-header">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a href="<?php echo isset($_SESSION['user_id']) ? 'dashboard.php' : 'index.php'; ?>" class="logo">
                 MyFity
             </a>
-            <div class="user-menu">
-                <a href="#" class="position-relative">
-                    <i class="far fa-envelope fa-lg"></i>
-                    <span class="notification-badge">1</span>
-                </a>
-                <a href="profile.php">
-                    <i class="far fa-user fa-lg"></i>
-                </a>
-                <a href="settings.php">
-                    <i class="fas fa-cog fa-lg"></i>
-                </a>
+            <div class="user-controls">
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <a href="messages.php" class="position-relative">
+                        <i class="far fa-envelope"></i>
+                        <span class="notification-count">1</span>
+                    </a>
+                    <a href="#" class="d-flex align-items-center">
+                        <i class="far fa-user me-1"></i>
+                        <?php echo htmlspecialchars($_SESSION['username']); ?>
+                    </a>
+                    <a href="settings.php">
+                        <i class="fas fa-cog"></i>
+                        Paramètres
+                    </a>
+                    <a href="logout.php" class="text-danger">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Déconnexion
+                    </a>
+                <?php else: ?>
+                    <a href="login.php" class="btn btn-outline-primary me-2">Se connecter</a>
+                    <a href="register.php" class="btn btn-primary">S'inscrire</a>
+                <?php endif; ?>
             </div>
         </div>
     </header>
 
+    <?php if (isset($_SESSION['user_id'])): ?>
     <!-- Navigation principale -->
-    <nav class="main-nav">
+    <nav class="app-nav">
         <div class="container">
             <ul class="nav">
                 <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php">MON ACCUEIL</a>
+                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">Mon Accueil</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="food-log.php">ALIMENTS</a>
+                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'food-log.php' ? 'active' : ''; ?>" href="food-log.php">Aliments</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="exercise-log.php">EXERCICES</a>
+                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'exercise-log.php' ? 'active' : ''; ?>" href="exercise-log.php">Exercices</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="reports.php">RAPPORTS</a>
+                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'reports.php' ? 'active' : ''; ?>" href="reports.php">Rapports</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="apps.php">APPLIS</a>
+                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'apps.php' ? 'active' : ''; ?>" href="apps.php">Applis</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="community.php">COMMUNAUTÉ</a>
+                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'community.php' ? 'active' : ''; ?>" href="community.php">Communauté</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="blog.php">BLOG</a>
+                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'blog.php' ? 'active' : ''; ?>" href="blog.php">Blog</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="premium.php">PREMIUM</a>
+                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'premium.php' ? 'active' : ''; ?>" href="premium.php">Premium</a>
                 </li>
             </ul>
         </div>
     </nav>
+    <?php endif; ?>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
