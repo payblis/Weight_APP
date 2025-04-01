@@ -1907,8 +1907,32 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
         $max_carbs = round(($max_calories * $nutrition_goals['carbs_ratio']) / 4);      // 4 calories par gramme de glucide
         $max_fat = round(($max_calories * $nutrition_goals['fat_ratio']) / 9);          // 9 calories par gramme de lipide
 
+        // Définir les règles spécifiques selon le type de repas
+        $meal_rules = [
+            'petit_dejeuner' => [
+                'description' => "un petit-déjeuner équilibré et énergétique",
+                'aliments_typiques' => "céréales, fruits, produits laitiers, œufs, pain complet",
+                'conseils' => "Privilégiez les glucides complexes pour l'énergie, les protéines pour la satiété, et les fruits pour les vitamines"
+            ],
+            'dejeuner' => [
+                'description' => "un déjeuner complet et rassasiant",
+                'aliments_typiques' => "viandes maigres, poissons, légumes, féculents complets",
+                'conseils' => "Incluez une source de protéines, des légumes et des féculents complets"
+            ],
+            'diner' => [
+                'description' => "un dîner léger et digeste",
+                'aliments_typiques' => "poissons, légumes, soupes, salades",
+                'conseils' => "Privilégiez les protéines légères et les légumes, évitez les féculents en trop grande quantité"
+            ],
+            'collation' => [
+                'description' => "une collation saine et légère",
+                'aliments_typiques' => "fruits, yaourt, fruits secs, noix",
+                'conseils' => "Choisissez des aliments riches en nutriments mais faibles en calories"
+            ]
+        ];
+
         // Construire le prompt
-        $prompt = "Tu es un nutritionniste expert. Donne-moi une suggestion de {$meal_type} sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
+        $prompt = "Tu es un nutritionniste expert. Donne-moi une suggestion de {$meal_rules[$meal_type]['description']} sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
 
 {
   \"nom_du_repas\": \"...\",
@@ -1924,6 +1948,12 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
   }
 }
 
+IMPORTANT : Les valeurs nutritionnelles DOIVENT respecter strictement ces limites :
+- Calories maximales : {$max_calories} kcal
+- Protéines maximales : {$max_protein} g
+- Glucides maximaux : {$max_carbs} g
+- Lipides maximaux : {$max_fat} g
+
 Profil de l'utilisateur :
 - Poids : {$profile['weight']} kg
 - Taille : {$profile['height']} cm
@@ -1931,16 +1961,25 @@ Profil de l'utilisateur :
 - Niveau d'activité : {$profile['activity_level']}
 - Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
 
-Limites nutritionnelles pour ce repas :
-- Calories maximales : {$max_calories} kcal
-- Protéines maximales : {$max_protein} g
-- Glucides maximaux : {$max_carbs} g
-- Lipides maximaux : {$max_fat} g
-
 Aliments préférés : " . implode(", ", $favorite_foods) . "
 Aliments à éviter : " . implode(", ", $blacklisted_foods) . "
 
-N'ajoute rien d'autre que ce JSON dans ta réponse. Assure-toi que les valeurs nutritionnelles respectent les limites maximales.";
+RÈGLES STRICTES POUR UN {$meal_rules[$meal_type]['description']} :
+1. Les valeurs nutritionnelles DOIVENT être inférieures ou égales aux limites maximales
+2. Utilisez des portions raisonnables pour chaque ingrédient
+3. Privilégiez les aliments préférés de l'utilisateur
+4. Évitez absolument les aliments blacklistés
+5. Adaptez les quantités pour respecter les limites nutritionnelles
+6. Vérifiez que la somme des calories des ingrédients correspond aux calories totales
+7. Assurez-vous que les macros (protéines, glucides, lipides) sont cohérentes avec les calories
+8. Utilisez principalement des aliments typiques pour ce type de repas : {$meal_rules[$meal_type]['aliments_typiques']}
+9. Suivez ces conseils spécifiques : {$meal_rules[$meal_type]['conseils']}
+10. Pour le petit-déjeuner : incluez des glucides complexes et des protéines
+11. Pour le déjeuner : incluez une source de protéines, des légumes et des féculents
+12. Pour le dîner : privilégiez les protéines légères et les légumes
+13. Pour la collation : choisissez des aliments riches en nutriments mais faibles en calories
+
+N'ajoute rien d'autre que ce JSON dans ta réponse. Assure-toi que les valeurs nutritionnelles respectent strictement les limites maximales.";
 
         // Logger le prompt
         error_log("=== Prompt envoyé à l'API pour generateMealSuggestion ===");
@@ -1981,11 +2020,35 @@ N'ajoute rien d'autre que ce JSON dans ta réponse. Assure-toi que les valeurs n
             $nutrition['glucides'] > $max_carbs || 
             $nutrition['lipides'] > $max_fat) {
             error_log("Les valeurs nutritionnelles dépassent les limites maximales");
+            error_log("Calories: {$nutrition['calories']} > {$max_calories}");
+            error_log("Protéines: {$nutrition['proteines']} > {$max_protein}");
+            error_log("Glucides: {$nutrition['glucides']} > {$max_carbs}");
+            error_log("Lipides: {$nutrition['lipides']} > {$max_fat}");
             return "La suggestion générée dépasse les limites nutritionnelles autorisées.";
         }
 
         // Formater la suggestion pour l'affichage
         $suggestion = "SUGGESTION DE " . strtoupper(str_replace('_', ' ', $meal_type)) . " : {$data['nom_du_repas']}\n\n";
+        
+        // Ajouter les informations utilisées pour la génération
+        $suggestion .= "Informations utilisées pour la génération :\n";
+        $suggestion .= "Profil :\n";
+        $suggestion .= "Genre : " . ucfirst($profile['gender']) . "\n";
+        $suggestion .= "Âge : {$profile['age']} ans\n";
+        $suggestion .= "Taille : {$profile['height']} cm\n";
+        $suggestion .= "Niveau d'activité : " . ucfirst($profile['activity_level']) . "\n";
+        $suggestion .= "Poids actuel : {$profile['weight']} kg\n";
+        $suggestion .= "Objectif : " . ($current_goal ? $current_goal['name'] : "Non défini") . "\n";
+        $suggestion .= "Programme : " . ($active_program ? $active_program['name'] : "Aucun") . "\n";
+        $suggestion .= "Préférences alimentaires :\n";
+        $suggestion .= "Aliments préférés : " . count($favorite_foods) . " configurés\n";
+        $suggestion .= "Aliments à éviter : " . count($blacklisted_foods) . " configurés\n";
+        $suggestion .= "Limites nutritionnelles pour " . ucfirst(str_replace('_', ' ', $meal_type)) . " :\n";
+        $suggestion .= "Calories maximales : {$max_calories} kcal\n";
+        $suggestion .= "Protéines maximales : {$max_protein} g\n";
+        $suggestion .= "Glucides maximaux : {$max_carbs} g\n";
+        $suggestion .= "Lipides maximaux : {$max_fat} g\n\n";
+        
         $suggestion .= "Valeurs nutritionnelles :\n";
         $suggestion .= "- Calories : {$data['valeurs_nutritionnelles']['calories']} kcal\n";
         $suggestion .= "- Protéines : {$data['valeurs_nutritionnelles']['proteines']} g\n";
