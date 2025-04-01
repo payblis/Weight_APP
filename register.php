@@ -318,7 +318,7 @@ $max_date = date('Y-m-d', strtotime("-16 years"));
                             </div>
                             
                             <div class="d-grid mt-4">
-                                <button type="submit" class="btn btn-primary btn-lg">Créer un compte</button>
+                                <button type="submit" class="btn btn-primary btn-lg btn-submit">Créer un compte</button>
                             </div>
                         </form>
                     </div>
