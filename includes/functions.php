@@ -1867,3 +1867,270 @@ function deleteRecord($sql, $params = []) {
         return false;
     }
 }
+
+
+
+
+
+/**
+ * Fonctions adaptées pour le nouveau dashboard style MyFitnessPal
+ */
+
+/**
+ * Calcule l'objectif d'hydratation quotidien en fonction du profil utilisateur
+ * 
+ * @param array $user Données de l'utilisateur
+ * @return float Objectif d'hydratation en litres
+ */
+function calculateWaterGoal($user) {
+    // Valeurs par défaut si les données ne sont pas disponibles
+    $weight = isset($user['weight']) ? $user['weight'] : 70;
+    $height = isset($user['height']) ? $user['height'] : 170;
+    $age = isset($user['age']) ? $user['age'] : 30;
+    $activity_level = isset($user['activity_level']) ? $user['activity_level'] : 'modéré';
+    
+    // Calcul de base : 35ml par kg de poids corporel
+    $base_water = $weight * 0.035;
+    
+    // Ajustement selon le niveau d'activité
+    $activity_multiplier = 1.0;
+    switch ($activity_level) {
+        case 'sédentaire':
+            $activity_multiplier = 0.9;
+            break;
+        case 'légèrement_actif':
+            $activity_multiplier = 1.0;
+            break;
+        case 'modéré':
+            $activity_multiplier = 1.1;
+            break;
+        case 'actif':
+            $activity_multiplier = 1.2;
+            break;
+        case 'très_actif':
+            $activity_multiplier = 1.3;
+            break;
+    }
+    
+    // Ajustement selon l'âge (les personnes âgées ont besoin de plus d'eau)
+    $age_multiplier = 1.0;
+    if ($age > 65) {
+        $age_multiplier = 1.1;
+    } elseif ($age < 18) {
+        $age_multiplier = 1.05;
+    }
+    
+    // Calcul final
+    $water_goal = $base_water * $activity_multiplier * $age_multiplier;
+    
+    // Conversion en litres et arrondi à 2 décimales
+    $water_goal = round($water_goal / 1000, 2);
+    
+    // Minimum 1.5L, maximum 4L
+    return max(1.5, min(4, $water_goal));
+}
+
+/**
+ * Calcule le métabolisme de base (BMR) selon la formule de Mifflin-St Jeor
+ * 
+ * @param float $weight Poids en kg
+ * @param float $height Taille en cm
+ * @param string $birth_date Date de naissance (format Y-m-d)
+ * @param string $gender Genre ('homme' ou 'femme')
+ * @return float BMR en calories
+ */
+function calculateBMR($weight, $height, $birth_date, $gender) {
+    // Calcul de l'âge
+    $today = new DateTime();
+    $birthdate = new DateTime($birth_date);
+    $age = $birthdate->diff($today)->y;
+    
+    // Formule de Mifflin-St Jeor
+    if (strtolower($gender) == 'homme') {
+        $bmr = (10 * $weight) + (6.25 * $height) - (5 * $age) + 5;
+    } else {
+        $bmr = (10 * $weight) + (6.25 * $height) - (5 * $age) - 161;
+    }
+    
+    return round($bmr);
+}
+
+/**
+ * Calcule la dépense énergétique totale (TDEE) en fonction du BMR et du niveau d'activité
+ * 
+ * @param float $bmr Métabolisme de base
+ * @param string $activity_level Niveau d'activité
+ * @return float TDEE en calories
+ */
+function calculateTDEE($bmr, $activity_level) {
+    // Multiplicateurs selon le niveau d'activité
+    $multipliers = [
+        'sédentaire' => 1.2,
+        'légèrement_actif' => 1.375,
+        'modéré' => 1.55,
+        'actif' => 1.725,
+        'très_actif' => 1.9
+    ];
+    
+    // Valeur par défaut si le niveau d'activité n'est pas reconnu
+    $multiplier = $multipliers['modéré'];
+    
+    if (isset($multipliers[$activity_level])) {
+        $multiplier = $multipliers[$activity_level];
+    }
+    
+    return round($bmr * $multiplier);
+}
+
+/**
+ * Vérifie les notifications de repas pour l'utilisateur
+ * 
+ * @param int $user_id ID de l'utilisateur
+ * @return array Tableau des notifications de repas
+ */
+function checkMealNotifications($user_id) {
+    // Récupérer les préférences de repas de l'utilisateur
+    $sql = "SELECT * FROM meal_preferences WHERE user_id = ?";
+    $preferences = fetchAll($sql, [$user_id]);
+    
+    // Récupérer les repas déjà enregistrés aujourd'hui
+    $today = date('Y-m-d');
+    $sql = "SELECT meal_type FROM meals WHERE user_id = ? AND log_date = ?";
+    $logged_meals = fetchAll($sql, [$user_id, $today]);
+    
+    // Convertir en tableau simple pour faciliter la vérification
+    $logged_meal_types = [];
+    foreach ($logged_meals as $meal) {
+        $logged_meal_types[] = $meal['meal_type'];
+    }
+    
+    // Vérifier quels repas n'ont pas encore été enregistrés
+    $notifications = [];
+    
+    foreach ($preferences as $pref) {
+        if (!in_array($pref['meal_type'], $logged_meal_types)) {
+            // Calculer l'heure actuelle et l'heure prévue du repas
+            $current_time = time();
+            list($hours, $minutes) = explode(':', $pref['preferred_time']);
+            $meal_time = mktime($hours, $minutes, 0);
+            
+            // Définir une fenêtre de temps pour le repas (2 heures)
+            $meal_end_time = $meal_time + 7200; // +2 heures
+            
+            // Définir la priorité de la notification
+            $priority = 1; // Normal
+            if ($current_time > $meal_end_time) {
+                $priority = 2; // Urgent (repas manqué)
+            }
+            
+            // Ajouter la notification
+            $notifications[] = [
+                'meal_type' => $pref['meal_type'],
+                'preferred_time' => $pref['preferred_time'],
+                'end_time' => date('H:i', $meal_end_time),
+                'priority' => $priority,
+                'message' => "N'oubliez pas votre " . $pref['meal_type'] . " prévu à " . $pref['preferred_time']
+            ];
+        }
+    }
+    
+    return $notifications;
+}
+
+/**
+ * Récupère les invitations de groupe en attente pour l'utilisateur
+ * 
+ * @param int $user_id ID de l'utilisateur
+ * @return array Tableau des invitations en attente
+ */
+function getUserPendingInvitations($user_id) {
+    $sql = "SELECT gi.id, g.name as group_name, u.username as invited_by_name
+            FROM group_invitations gi
+            JOIN groups g ON gi.group_id = g.id
+            JOIN users u ON gi.invited_by = u.id
+            WHERE gi.user_id = ? AND gi.status = 'en_attente'";
+    
+    return fetchAll($sql, [$user_id]);
+}
+
+/**
+ * Calcule le nombre de jours d'affilée où l'utilisateur a enregistré des données
+ * 
+ * @param int $user_id ID de l'utilisateur
+ * @return int Nombre de jours d'affilée
+ */
+function calculateStreak($user_id) {
+    // Date d'aujourd'hui
+    $today = date('Y-m-d');
+    
+    // Récupérer les dates d'activité (poids, repas ou exercices)
+    $sql = "SELECT DISTINCT log_date FROM (
+                SELECT log_date FROM weight_logs WHERE user_id = ?
+                UNION
+                SELECT log_date FROM meals WHERE user_id = ?
+                UNION
+                SELECT log_date FROM exercise_logs WHERE user_id = ?
+            ) AS activity_dates
+            ORDER BY log_date DESC";
+    
+    $activity_dates = fetchAll($sql, [$user_id, $user_id, $user_id]);
+    
+    // Si aucune activité, retourner 0
+    if (empty($activity_dates)) {
+        return 0;
+    }
+    
+    // Vérifier si l'utilisateur a été actif aujourd'hui
+    $last_active_date = $activity_dates[0]['log_date'];
+    if ($last_active_date != $today) {
+        // Vérifier si l'utilisateur a été actif hier
+        $yesterday = date('Y-m-d', strtotime('-1 day'));
+        if ($last_active_date != $yesterday) {
+            // Pas d'activité aujourd'hui ni hier, la série est rompue
+            return 0;
+        }
+    }
+    
+    // Calculer la série
+    $streak = 1; // Commencer à 1 pour le jour le plus récent
+    $prev_date = strtotime($activity_dates[0]['log_date']);
+    
+    for ($i = 1; $i < count($activity_dates); $i++) {
+        $curr_date = strtotime($activity_dates[$i]['log_date']);
+        $diff = ($prev_date - $curr_date) / 86400; // Différence en jours
+        
+        if ($diff == 1) {
+            // Jours consécutifs
+            $streak++;
+            $prev_date = $curr_date;
+        } elseif ($diff > 1) {
+            // Interruption de la série
+            break;
+        }
+    }
+    
+    return $streak;
+}
+
+/**
+ * Formate un nombre pour l'affichage
+ * 
+ * @param float $number Nombre à formater
+ * @param int $decimals Nombre de décimales
+ * @return string Nombre formaté
+ */
+function formatNumber($number, $decimals = 0) {
+    return number_format($number, $decimals, ',', ' ');
+}
+
+/**
+ * Calcule le pourcentage de progression pour les cercles
+ * 
+ * @param float $current Valeur actuelle
+ * @param float $goal Objectif
+ * @return float Pourcentage (0-100)
+ */
+function calculatePercentage($current, $goal) {
+    if ($goal <= 0) return 0;
+    return min(100, max(0, ($current / $goal) * 100));
+}
