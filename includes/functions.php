@@ -1886,6 +1886,14 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
             $profile['age'] = 30; // Valeur par défaut si l'âge n'est pas défini
         }
 
+        // Mapper les types de repas pour l'affichage
+        $meal_type_display = [
+            'petit_dejeuner' => 'Petit-déjeuner',
+            'dejeuner' => 'Déjeuner',
+            'diner' => 'Dîner',
+            'collation' => 'Collation'
+        ];
+
         // Calculer les limites nutritionnelles en fonction du type de repas
         $meal_ratios = [
             'petit_dejeuner' => 0.25,
@@ -1929,7 +1937,7 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
         $meal_rule = $meal_rules[$meal_type] ?? $meal_rules['dejeuner'];
 
         // Construire le prompt
-        $prompt = "Tu es un expert en nutrition et en planification de repas. Je vais te donner les informations nécessaires pour générer une suggestion de repas adaptée au profil de l'utilisateur.
+        $prompt = "Tu es un expert en nutrition et en planification de repas. Je vais te donner les informations nécessaires pour générer une suggestion de {$meal_type_display[$meal_type]} adaptée au profil de l'utilisateur.
 
 IMPORTANT : Les valeurs nutritionnelles DOIVENT être inférieures ou égales aux limites suivantes :
 - Calories : {$max_calories} kcal
@@ -1959,7 +1967,7 @@ PREFERENCES ALIMENTAIRES :
 - Aliments préférés : " . implode(", ", $favorite_foods) . "
 - Aliments à éviter : " . implode(", ", $blacklisted_foods) . "
 
-TYPE DE REPAS : {$meal_type}
+TYPE DE REPAS : {$meal_type_display[$meal_type]}
 DESCRIPTION : {$meal_rule['description']}
 ALIMENTS TYPIQUES : {$meal_rule['typical_foods']}
 CONSEILS NUTRITIONNELS : {$meal_rule['advice']}
@@ -2006,7 +2014,7 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
         }
 
         // Formater la suggestion pour l'affichage
-        $suggestion_text = "Suggestion de {$meal_type} :\n\n";
+        $suggestion_text = "Suggestion de {$meal_type_display[$meal_type]} :\n\n";
         $suggestion_text .= "Nom : {$suggestion['name']}\n";
         $suggestion_text .= "Description : {$suggestion['description']}\n\n";
         $suggestion_text .= "Valeurs nutritionnelles :\n";
@@ -2022,6 +2030,10 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
         foreach ($suggestion['instructions'] as $index => $instruction) {
             $suggestion_text .= ($index + 1) . ". {$instruction}\n";
         }
+
+        // Générer la liste de courses
+        $shopping_list = generateShoppingList($profile, $favorite_foods, $blacklisted_foods);
+        $suggestion_text .= "\n\nLISTE DE COURSES :\n" . $shopping_list;
 
         return $suggestion_text;
 
