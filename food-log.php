@@ -42,15 +42,101 @@ $daily_goal = $daily_goal_result ? $daily_goal_result['goal_calories'] : 0;
 $sql = "SELECT COALESCE(SUM(calories_burned), 0) as total_burned 
         FROM exercise_logs 
         WHERE user_id = ? AND DATE(log_date) = ?";
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[SQL]</span> ";
+echo "Requête calories brûlées : " . $sql;
+echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+echo "</div>";
+
 $exercise_result = fetchOne($sql, [$user_id, $date_filter]);
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[EXERCICES]</span> ";
+echo "Calories brûlées aujourd'hui : " . ($exercise_result ? $exercise_result['total_burned'] : 0);
+echo "<br>Résultat complet : " . print_r($exercise_result, true);
+echo "</div>";
+
 $exercise_calories = $exercise_result ? $exercise_result['total_burned'] : 0;
 
 // Récupérer les calories consommées
 $sql = "SELECT COALESCE(SUM(total_calories), 0) as total_calories 
         FROM meals 
         WHERE user_id = ? AND log_date = ?";
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[SQL]</span> ";
+echo "Requête calories consommées : " . $sql;
+echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+echo "</div>";
+
 $meals_result = fetchOne($sql, [$user_id, $date_filter]);
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[ALIMENTS]</span> ";
+echo "Calories consommées aujourd'hui : " . ($meals_result ? $meals_result['total_calories'] : 0);
+echo "<br>Résultat complet : " . print_r($meals_result, true);
+echo "</div>";
+
 $total_calories = $meals_result ? $meals_result['total_calories'] : 0;
+
+// Vérifier les repas du jour
+$sql = "SELECT m.*, 
+        (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count
+        FROM meals m 
+        WHERE m.user_id = ? AND m.log_date = ?";
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[SQL]</span> ";
+echo "Requête repas du jour : " . $sql;
+echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+echo "</div>";
+
+$meals = fetchAll($sql, [$user_id, $date_filter]);
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[ALIMENTS]</span> ";
+echo "Liste des repas du jour :";
+if (!empty($meals)) {
+    foreach ($meals as $meal) {
+        echo "<br>- " . getMealTypeName($meal['meal_type']) . " : " . 
+             $meal['total_calories'] . " kcal, " . 
+             $meal['food_count'] . " aliments";
+    }
+} else {
+    echo "<br>Aucun repas enregistré pour cette date";
+}
+echo "</div>";
+
+// Vérifier les aliments de chaque repas
+foreach ($meals as $meal) {
+    $sql = "SELECT fl.*, f.name as food_name 
+            FROM food_logs fl 
+            LEFT JOIN foods f ON fl.food_id = f.id 
+            WHERE fl.meal_id = ?";
+    echo "<div class='debug-message'>";
+    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+    echo "<span class='debug-category'>[SQL]</span> ";
+    echo "Requête aliments du repas : " . $sql;
+    echo "<br>Paramètres : meal_id=" . $meal['id'];
+    echo "</div>";
+    
+    $meal_foods = fetchAll($sql, [$meal['id']]);
+    echo "<div class='debug-message'>";
+    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+    echo "<span class='debug-category'>[ALIMENTS]</span> ";
+    echo "Aliments du repas " . getMealTypeName($meal['meal_type']) . " :";
+    if (!empty($meal_foods)) {
+        foreach ($meal_foods as $food) {
+            echo "<br>- " . ($food['food_name'] ?: $food['custom_food_name']) . " : " . 
+                 $food['quantity'] . "g, " . 
+                 ($food['food_id'] ? ($food['calories'] * $food['quantity'] / 100) : $food['custom_calories']) . " kcal";
+        }
+    } else {
+        echo "<br>Aucun aliment dans ce repas";
+    }
+    echo "</div>";
+}
 
 error_log("=== DÉBUT DU TRAITEMENT ===");
 error_log("Action : " . $action);
