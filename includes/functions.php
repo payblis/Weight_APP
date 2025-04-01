@@ -1881,211 +1881,145 @@ function deleteRecord($sql, $params = []) {
  */
 function generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods, $meal_type) {
     try {
-        // Récupérer la clé API ChatGPT
-        $sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
-        $api_key_setting = fetchOne($sql, []);
-        $api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
-
-        if (empty($api_key)) {
-            return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
+        // Vérifier que l'âge existe dans le profil
+        if (!isset($profile['age'])) {
+            $profile['age'] = 30; // Valeur par défaut si l'âge n'est pas défini
         }
 
-        // Récupérer les objectifs nutritionnels de l'utilisateur
-        $sql = "SELECT daily_calories, protein_ratio, carbs_ratio, fat_ratio FROM user_profiles WHERE user_id = ?";
-        $nutrition_goals = fetchOne($sql, [$profile['user_id']]);
-
-        // Calculer les calories et macros maximales pour ce repas selon le type
+        // Calculer les limites nutritionnelles en fonction du type de repas
         $meal_ratios = [
-            'petit_dejeuner' => 0.25,  // 25% des calories quotidiennes
-            'dejeuner' => 0.35,        // 35% des calories quotidiennes
-            'diner' => 0.30,           // 30% des calories quotidiennes
-            'collation' => 0.10        // 10% des calories quotidiennes
+            'breakfast' => 0.25,
+            'lunch' => 0.35,
+            'dinner' => 0.30,
+            'snack' => 0.10
         ];
 
-        $max_calories = round($nutrition_goals['daily_calories'] * $meal_ratios[$meal_type]);
-        $max_protein = round(($max_calories * $nutrition_goals['protein_ratio']) / 4);  // 4 calories par gramme de protéine
-        $max_carbs = round(($max_calories * $nutrition_goals['carbs_ratio']) / 4);      // 4 calories par gramme de glucide
-        $max_fat = round(($max_calories * $nutrition_goals['fat_ratio']) / 9);          // 9 calories par gramme de lipide
+        $ratio = $meal_ratios[$meal_type] ?? 0.35; // Par défaut 35% pour le déjeuner
 
-        // Définir les règles spécifiques selon le type de repas
+        $max_calories = round($profile['daily_calories'] * $ratio);
+        $max_proteins = round($profile['daily_proteins'] * $ratio);
+        $max_carbs = round($profile['daily_carbs'] * $ratio);
+        $max_fats = round($profile['daily_fats'] * $ratio);
+
+        // Règles spécifiques pour chaque type de repas
         $meal_rules = [
-            'petit_dejeuner' => [
-                'description' => "un petit-déjeuner équilibré et énergétique",
-                'aliments_typiques' => "céréales, fruits, produits laitiers, œufs, pain complet",
-                'conseils' => "Privilégiez les glucides complexes pour l'énergie, les protéines pour la satiété, et les fruits pour les vitamines"
+            'breakfast' => [
+                'description' => 'Le petit-déjeuner doit être énergétique et équilibré',
+                'typical_foods' => 'Céréales, fruits, produits laitiers, œufs, pain complet',
+                'advice' => 'Privilégier les glucides complexes et les protéines maigres'
             ],
-            'dejeuner' => [
-                'description' => "un déjeuner complet et rassasiant",
-                'aliments_typiques' => "viandes maigres, poissons, légumes, féculents complets",
-                'conseils' => "Incluez une source de protéines, des légumes et des féculents complets"
+            'lunch' => [
+                'description' => 'Le déjeuner doit être le repas principal de la journée',
+                'typical_foods' => 'Viandes maigres, légumes, féculents complets',
+                'advice' => 'Inclure une source de protéines, des légumes et des féculents'
             ],
-            'diner' => [
-                'description' => "un dîner léger et digeste",
-                'aliments_typiques' => "poissons, légumes, soupes, salades",
-                'conseils' => "Privilégiez les protéines légères et les légumes, évitez les féculents en trop grande quantité"
+            'dinner' => [
+                'description' => 'Le dîner doit être plus léger que le déjeuner',
+                'typical_foods' => 'Poissons, légumes, soupes, salades',
+                'advice' => 'Privilégier les protéines légères et les légumes'
             ],
-            'collation' => [
-                'description' => "une collation saine et légère",
-                'aliments_typiques' => "fruits, yaourt, fruits secs, noix",
-                'conseils' => "Choisissez des aliments riches en nutriments mais faibles en calories"
+            'snack' => [
+                'description' => 'La collation doit être légère et nutritive',
+                'typical_foods' => 'Fruits, yaourts, noix, barres de céréales',
+                'advice' => 'Choisir des aliments riches en nutriments et faibles en calories'
             ]
         ];
 
-        // Récupérer les préférences alimentaires depuis la table food_preferences
-        $sql = "SELECT custom_food, preference_type FROM food_preferences WHERE user_id = ?";
-        $preferences = fetchAll($sql, [$profile['user_id']]);
-        
-        $favorite_foods = [];
-        $blacklisted_foods = [];
-        
-        foreach ($preferences as $pref) {
-            if ($pref['preference_type'] === 'favori') {
-                $favorite_foods[] = $pref['custom_food'];
-            } elseif ($pref['preference_type'] === 'blacklist') {
-                $blacklisted_foods[] = $pref['custom_food'];
-            }
-        }
+        $meal_rule = $meal_rules[$meal_type] ?? $meal_rules['lunch'];
 
         // Construire le prompt
-        $prompt = "Tu es un nutritionniste expert. Donne-moi une suggestion de {$meal_rules[$meal_type]['description']} sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
+        $prompt = "Tu es un expert en nutrition et en planification de repas. Je vais te donner les informations nécessaires pour générer une suggestion de repas adaptée au profil de l'utilisateur.
 
-{
-  \"nom_du_repas\": \"...\",
-  \"ingredients\": [
-    {\"quantité\": \"...\", \"nom\": \"...\"},
-    ...
-  ],
-  \"valeurs_nutritionnelles\": {
-    \"calories\": ...,
-    \"proteines\": ...,
-    \"glucides\": ...,
-    \"lipides\": ...
-  }
-}
+IMPORTANT : Les valeurs nutritionnelles DOIVENT être inférieures ou égales aux limites suivantes :
+- Calories : {$max_calories} kcal
+- Protéines : {$max_proteins}g
+- Glucides : {$max_carbs}g
+- Lipides : {$max_fats}g
 
-IMPORTANT : Les valeurs nutritionnelles DOIVENT respecter strictement ces limites :
-- Calories maximales : {$max_calories} kcal
-- Protéines maximales : {$max_protein} g
-- Glucides maximaux : {$max_carbs} g
-- Lipides maximaux : {$max_fat} g
+RÈGLES STRICTES :
+1. Respecter ABSOLUMENT les limites nutritionnelles ci-dessus
+2. Utiliser des portions raisonnables
+3. Privilégier les aliments préférés de l'utilisateur
+4. Éviter ABSOLUMENT les aliments blacklistés
+5. Inclure des aliments typiques pour ce type de repas
+6. Respecter les conseils nutritionnels spécifiques
+7. Proposer des alternatives si nécessaire
 
-Profil de l'utilisateur :
-- Poids : {$profile['weight']} kg
-- Taille : {$profile['height']} cm
-- Âge : " . (isset($profile['age']) ? $profile['age'] : 'Non spécifié') . " ans
+PROFIL UTILISATEUR :
+- Genre : {$profile['gender']}
+- Âge : {$profile['age']}
+- Taille : {$profile['height']}cm
 - Niveau d'activité : {$profile['activity_level']}
-- Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
+- Poids actuel : {$latest_weight}kg
+- Objectif : {$current_goal}
+- Programme actif : {$active_program}
 
-Aliments préférés : " . implode(", ", $favorite_foods) . "
-Aliments à éviter : " . implode(", ", $blacklisted_foods) . "
+PREFERENCES ALIMENTAIRES :
+- Aliments préférés : " . implode(", ", $favorite_foods) . "
+- Aliments à éviter : " . implode(", ", $blacklisted_foods) . "
 
-RÈGLES STRICTES POUR UN {$meal_rules[$meal_type]['description']} :
-1. Les valeurs nutritionnelles DOIVENT être inférieures ou égales aux limites maximales
-2. Utilisez des portions raisonnables pour chaque ingrédient
-3. Privilégiez les aliments préférés de l'utilisateur
-4. Évitez absolument les aliments blacklistés
-5. Adaptez les quantités pour respecter les limites nutritionnelles
-6. Vérifiez que la somme des calories des ingrédients correspond aux calories totales
-7. Assurez-vous que les macros (protéines, glucides, lipides) sont cohérentes avec les calories
-8. Utilisez principalement des aliments typiques pour ce type de repas : {$meal_rules[$meal_type]['aliments_typiques']}
-9. Suivez ces conseils spécifiques : {$meal_rules[$meal_type]['conseils']}
-10. Pour le petit-déjeuner : incluez des glucides complexes et des protéines
-11. Pour le déjeuner : incluez une source de protéines, des légumes et des féculents
-12. Pour le dîner : privilégiez les protéines légères et les légumes
-13. Pour la collation : choisissez des aliments riches en nutriments mais faibles en calories
+TYPE DE REPAS : {$meal_type}
+DESCRIPTION : {$meal_rule['description']}
+ALIMENTS TYPIQUES : {$meal_rule['typical_foods']}
+CONSEILS NUTRITIONNELS : {$meal_rule['advice']}
 
-N'ajoute rien d'autre que ce JSON dans ta réponse. Assure-toi que les valeurs nutritionnelles respectent strictement les limites maximales.";
+Génère une suggestion de repas au format JSON avec la structure suivante :
+{
+    \"name\": \"Nom du repas\",
+    \"description\": \"Description détaillée\",
+    \"calories\": X,
+    \"proteins\": X,
+    \"carbs\": X,
+    \"fats\": X,
+    \"ingredients\": [\"ingrédient 1\", \"ingrédient 2\", ...],
+    \"instructions\": [\"étape 1\", \"étape 2\", ...]
+}";
 
-        // Logger le prompt
-        error_log("=== Prompt envoyé à l'API pour generateMealSuggestion ===");
-        error_log($prompt);
-        error_log("=== Fin du prompt ===");
-
-        // Appeler l'API ChatGPT
-        $response = callChatGPTAPI($prompt, $api_key);
+        // Appeler l'API OpenAI
+        $response = callOpenAI($prompt);
         
-        if (empty($response)) {
-            return "Une erreur s'est produite lors de la génération de la suggestion.";
+        // Vérifier la réponse
+        if (!$response) {
+            throw new Exception("Erreur lors de l'appel à l'API OpenAI");
         }
-
-        // Logger la réponse
-        error_log("=== Réponse reçue de l'API pour generateMealSuggestion ===");
-        error_log($response);
-        error_log("=== Fin de la réponse ===");
 
         // Vérifier que la réponse est un JSON valide
-        $data = json_decode($response, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log("Erreur de parsing JSON dans generateMealSuggestion: " . json_last_error_msg());
-            error_log("Réponse brute: " . $response);
-            return "Une erreur s'est produite lors du traitement de la suggestion.";
+        $suggestion = json_decode($response, true);
+        if (!$suggestion || !isset($suggestion['name'])) {
+            throw new Exception("Réponse invalide de l'API");
         }
 
-        // Vérifier que tous les champs requis sont présents
-        if (!isset($data['nom_du_repas']) || !isset($data['ingredients']) || 
-            !isset($data['valeurs_nutritionnelles'])) {
-            error_log("Données JSON incomplètes dans generateMealSuggestion");
-            return "La suggestion générée est incomplète.";
-        }
-
-        // Vérifier que les valeurs nutritionnelles respectent les limites
-        $nutrition = $data['valeurs_nutritionnelles'];
-        if ($nutrition['calories'] > $max_calories || 
-            $nutrition['proteines'] > $max_protein || 
-            $nutrition['glucides'] > $max_carbs || 
-            $nutrition['lipides'] > $max_fat) {
-            error_log("Les valeurs nutritionnelles dépassent les limites maximales");
-            error_log("Calories: {$nutrition['calories']} > {$max_calories}");
-            error_log("Protéines: {$nutrition['proteines']} > {$max_protein}");
-            error_log("Glucides: {$nutrition['glucides']} > {$max_carbs}");
-            error_log("Lipides: {$nutrition['lipides']} > {$max_fat}");
-            return "La suggestion générée dépasse les limites nutritionnelles autorisées.";
+        // Vérifier que les valeurs nutritionnelles ne dépassent pas les limites
+        if ($suggestion['calories'] > $max_calories ||
+            $suggestion['proteins'] > $max_proteins ||
+            $suggestion['carbs'] > $max_carbs ||
+            $suggestion['fats'] > $max_fats) {
+            throw new Exception("Les valeurs nutritionnelles dépassent les limites autorisées");
         }
 
         // Formater la suggestion pour l'affichage
-        $meal_type_display = [
-            'petit_dejeuner' => 'Petit-Déjeuner',
-            'dejeuner' => 'Déjeuner',
-            'diner' => 'Dîner',
-            'collation' => 'Collation'
-        ];
-
-        $suggestion = "SUGGESTION DE " . $meal_type_display[$meal_type] . " : {$data['nom_du_repas']}\n\n";
-        
-        // Ajouter les informations utilisées pour la génération
-        $suggestion .= "Informations utilisées pour la génération :\n";
-        $suggestion .= "Profil :\n";
-        $suggestion .= "Genre : " . ucfirst($profile['gender']) . "\n";
-        $suggestion .= "Âge : " . (isset($profile['age']) ? $profile['age'] : 'Non spécifié') . " ans\n";
-        $suggestion .= "Taille : {$profile['height']} cm\n";
-        $suggestion .= "Niveau d'activité : " . ucfirst($profile['activity_level']) . "\n";
-        $suggestion .= "Poids actuel : {$profile['weight']} kg\n";
-        $suggestion .= "Objectif : " . ($current_goal ? $current_goal['name'] : "Non défini") . "\n";
-        $suggestion .= "Programme : " . ($active_program ? $active_program['name'] : "Aucun") . "\n";
-        $suggestion .= "Préférences alimentaires :\n";
-        $suggestion .= "Aliments préférés : " . implode(", ", $favorite_foods) . "\n";
-        $suggestion .= "Aliments à éviter : " . implode(", ", $blacklisted_foods) . "\n";
-        $suggestion .= "Limites nutritionnelles pour " . $meal_type_display[$meal_type] . " :\n";
-        $suggestion .= "Calories maximales : {$max_calories} kcal\n";
-        $suggestion .= "Protéines maximales : {$max_protein} g\n";
-        $suggestion .= "Glucides maximaux : {$max_carbs} g\n";
-        $suggestion .= "Lipides maximaux : {$max_fat} g\n\n";
-        
-        $suggestion .= "Valeurs nutritionnelles :\n";
-        $suggestion .= "- Calories : {$data['valeurs_nutritionnelles']['calories']} kcal\n";
-        $suggestion .= "- Protéines : {$data['valeurs_nutritionnelles']['proteines']} g\n";
-        $suggestion .= "- Glucides : {$data['valeurs_nutritionnelles']['glucides']} g\n";
-        $suggestion .= "- Lipides : {$data['valeurs_nutritionnelles']['lipides']} g\n\n";
-        
-        $suggestion .= "Ingrédients :\n";
-        foreach ($data['ingredients'] as $ingredient) {
-            $suggestion .= "- {$ingredient['quantité']} {$ingredient['nom']}\n";
+        $suggestion_text = "Suggestion de {$meal_type} :\n\n";
+        $suggestion_text .= "Nom : {$suggestion['name']}\n";
+        $suggestion_text .= "Description : {$suggestion['description']}\n\n";
+        $suggestion_text .= "Valeurs nutritionnelles :\n";
+        $suggestion_text .= "- Calories : {$suggestion['calories']} kcal\n";
+        $suggestion_text .= "- Protéines : {$suggestion['proteins']}g\n";
+        $suggestion_text .= "- Glucides : {$suggestion['carbs']}g\n";
+        $suggestion_text .= "- Lipides : {$suggestion['fats']}g\n\n";
+        $suggestion_text .= "Ingrédients :\n";
+        foreach ($suggestion['ingredients'] as $ingredient) {
+            $suggestion_text .= "- {$ingredient}\n";
+        }
+        $suggestion_text .= "\nInstructions :\n";
+        foreach ($suggestion['instructions'] as $index => $instruction) {
+            $suggestion_text .= ($index + 1) . ". {$instruction}\n";
         }
 
-        return $suggestion;
+        return $suggestion_text;
+
     } catch (Exception $e) {
-        error_log("Erreur lors de la génération de la suggestion de repas : " . $e->getMessage());
-        return "Une erreur s'est produite lors de la génération de la suggestion.";
+        error_log("Erreur dans generateMealSuggestion : " . $e->getMessage());
+        return "Erreur lors de la génération de la suggestion : " . $e->getMessage();
     }
 }
 
