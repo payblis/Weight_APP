@@ -93,21 +93,6 @@ foreach ($submenus as $menu => $items) {
                         Objectifs
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo $current_page === 'community.php' ? 'active' : ''; ?>" href="community.php">
-                        Communauté
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo $current_page === 'blog.php' ? 'active' : ''; ?>" href="blog.php">
-                        Blog
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo $current_page === 'premium.php' ? 'active' : ''; ?>" href="premium.php">
-                        Premium
-                    </a>
-                </li>
             </ul>
         </div>
     </div>
