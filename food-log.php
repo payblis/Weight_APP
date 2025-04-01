@@ -744,6 +744,63 @@ function updateMealTotals($meal_id) {
     
     return $result;
 }
+
+// Fonction pour mettre à jour le bilan calorique quotidien
+function updateDailyCalorieBalance($user_id) {
+    global $pdo;
+    
+    try {
+        // Récupérer la date du jour
+        $today = date('Y-m-d');
+        
+        // Récupérer les calories des repas du jour
+        $sql = "SELECT COALESCE(SUM(total_calories), 0) as total_calories 
+                FROM meals 
+                WHERE user_id = ? AND log_date = ?";
+        $meals_result = fetchOne($sql, [$user_id, $today]);
+        $total_calories = $meals_result['total_calories'];
+        
+        // Récupérer les calories brûlées par l'exercice
+        $sql = "SELECT COALESCE(SUM(calories_burned), 0) as total_burned 
+                FROM exercise_logs 
+                WHERE user_id = ? AND DATE(log_date) = ?";
+        $exercise_result = fetchOne($sql, [$user_id, $today]);
+        $exercise_calories = $exercise_result['total_burned'];
+        
+        // Récupérer l'objectif calorique
+        $sql = "SELECT goal_calories FROM user_calorie_needs WHERE user_id = ?";
+        $goal_result = fetchOne($sql, [$user_id]);
+        $daily_goal = $goal_result ? $goal_result['goal_calories'] : 0;
+        
+        // Calculer le bilan
+        $balance = $daily_goal - $total_calories + $exercise_calories;
+        
+        // Mettre à jour ou insérer le bilan dans la table daily_calorie_balance
+        $sql = "INSERT INTO daily_calorie_balance (user_id, date, total_calories, exercise_calories, daily_goal, balance) 
+                VALUES (?, ?, ?, ?, ?, ?) 
+                ON DUPLICATE KEY UPDATE 
+                total_calories = VALUES(total_calories),
+                exercise_calories = VALUES(exercise_calories),
+                daily_goal = VALUES(daily_goal),
+                balance = VALUES(balance)";
+        
+        $result = update($sql, [$user_id, $today, $total_calories, $exercise_calories, $daily_goal, $balance]);
+        
+        error_log("Mise à jour du bilan calorique : " . print_r([
+            'user_id' => $user_id,
+            'date' => $today,
+            'total_calories' => $total_calories,
+            'exercise_calories' => $exercise_calories,
+            'daily_goal' => $daily_goal,
+            'balance' => $balance
+        ], true));
+        
+        return $result;
+    } catch (Exception $e) {
+        error_log("Erreur lors de la mise à jour du bilan calorique : " . $e->getMessage());
+        return false;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -758,8 +815,48 @@ function updateMealTotals($meal_id) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <style>
+        .debug-panel {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 300px;
+            max-height: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+        }
+        .debug-panel.show {
+            display: block;
+        }
+        .debug-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #000;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 10000;
+        }
+    </style>
 </head>
 <body>
+    <!-- Ajouter le bouton de débogage -->
+    <div class="debug-toggle" onclick="toggleDebug()">Debug</div>
+    
+    <!-- Ajouter le panneau de débogage -->
+    <div class="debug-panel" id="debugPanel">
+        <h4>Debug Info</h4>
+        <div id="debugContent"></div>
+    </div>
+
     <?php include 'navigation.php'; ?>
 
     <div class="container py-4">
@@ -1110,20 +1207,20 @@ function updateMealTotals($meal_id) {
 
             // Fonction pour mettre à jour les stats
             function updateStats() {
-                console.log("Début de la mise à jour des stats");
+                addDebugMessage("Début de la mise à jour des stats");
                 fetch('food-log.php?action=get_stats&date=<?php echo $date_filter; ?>')
                     .then(response => {
-                        console.log("Réponse reçue :", response);
+                        addDebugMessage(`Réponse stats reçue : ${response.status}`);
                         if (!response.ok) {
                             throw new Error('Erreur réseau: ' + response.status);
                         }
                         return response.json();
                     })
                     .then(data => {
-                        console.log("Données reçues :", data);
+                        addDebugMessage(`Données stats reçues : ${JSON.stringify(data)}`);
                         // Mise à jour des calories
                         const statsValues = document.querySelectorAll('.stats-value');
-                        console.log("Nombre d'éléments stats-value trouvés :", statsValues.length);
+                        addDebugMessage("Nombre d'éléments stats-value trouvés : " + statsValues.length);
                         
                         if (statsValues.length >= 7) {
                             statsValues[0].textContent = data.daily_goal;
@@ -1131,23 +1228,23 @@ function updateMealTotals($meal_id) {
                             statsValues[4].textContent = data.exercise_calories;
                             statsValues[6].textContent = data.remaining_calories;
                         } else {
-                            console.error("Pas assez d'éléments stats-value trouvés");
+                            addDebugMessage("Pas assez d'éléments stats-value trouvés");
                         }
                         
                         // Mise à jour des macronutriments
                         const macroValues = document.querySelectorAll('.macro-value');
-                        console.log("Nombre d'éléments macro-value trouvés :", macroValues.length);
+                        addDebugMessage("Nombre d'éléments macro-value trouvés : " + macroValues.length);
                         
                         if (macroValues.length >= 3) {
                             macroValues[0].textContent = data.total_protein;
                             macroValues[1].textContent = data.total_carbs;
                             macroValues[2].textContent = data.total_fat;
                         } else {
-                            console.error("Pas assez d'éléments macro-value trouvés");
+                            addDebugMessage("Pas assez d'éléments macro-value trouvés");
                         }
                     })
                     .catch(error => {
-                        console.error("Erreur lors de la mise à jour des stats :", error);
+                        addDebugMessage(`Erreur stats : ${error.message}`);
                     });
             }
 
@@ -1157,12 +1254,12 @@ function updateMealTotals($meal_id) {
                     const action = this.querySelector('input[name="action"]').value;
                     if (action === 'remove_food_from_meal' || action === 'delete_meal') {
                         e.preventDefault();
-                        console.log("Début de la suppression - Action :", action);
+                        addDebugMessage(`Début de la suppression - Action : ${action}`);
                         const formData = new FormData(this);
                         
                         // Afficher les données du formulaire
                         for (let pair of formData.entries()) {
-                            console.log(pair[0] + ': ' + pair[1]);
+                            addDebugMessage(`${pair[0]}: ${pair[1]}`);
                         }
                         
                         fetch('food-log.php', {
@@ -1173,38 +1270,53 @@ function updateMealTotals($meal_id) {
                             }
                         })
                         .then(response => {
-                            console.log("Réponse reçue :", response);
+                            addDebugMessage(`Réponse reçue : ${response.status}`);
                             if (!response.ok) {
                                 throw new Error('Erreur réseau: ' + response.status);
                             }
                             return response.json();
                         })
                         .then(data => {
-                            console.log("Données reçues :", data);
+                            addDebugMessage(`Données reçues : ${JSON.stringify(data)}`);
                             if (data.success) {
                                 if (action === 'remove_food_from_meal') {
                                     const row = this.closest('tr');
-                                    console.log("Ligne à supprimer :", row);
+                                    addDebugMessage(`Ligne à supprimer trouvée : ${row ? 'Oui' : 'Non'}`);
                                     row.remove();
                                 } else if (action === 'delete_meal') {
                                     const section = this.closest('.meal-section');
-                                    console.log("Section à supprimer :", section);
+                                    addDebugMessage(`Section à supprimer trouvée : ${section ? 'Oui' : 'Non'}`);
                                     section.remove();
                                 }
-                                console.log("Mise à jour des stats après suppression");
+                                addDebugMessage("Mise à jour des stats après suppression");
                                 updateStats();
                             } else {
                                 throw new Error(data.error || 'Une erreur est survenue lors de la suppression');
                             }
                         })
                         .catch(error => {
-                            console.error("Erreur lors de la suppression :", error);
+                            addDebugMessage(`Erreur : ${error.message}`);
                             alert(error.message || 'Une erreur est survenue lors de la suppression');
                         });
                     }
                 });
             });
         });
+
+        // Ajouter les fonctions de débogage
+        function toggleDebug() {
+            const panel = document.getElementById('debugPanel');
+            panel.classList.toggle('show');
+        }
+
+        function addDebugMessage(message) {
+            const content = document.getElementById('debugContent');
+            const time = new Date().toLocaleTimeString();
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `[${time}] ${message}`;
+            content.appendChild(messageElement);
+            content.scrollTop = content.scrollHeight;
+        }
     </script>
 </body>
 </html>
