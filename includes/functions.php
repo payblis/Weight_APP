@@ -2063,8 +2063,8 @@ N'ajoute rien d'autre que ce JSON dans ta réponse. Assure-toi que les valeurs n
         $suggestion .= "Objectif : " . ($current_goal ? $current_goal['name'] : "Non défini") . "\n";
         $suggestion .= "Programme : " . ($active_program ? $active_program['name'] : "Aucun") . "\n";
         $suggestion .= "Préférences alimentaires :\n";
-        $suggestion .= "Aliments préférés : " . count($favorite_foods) . " configurés\n";
-        $suggestion .= "Aliments à éviter : " . count($blacklisted_foods) . " configurés\n";
+        $suggestion .= "Aliments préférés : " . implode(", ", $favorite_foods) . "\n";
+        $suggestion .= "Aliments à éviter : " . implode(", ", $blacklisted_foods) . "\n";
         $suggestion .= "Limites nutritionnelles pour " . $meal_type_display[$meal_type] . " :\n";
         $suggestion .= "Calories maximales : {$max_calories} kcal\n";
         $suggestion .= "Protéines maximales : {$max_protein} g\n";
