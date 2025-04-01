@@ -27,7 +27,6 @@ $is_admin = ($user_role && $user_role['role_id'] == 1);
 // Initialiser les variables
 $action = isset($_GET['action']) ? sanitizeInput($_GET['action']) : '';
 $meal_id = isset($_GET['meal_id']) ? intval($_GET['meal_id']) : 0;
-$predefined_meal_id = isset($_GET['predefined_meal_id']) ? intval($_GET['predefined_meal_id']) : 0;
 $success_message = '';
 $errors = [];
 
@@ -62,28 +61,9 @@ $sql = "SELECT m.*,
         WHERE m.user_id = ? AND m.log_date = ?";
 $meals = fetchAll($sql, [$user_id, $date_filter]);
 
-// Vérifier les aliments de chaque repas
-foreach ($meals as $meal) {
-    $sql = "SELECT fl.*, f.name as food_name 
-            FROM food_logs fl 
-            LEFT JOIN foods f ON fl.food_id = f.id 
-            WHERE fl.meal_id = ?";
-    $meal_foods = fetchAll($sql, [$meal['id']]);
-}
-
-error_log("=== DÉBUT DU TRAITEMENT ===");
-error_log("Action : " . $action);
-error_log("ID du repas : " . $meal_id);
-error_log("ID du repas prédéfini : " . $predefined_meal_id);
-error_log("GET : " . print_r($_GET, true));
-
 // Traitement des actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $post_action = isset($_POST['action']) ? sanitizeInput($_POST['action']) : '';
-    
-    error_log("=== DÉBUT DU TRAITEMENT POST ===");
-    error_log("Action POST détectée : " . $post_action);
-    error_log("Données POST reçues : " . print_r($_POST, true));
     
     // Ajouter un repas
     if ($post_action === 'add_meal') {
@@ -191,152 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
-    // Enregistrer un repas prédéfini
-    elseif ($post_action === 'save_predefined_meal') {
-        $meal_id = intval($_POST['meal_id'] ?? 0);
-        $predefined_name = sanitizeInput($_POST['predefined_name'] ?? '');
-        $predefined_description = sanitizeInput($_POST['predefined_description'] ?? '');
-        $is_public = isset($_POST['is_public']) ? 1 : 0;
-        
-        // Validation
-        if ($meal_id <= 0) {
-            $errors[] = "ID de repas invalide";
-        }
-        
-        if (empty($predefined_name)) {
-            $errors[] = "Le nom du repas prédéfini est requis";
-        }
-        
-        if (empty($errors)) {
-            try {
-                // Vérifier si le repas existe et appartient à l'utilisateur
-                $sql = "SELECT id FROM meals WHERE id = ? AND user_id = ?";
-                $meal = fetchOne($sql, [$meal_id, $user_id]);
-                
-                if (!$meal) {
-                    $errors[] = "Repas introuvable ou vous n'avez pas les droits pour le modifier";
-                } else {
-                    // Créer le repas prédéfini
-                    $sql = "INSERT INTO predefined_meals (user_id, name, description, is_public, created_at) 
-                            VALUES (?, ?, ?, ?, NOW())";
-                    $predefined_meal_id = insert($sql, [$user_id, $predefined_name, $predefined_description, $is_public]);
-                    
-                    if ($predefined_meal_id) {
-                        // Récupérer tous les aliments du repas
-                        $sql = "SELECT * FROM food_logs WHERE meal_id = ?";
-                        $foods = fetchAll($sql, [$meal_id]);
-                        
-                        // Ajouter chaque aliment au repas prédéfini
-                        foreach ($foods as $food) {
-                            $sql = "INSERT INTO predefined_meal_items (predefined_meal_id, food_id, quantity, notes, created_at) 
-                                    VALUES (?, ?, ?, ?, NOW())";
-                            insert($sql, [
-                                $predefined_meal_id,
-                                $food['food_id'],
-                                $food['quantity'],
-                                json_encode([
-                                    'custom_food_name' => $food['custom_food_name'],
-                                    'custom_calories' => $food['custom_calories'],
-                                    'custom_protein' => $food['custom_protein'],
-                                    'custom_carbs' => $food['custom_carbs'],
-                                    'custom_fat' => $food['custom_fat']
-                                ])
-                            ]);
-                        }
-                        
-                        $success_message = "Repas prédéfini enregistré avec succès";
-                    } else {
-                        $errors[] = "Une erreur s'est produite lors de l'enregistrement du repas prédéfini";
-                    }
-                }
-            } catch (Exception $e) {
-                $errors[] = "Erreur: " . $e->getMessage();
-            }
-        }
-    }
-    
-    // Utiliser un repas prédéfini
-    elseif ($post_action === 'use_predefined_meal') {
-        $predefined_meal_id = intval($_POST['predefined_meal_id'] ?? 0);
-        $log_date = sanitizeInput($_POST['log_date'] ?? date('Y-m-d'));
-        $meal_type = sanitizeInput($_POST['meal_type'] ?? '');
-        
-        // Validation
-        if ($predefined_meal_id <= 0) {
-            $errors[] = "ID de repas prédéfini invalide";
-        }
-        
-        if (empty($log_date) || !validateDate($log_date)) {
-            $errors[] = "La date n'est pas valide";
-        }
-        
-        if (empty($meal_type)) {
-            $errors[] = "Le type de repas est requis";
-        }
-        
-        if (empty($errors)) {
-            try {
-                // Récupérer les informations du repas prédéfini
-                $sql = "SELECT * FROM predefined_meals WHERE id = ? AND (user_id = ? OR is_public = 1 OR created_by_admin = 1)";
-                $predefined_meal = fetchOne($sql, [$predefined_meal_id, $user_id]);
-                
-                if (!$predefined_meal) {
-                    $errors[] = "Repas prédéfini introuvable ou vous n'avez pas les droits pour l'utiliser";
-                } else {
-                    // Créer un nouveau repas
-                    $sql = "INSERT INTO meals (user_id, name, meal_type, log_date, notes, created_at) 
-                            VALUES (?, ?, ?, ?, ?, NOW())";
-                    $new_meal_id = insert($sql, [
-                        $user_id, 
-                        $predefined_meal['name'], 
-                        $meal_type, 
-                        $log_date, 
-                        "Créé à partir du repas prédéfini: " . $predefined_meal['name']
-                    ]);
-                    
-                    if ($new_meal_id) {
-                        // Récupérer tous les aliments du repas prédéfini
-                        $sql = "SELECT * FROM predefined_meal_items WHERE predefined_meal_id = ?";
-                        $foods = fetchAll($sql, [$predefined_meal_id]);
-                        
-                        // Ajouter chaque aliment au nouveau repas
-                        foreach ($foods as $food) {
-                            $custom_data = json_decode($food['notes'], true) ?? [];
-                            
-                            $sql = "INSERT INTO food_logs (user_id, food_id, custom_food_name, quantity, custom_calories, custom_protein, custom_carbs, custom_fat, log_date, meal_id, is_part_of_meal, created_at) 
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
-                            insert($sql, [
-                                $user_id, 
-                                $food['food_id'] ?? 0,
-                                $food['custom_food_name'] ?? '', 
-                                $food['quantity'], 
-                                $food['custom_calories'], 
-                                $food['custom_protein'], 
-                                $food['custom_carbs'], 
-                                $food['custom_fat'], 
-                                $log_date,
-                                $new_meal_id
-                            ]);
-                        }
-                        
-                        // Debug: Afficher l'ID du nouveau repas
-                        error_log("Mise à jour des totaux pour le nouveau repas ID: " . $new_meal_id);
-                        
-                        // Mettre à jour les totaux du nouveau repas
-                        updateMealTotals($new_meal_id);
-                        
-                        $success_message = "Repas ajouté avec succès à partir du modèle prédéfini";
-                        redirect("food-log.php");
-                    } else {
-                        $errors[] = "Une erreur s'est produite lors de la création du repas";
-                    }
-                }
-            } catch (Exception $e) {
-                $errors[] = "Erreur: " . $e->getMessage();
-            }
-        }
-    }
-    
     // Supprimer un aliment d'un repas
     elseif ($post_action === 'remove_food_from_meal') {
         $food_log_id = intval($_POST['food_log_id'] ?? 0);
@@ -410,13 +244,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Supprimer un repas
     elseif ($post_action === 'delete_meal') {
-        error_log("=== DÉBUT DE LA SUPPRESSION DE REPAS ===");
         $meal_id = intval($_POST['meal_id'] ?? 0);
-        error_log("ID du repas à supprimer : " . $meal_id);
         
         // Validation
         if ($meal_id <= 0) {
-            error_log("Erreur : ID de repas invalide");
             if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'error' => "ID de repas invalide"]);
@@ -430,12 +261,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 // Vérifier si le repas existe et appartient à l'utilisateur
                 $sql = "SELECT id FROM meals WHERE id = ? AND user_id = ?";
-                error_log("SQL de vérification : " . $sql);
-                error_log("Paramètres : meal_id=" . $meal_id . ", user_id=" . $user_id);
                 $meal = fetchOne($sql, [$meal_id, $user_id]);
                 
                 if (!$meal) {
-                    error_log("Erreur : Repas introuvable ou non autorisé");
                     if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
                         header('Content-Type: application/json');
                         echo json_encode(['success' => false, 'error' => "Repas introuvable ou vous n'avez pas les droits pour le supprimer"]);
@@ -444,27 +272,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $errors[] = "Repas introuvable ou vous n'avez pas les droits pour le supprimer";
                     }
                 } else {
-                    error_log("Repas trouvé, début de la suppression");
-                    
                     // Supprimer tous les aliments du repas
                     $sql = "DELETE FROM food_logs WHERE meal_id = ?";
-                    error_log("SQL de suppression des aliments : " . $sql);
-                    error_log("Paramètres : meal_id=" . $meal_id);
                     $food_delete_result = delete($sql, [$meal_id]);
-                    error_log("Résultat de la suppression des aliments : " . ($food_delete_result ? "Succès" : "Échec"));
                     
                     // Supprimer le repas
                     $sql = "DELETE FROM meals WHERE id = ?";
-                    error_log("SQL de suppression du repas : " . $sql);
-                    error_log("Paramètres : meal_id=" . $meal_id);
                     $result = delete($sql, [$meal_id]);
-                    error_log("Résultat de la suppression du repas : " . ($result ? "Succès" : "Échec"));
                     
                     if ($result) {
                         // Mettre à jour le bilan calorique quotidien
                         updateDailyCalorieBalance($user_id);
                         
-                        error_log("Suppression réussie");
                         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
                             header('Content-Type: application/json');
                             echo json_encode(['success' => true]);
@@ -474,7 +293,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             redirect("food-log.php");
                         }
                     } else {
-                        error_log("Erreur lors de la suppression du repas");
                         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
                             header('Content-Type: application/json');
                             echo json_encode(['success' => false, 'error' => "Une erreur s'est produite lors de la suppression du repas"]);
@@ -485,7 +303,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             } catch (Exception $e) {
-                error_log("Exception lors de la suppression : " . $e->getMessage());
                 if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
                     header('Content-Type: application/json');
                     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -495,16 +312,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-        error_log("=== FIN DE LA SUPPRESSION DE REPAS ===");
     }
 }
 
 // Traitement des actions GET
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    error_log("=== DÉBUT DU TRAITEMENT GET ===");
-    error_log("Action GET : " . $action);
-    error_log("ID du repas : " . $meal_id);
-    
     if ($action === 'get_stats') {
         $date = isset($_GET['date']) ? sanitizeInput($_GET['date']) : date('Y-m-d');
         
@@ -521,141 +333,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         // Récupérer l'objectif calorique
         $sql = "SELECT daily_calories as goal_calories FROM user_profiles WHERE user_id = ?";
-        echo "<div class='debug-message'>";
-        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-        echo "<span class='debug-category'>[SQL]</span> ";
-        echo "Requête objectif calorique : " . $sql;
-        echo "<br>Paramètres : user_id=" . $user_id;
-        echo "</div>";
-
         $daily_goal_result = fetchOne($sql, [$user_id]);
-        echo "<div class='debug-message'>";
-        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-        echo "<span class='debug-category'>[OBJECTIF]</span> ";
-        echo "Résultat de la requête objectif : " . print_r($daily_goal_result, true);
-        echo "</div>";
-
         $daily_goal = $daily_goal_result ? $daily_goal_result['goal_calories'] : 0;
-        echo "<div class='debug-message'>";
-        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-        echo "<span class='debug-category'>[OBJECTIF]</span> ";
-        echo "Objectif calorique final : " . $daily_goal;
-        echo "</div>";
-
-        // Vérifier la structure de la table user_profiles
-        $sql = "DESCRIBE user_profiles";
-        echo "<div class='debug-message'>";
-        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-        echo "<span class='debug-category'>[SQL]</span> ";
-        echo "Structure de la table user_profiles : " . $sql;
-        echo "</div>";
-
-        $user_profiles_structure = fetchAll($sql, []);
-        echo "<div class='debug-message'>";
-        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-        echo "<span class='debug-category'>[STRUCTURE]</span> ";
-        echo "Structure de la table user_profiles :";
-        if (!empty($user_profiles_structure)) {
-            foreach ($user_profiles_structure as $column) {
-                echo "<br>- " . $column['Field'] . " : " . $column['Type'];
-            }
-        } else {
-            echo "<br>Structure non trouvée";
-        }
-        echo "</div>";
-
-        // Vérifier si l'utilisateur a un profil
-        $sql = "SELECT * FROM user_profiles WHERE user_id = ?";
-        echo "<div class='debug-message'>";
-        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-        echo "<span class='debug-category'>[SQL]</span> ";
-        echo "Vérification du profil utilisateur : " . $sql;
-        echo "<br>Paramètres : user_id=" . $user_id;
-        echo "</div>";
-
-        $user_profile = fetchOne($sql, [$user_id]);
-        echo "<div class='debug-message'>";
-        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-        echo "<span class='debug-category'>[PROFIL]</span> ";
-        echo "Profil utilisateur complet : " . print_r($user_profile, true);
-        echo "</div>";
-        
-        echo "<div class='debug-message'>";
-        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-        echo "<span class='debug-category'>[SQL]</span> ";
-        echo "Requête objectif calorique : " . $sql;
-        echo "<br>Paramètres : user_id=" . $user_id;
-        echo "</div>";
-        
-        $daily_goal_result = fetchOne($sql, [$user_id]);
-        
-        // Si aucun objectif n'est trouvé, calculer et créer un objectif par défaut
-        if (!$daily_goal_result) {
-            echo "<div class='debug-message'>";
-            echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-            echo "<span class='debug-category'>[CALCUL]</span> ";
-            echo "Calcul de l'objectif calorique par défaut...";
-            echo "</div>";
-            
-            // Récupérer les informations de l'utilisateur
-            $sql = "SELECT * FROM users WHERE id = ?";
-            $user_info = fetchOne($sql, [$user_id]);
-            
-            if ($user_info) {
-                // Calculer le BMR (Basal Metabolic Rate) avec la formule de Mifflin-St Jeor
-                $weight = $user_info['weight'] ?? 70; // poids en kg
-                $height = $user_info['height'] ?? 170; // taille en cm
-                $age = $user_info['age'] ?? 30; // âge
-                $gender = $user_info['gender'] ?? 'M'; // genre
-                
-                // BMR = (10 × poids en kg) + (6,25 × taille en cm) - (5 × âge en années) + 5 (homme) ou -161 (femme)
-                $bmr = (10 * $weight) + (6.25 * $height) - (5 * $age);
-                $bmr += ($gender === 'M') ? 5 : -161;
-                
-                // Calculer l'objectif calorique (BMR * 1.2 pour un mode de vie sédentaire)
-                $daily_goal = round($bmr * 1.2);
-                
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[CALCUL]</span> ";
-                echo "BMR calculé : " . round($bmr) . " kcal";
-                echo "<br>Objectif calorique calculé : " . $daily_goal . " kcal";
-                echo "</div>";
-                
-                // Insérer l'objectif dans la table user_profiles
-                $sql = "INSERT INTO user_profiles (user_id, daily_calories, created_at) VALUES (?, ?, NOW())";
-                $result = insert($sql, [$user_id, $daily_goal]);
-                
-                if ($result) {
-                    echo "<div class='debug-message debug-success'>";
-                    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                    echo "<span class='debug-category'>[SUCCÈS]</span> ";
-                    echo "Objectif calorique créé avec succès : " . $daily_goal . " kcal";
-                    echo "</div>";
-                    
-                    $daily_goal_result = ['goal_calories' => $daily_goal];
-                } else {
-                    echo "<div class='debug-message debug-error'>";
-                    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                    echo "<span class='debug-category'>[ERREUR]</span> ";
-                    echo "Échec de la création de l'objectif calorique";
-                    echo "</div>";
-                }
-            } else {
-                echo "<div class='debug-message debug-error'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[ERREUR]</span> ";
-                echo "Impossible de trouver les informations de l'utilisateur";
-                echo "</div>";
-            }
-        }
-        
-        echo "<div class='debug-message'>";
-        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-        echo "<span class='debug-category'>[OBJECTIF]</span> ";
-        echo "Objectif calorique : " . ($daily_goal_result ? $daily_goal_result['goal_calories'] : 0);
-        echo "<br>Résultat complet : " . print_r($daily_goal_result, true);
-        echo "</div>";
         
         // Calculer les totaux
         $total_calories = array_sum(array_column($meals, 'total_calories'));
@@ -678,75 +357,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ]);
         exit;
     }
-    
-    if ($action === 'delete_meal' && $meal_id > 0) {
-        error_log("=== DÉBUT DE LA SUPPRESSION DE REPAS VIA GET ===");
-        try {
-            // Vérifier si le repas existe et appartient à l'utilisateur
-            $sql = "SELECT id, meal_type FROM meals WHERE id = ? AND user_id = ?";
-            error_log("SQL de vérification : " . $sql);
-            error_log("Paramètres : meal_id=" . $meal_id . ", user_id=" . $user_id);
-            $meal = fetchOne($sql, [$meal_id, $user_id]);
-            
-            if (!$meal) {
-                error_log("Erreur : Repas introuvable ou non autorisé");
-                $errors[] = "Repas introuvable ou vous n'avez pas les droits pour le supprimer";
-            } else {
-                error_log("Repas trouvé, début de la suppression");
-                
-                // Supprimer tous les aliments du repas
-                $sql = "DELETE FROM food_logs WHERE meal_id = ?";
-                error_log("SQL de suppression des aliments : " . $sql);
-                error_log("Paramètres : meal_id=" . $meal_id);
-                $food_delete_result = delete($sql, [$meal_id]);
-                error_log("Résultat de la suppression des aliments : " . ($food_delete_result ? "Succès" : "Échec"));
-                
-                // Supprimer le repas
-                $sql = "DELETE FROM meals WHERE id = ?";
-                error_log("SQL de suppression du repas : " . $sql);
-                error_log("Paramètres : meal_id=" . $meal_id);
-                $result = delete($sql, [$meal_id]);
-                error_log("Résultat de la suppression du repas : " . ($result ? "Succès" : "Échec"));
-                
-                if ($result) {
-                    error_log("Suppression réussie, redirection vers food-log.php");
-                    $success_message = "Repas supprimé avec succès";
-                    redirect("food-log.php");
-                } else {
-                    error_log("Erreur lors de la suppression du repas");
-                    $errors[] = "Une erreur s'est produite lors de la suppression du repas";
-                }
-            }
-        } catch (Exception $e) {
-            error_log("Exception lors de la suppression : " . $e->getMessage());
-            $errors[] = "Erreur: " . $e->getMessage();
-        }
-        error_log("=== FIN DE LA SUPPRESSION DE REPAS VIA GET ===");
-    }
 }
 
 // Récupérer les repas de l'utilisateur
 $date_filter = isset($_GET['date']) ? sanitizeInput($_GET['date']) : date('Y-m-d');
-error_log("=== RÉCUPÉRATION DES REPAS ===");
-error_log("Date filtrée : " . $date_filter);
-error_log("User ID : " . $user_id);
-
 $sql = "SELECT m.*, 
         (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count
         FROM meals m 
         WHERE m.user_id = ? AND m.log_date = ? 
         ORDER BY FIELD(m.meal_type, 'petit_dejeuner', 'dejeuner', 'diner', 'collation', 'autre')";
-error_log("SQL de récupération des repas : " . $sql);
-error_log("Paramètres : user_id=" . $user_id . ", date=" . $date_filter);
 $meals = fetchAll($sql, [$user_id, $date_filter]);
-error_log("Nombre de repas trouvés : " . count($meals));
-error_log("=== FIN DE LA RÉCUPÉRATION DES REPAS ===");
-
-// Récupérer les repas prédéfinis
-$sql = "SELECT * FROM predefined_meals 
-        WHERE user_id = ? OR is_public = 1 
-        ORDER BY name";
-$predefined_meals = fetchAll($sql, [$user_id]);
 
 // Récupérer les aliments disponibles
 $sql = "SELECT * FROM foods ORDER BY name";
@@ -772,29 +392,6 @@ if ($action === 'edit_meal' && $meal_id > 0) {
                 WHERE fl.meal_id = ? 
                 ORDER BY fl.created_at";
         $meal_foods = fetchAll($sql, [$meal_id]);
-    }
-}
-
-// Récupérer les détails d'un repas prédéfini si demandé
-$predefined_meal_details = null;
-$predefined_meal_foods = [];
-
-if ($action === 'view_predefined_meal' && $predefined_meal_id > 0) {
-    $sql = "SELECT * FROM predefined_meals WHERE id = ? AND (user_id = ? OR is_public = 1 OR created_by_admin = 1)";
-    $predefined_meal_details = fetchOne($sql, [$predefined_meal_id, $user_id]);
-    
-    if ($predefined_meal_details) {
-        $sql = "SELECT pmf.*, 
-                f.name as food_name, 
-                f.calories as food_calories, 
-                f.protein as food_protein, 
-                f.carbs as food_carbs, 
-                f.fat as food_fat
-                FROM predefined_meal_items pmf 
-                LEFT JOIN foods f ON pmf.food_id = f.id 
-                WHERE pmf.predefined_meal_id = ? 
-                ORDER BY pmf.created_at";
-        $predefined_meal_foods = fetchAll($sql, [$predefined_meal_id]);
     }
 }
 
@@ -854,16 +451,12 @@ function calculateNutrients($food) {
 function updateMealTotals($meal_id) {
     global $db;
     
-    // Debug: Afficher l'ID du repas
-    error_log("Mise à jour des totaux pour le repas ID: " . $meal_id);
-    
-    // Debug: Vérifier les aliments du repas avant la mise à jour
+    // Récupérer les aliments du repas
     $sql = "SELECT fl.*, f.name as food_name, f.calories as food_calories, f.protein as food_protein, f.carbs as food_carbs, f.fat as food_fat
             FROM food_logs fl 
             LEFT JOIN foods f ON fl.food_id = f.id 
             WHERE fl.meal_id = ?";
     $foods = fetchAll($sql, [$meal_id]);
-    error_log("Aliments dans le repas avant mise à jour: " . print_r($foods, true));
     
     // Calculer les totaux
     $total_calories = 0;
@@ -895,20 +488,13 @@ function updateMealTotals($meal_id) {
                 total_fat = ?
             WHERE id = ?";
             
-    $result = update($sql, [
+    return update($sql, [
         round($total_calories),
         round($total_protein, 1),
         round($total_carbs, 1),
         round($total_fat, 1),
         $meal_id
     ]);
-    
-    // Debug: Vérifier les totaux après la mise à jour
-    $sql = "SELECT total_calories, total_protein, total_carbs, total_fat FROM meals WHERE id = ?";
-    $totals = fetchOne($sql, [$meal_id]);
-    error_log("Totaux après mise à jour: " . print_r($totals, true));
-    
-    return $result;
 }
 
 // Fonction pour mettre à jour le bilan calorique quotidien
@@ -950,175 +536,11 @@ function updateDailyCalorieBalance($user_id) {
                 daily_goal = VALUES(daily_goal),
                 balance = VALUES(balance)";
         
-        $result = update($sql, [$user_id, $today, $total_calories, $exercise_calories, $daily_goal, $balance]);
-        
-        error_log("Mise à jour du bilan calorique : " . print_r([
-            'user_id' => $user_id,
-            'date' => $today,
-            'total_calories' => $total_calories,
-            'exercise_calories' => $exercise_calories,
-            'daily_goal' => $daily_goal,
-            'balance' => $balance
-        ], true));
-        
-        return $result;
+        return update($sql, [$user_id, $today, $total_calories, $exercise_calories, $daily_goal, $balance]);
     } catch (Exception $e) {
-        error_log("Erreur lors de la mise à jour du bilan calorique : " . $e->getMessage());
         return false;
     }
 }
-
-// Ajouter une fonction de débogage structurée
-function debugLog($category, $message, $data = null, $type = 'info') {
-    $timestamp = date('Y-m-d H:i:s');
-    $log = "[$timestamp] [$category] $message";
-    if ($data !== null) {
-        $log .= "\nData: " . print_r($data, true);
-    }
-    error_log($log);
-    
-    // Ajouter au panneau de débogage si on est dans le contexte web
-    if (isset($_SERVER['REQUEST_URI'])) {
-        echo "<div class='debug-message debug-{$type}'>";
-        echo "<span class='debug-time'>[$timestamp]</span>";
-        echo "<span class='debug-category'>[$category]</span> ";
-        echo htmlspecialchars($message);
-        if ($data !== null) {
-            echo "<pre class='debug-data'>" . htmlspecialchars(print_r($data, true)) . "</pre>";
-        }
-        echo "</div>";
-    }
-}
-
-// Fonction pour déboguer les requêtes SQL
-function debugQuery($sql, $params = [], $result = null) {
-    debugLog('SQL', "Query: $sql", [
-        'params' => $params,
-        'result' => $result
-    ]);
-}
-
-// Fonction pour déboguer les données utilisateur
-function debugUserData($user_id, $data) {
-    debugLog('USER', "User ID: $user_id", $data);
-}
-
-// Fonction pour déboguer les repas
-function debugMealData($meal_id, $data) {
-    debugLog('MEAL', "Meal ID: $meal_id", $data);
-}
-
-// Fonction pour déboguer les aliments
-function debugFoodData($food_id, $data) {
-    debugLog('FOOD', "Food ID: $food_id", $data);
-}
-
-// Fonction pour déboguer les stats
-function debugStats($data) {
-    debugLog('STATS', "Stats Update", $data);
-}
-
-// Déboguer les calories brûlées
-$sql = "SELECT SUM(calories_burned) as calories_out FROM exercise_logs WHERE user_id = ? AND log_date = ?";
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[SQL]</span> ";
-echo "Requête calories brûlées : " . $sql;
-echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-echo "</div>";
-
-$today_exercise = fetchOne($sql, [$user_id, $date_filter]);
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[EXERCICES]</span> ";
-echo "Calories brûlées aujourd'hui : " . ($today_exercise ? round($today_exercise['calories_out'] ?? 0) : 0);
-echo "<br>Résultat complet : " . print_r($today_exercise, true);
-echo "</div>";
-
-// Ajouter une requête pour voir les exercices individuels
-$sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
-       FROM exercise_logs 
-       WHERE user_id = ? AND log_date = ? 
-       ORDER BY log_date DESC";
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[SQL]</span> ";
-echo "Requête détails exercices : " . $sql;
-echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-echo "</div>";
-
-$exercises = fetchAll($sql, [$user_id, $date_filter]);
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[EXERCICES]</span> ";
-echo "Liste des exercices du jour :";
-if (!empty($exercises)) {
-    foreach ($exercises as $exercise) {
-        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
-             $exercise['duration'] . " min, " . 
-             $exercise['calories_burned'] . " kcal";
-    }
-} else {
-    echo "<br>Aucun exercice enregistré pour cette date";
-}
-echo "</div>";
-
-                // Vérifier les exercices avec les colonnes correctes
-                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
-                        FROM exercise_logs 
-                        WHERE user_id = ? AND log_date = ? 
-                        ORDER BY log_date DESC";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête détails exercices : " . $sql;
-                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-                echo "</div>";
-                
-                $exercises = fetchAll($sql, [$user_id, $date_filter]);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[EXERCICES]</span> ";
-                echo "Liste des exercices du jour :";
-                if (!empty($exercises)) {
-                    foreach ($exercises as $exercise) {
-                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
-                             $exercise['duration'] . " min, " . 
-                             $exercise['calories_burned'] . " kcal";
-                    }
-                } else {
-                    echo "<br>Aucun exercice enregistré pour cette date";
-                }
-                echo "</div>";
-
-                // Vérifier tous les exercices de l'utilisateur sans filtre de date
-                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
-                       FROM exercise_logs 
-                       WHERE user_id = ? 
-                       ORDER BY log_date DESC";
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête tous les exercices : " . $sql;
-                echo "<br>Paramètres : user_id=" . $user_id;
-                echo "</div>";
-                
-                $all_exercises = fetchAll($sql, [$user_id]);
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[EXERCICES]</span> ";
-                echo "Liste de tous les exercices :";
-                if (!empty($all_exercises)) {
-                    foreach ($all_exercises as $exercise) {
-                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
-                             $exercise['duration'] . " min, " . 
-                             $exercise['calories_burned'] . " kcal, " .
-                             "date: " . $exercise['log_date'];
-                    }
-                } else {
-                    echo "<br>Aucun exercice enregistré";
-                }
-                echo "</div>";
 ?>
 <!DOCTYPE html>
 <html lang="fr">
