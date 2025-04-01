@@ -1974,17 +1974,19 @@ CONSEILS NUTRITIONNELS : {$meal_rule['advice']}
 
 Génère une suggestion de repas au format JSON avec la structure suivante :
 {
-    \"name\": \"Nom du repas\",
+    \"nom_du_repas\": \"Nom du repas\",
     \"description\": \"Description détaillée\",
-    \"calories\": X,
-    \"proteins\": X,
-    \"carbs\": X,
-    \"fats\": X,
+    \"valeurs_nutritionnelles\": {
+        \"calories\": X,
+        \"proteines\": X,
+        \"glucides\": X,
+        \"lipides\": X
+    },
     \"ingredients\": [
         {
-            \"name\": \"Nom de l'ingrédient\",
-            \"quantity\": \"Quantité\",
-            \"unit\": \"Unité de mesure\"
+            \"nom\": \"Nom de l'ingrédient\",
+            \"quantite\": \"Quantité\",
+            \"unite\": \"Unité de mesure\"
         }
     ],
     \"instructions\": [\"étape 1\", \"étape 2\", ...]
@@ -2000,24 +2002,28 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
 
         // Vérifier que la réponse est un JSON valide
         $suggestion = json_decode($response, true);
-        if (!$suggestion || !isset($suggestion['name'])) {
+        if (!$suggestion || !isset($suggestion['nom_du_repas'])) {
             error_log("Réponse invalide de l'API : " . $response);
             throw new Exception("Réponse invalide de l'API");
         }
 
         // Vérifier que les valeurs nutritionnelles ne dépassent pas les limites
-        if ($suggestion['calories'] > $max_calories ||
-            $suggestion['proteins'] > $max_proteins ||
-            $suggestion['carbs'] > $max_carbs ||
-            $suggestion['fats'] > $max_fats) {
+        if ($suggestion['valeurs_nutritionnelles']['calories'] > $max_calories ||
+            $suggestion['valeurs_nutritionnelles']['proteines'] > $max_proteins ||
+            $suggestion['valeurs_nutritionnelles']['glucides'] > $max_carbs ||
+            $suggestion['valeurs_nutritionnelles']['lipides'] > $max_fats) {
             throw new Exception("Les valeurs nutritionnelles dépassent les limites autorisées");
         }
 
         // Formater la suggestion pour l'affichage
         $suggestion_text = "Suggestion de {$meal_type_display[$meal_type]} :\n\n";
-        $suggestion_text .= "Nom : {$suggestion['name']}\n";
+        $suggestion_text .= "Nom : {$suggestion['nom_du_repas']}\n";
         $suggestion_text .= "Description : {$suggestion['description']}\n\n";
         $suggestion_text .= "Valeurs nutritionnelles :\n";
+        $suggestion_text .= "- Calories : {$suggestion['valeurs_nutritionnelles']['calories']} kcal\n";
+        $suggestion_text .= "- Protéines : {$suggestion['valeurs_nutritionnelles']['proteines']}g\n";
+        $suggestion_text .= "- Glucides : {$suggestion['valeurs_nutritionnelles']['glucides']}g\n";
+        $suggestion_text .= "- Lipides : {$suggestion['valeurs_nutritionnelles']['lipides']}g\n\n";
         $suggestion_text .= "- Calories : {$suggestion['calories']} kcal\n";
         $suggestion_text .= "- Protéines : {$suggestion['proteins']}g\n";
         $suggestion_text .= "- Glucides : {$suggestion['carbs']}g\n";
