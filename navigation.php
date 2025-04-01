@@ -53,9 +53,9 @@ foreach ($submenus as $menu => $items) {
                 <i class="far fa-envelope"></i>
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
             </a>
-            <a href="#" class="nav-link me-3">
+            <a href="profile.php" class="nav-link me-3">
                 <i class="far fa-user me-1"></i>
-            <a href="profile.php" class="nav-link"><?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?></a>
+            <?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?>
             </a>
             <a href="settings.php" class="nav-link me-3">Paramètres</a>
             <a href="logout.php" class="nav-link">Déconnexion</a>
