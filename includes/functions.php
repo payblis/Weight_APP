@@ -2047,10 +2047,14 @@ N'ajoute rien d'autre que ce JSON dans ta réponse. Ne pas inclure de suggestion
 
         // Vérifier que la réponse ne contient pas de suggestions de repas
         $response_lower = strtolower($response);
-        $food_keywords = ['calories', 'repas', 'aliment', 'nutrition', 'protéine', 'glucide', 'lipide', 'ingrédient'];
+        $food_keywords = [
+            'repas', 'aliment', 'nutrition', 'protéine', 'glucide', 'lipide', 'ingrédient',
+            'menu', 'cuisine', 'recette', 'manger', 'boire', 'déjeuner', 'dîner', 'collation'
+        ];
+        
         foreach ($food_keywords as $keyword) {
             if (strpos($response_lower, $keyword) !== false) {
-                error_log("La réponse contient des suggestions de repas non autorisées");
+                error_log("La réponse contient des suggestions de repas non autorisées (mot-clé trouvé: $keyword)");
                 return "La suggestion générée contient des informations non autorisées.";
             }
         }
