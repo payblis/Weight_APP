@@ -191,6 +191,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        /* Optimisations mobiles */
+        @media (max-width: 768px) {
+            .container {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+            
+            .card {
+                margin-bottom: 1rem;
+            }
+            
+            .display-4 {
+                font-size: 2rem;
+            }
+            
+            .table-responsive {
+                margin: 0 -15px;
+            }
+            
+            .table td, .table th {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+            
+            .btn-group {
+                display: flex;
+                gap: 0.5rem;
+            }
+            
+            .btn-group .btn {
+                padding: 0.25rem 0.5rem;
+            }
+            
+            .modal-dialog {
+                margin: 0.5rem;
+            }
+            
+            .form-label {
+                font-size: 0.9rem;
+            }
+            
+            .form-control, .form-select {
+                font-size: 0.9rem;
+            }
+        }
+        
+        /* Améliorations générales */
+        .card {
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .table td {
+            vertical-align: middle;
+        }
+        
+        .btn-group .btn {
+            border-radius: 0.25rem;
+        }
+        
+        .exercise-details p {
+            margin-bottom: 0.5rem;
+        }
+    </style>
 </head>
 <body>
     <!-- Barre de navigation -->
@@ -349,57 +417,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php else: ?>
             <!-- Affichage des statistiques et du graphique -->
-            <div class="row mb-4">
-                <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
                     <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body text-center">
+                        <div class="card-body text-center p-3">
                             <div class="display-4 text-primary mb-2">
                                 <?php echo number_format($stats['total_calories']); ?>
                             </div>
-                            <h5 class="card-title">Calories brûlées</h5>
-                            <p class="card-text small text-muted">
+                            <h5 class="card-title h6 mb-0">Calories brûlées</h5>
+                            <p class="card-text small text-muted mb-0">
                                 <i class="fas fa-fire me-1"></i>Total
                             </p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
+                <div class="col-6 col-md-3">
                     <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body text-center">
+                        <div class="card-body text-center p-3">
                             <div class="display-4 text-primary mb-2">
                                 <?php echo number_format($stats['total_duration']); ?>
                             </div>
-                            <h5 class="card-title">Minutes d'exercice</h5>
-                            <p class="card-text small text-muted">
+                            <h5 class="card-title h6 mb-0">Minutes d'exercice</h5>
+                            <p class="card-text small text-muted mb-0">
                                 <i class="fas fa-clock me-1"></i>Total
                             </p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6 mb-3 mb-sm-0">
+                <div class="col-6 col-md-3">
                     <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body text-center">
+                        <div class="card-body text-center p-3">
                             <div class="display-4 text-primary mb-2">
                                 <?php echo $stats['total_exercises']; ?>
                             </div>
-                            <h5 class="card-title">Séances d'exercice</h5>
-                            <p class="card-text small text-muted">
+                            <h5 class="card-title h6 mb-0">Séances d'exercice</h5>
+                            <p class="card-text small text-muted mb-0">
                                 <i class="fas fa-list-check me-1"></i>Total
                             </p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6">
+                <div class="col-6 col-md-3">
                     <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body text-center">
+                        <div class="card-body text-center p-3">
                             <div class="display-4 text-primary mb-2">
                                 <?php 
                                     $avg_calories = $stats['total_exercises'] > 0 ? round($stats['total_calories'] / $stats['total_exercises']) : 0;
                                     echo number_format($avg_calories);
                                 ?>
                             </div>
-                            <h5 class="card-title">Calories par séance</h5>
-                            <p class="card-text small text-muted">
+                            <h5 class="card-title h6 mb-0">Calories par séance</h5>
+                            <p class="card-text small text-muted mb-0">
                                 <i class="fas fa-calculator me-1"></i>Moyenne
                             </p>
                         </div>
@@ -409,33 +477,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Tableau des exercices -->
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
                         <tr>
                             <th>Date</th>
                             <th>Exercice</th>
-                            <th>Durée</th>
-                            <th>Intensité</th>
-                            <th>Calories</th>
+                            <th class="text-center">Durée</th>
+                            <th class="text-center">Intensité</th>
+                            <th class="text-center">Calories</th>
                             <th>Notes</th>
-                            <th>Actions</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($exercises)): ?>
                             <tr>
-                                <td colspan="7" class="text-center">Aucun exercice enregistré</td>
+                                <td colspan="7" class="text-center py-4">Aucun exercice enregistré</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($exercises as $exercise): ?>
                                 <tr>
-                                    <td><?php echo date('d/m/Y', strtotime($exercise['log_date'])); ?></td>
+                                    <td class="text-nowrap"><?php echo date('d/m/Y', strtotime($exercise['log_date'])); ?></td>
                                     <td><?php echo htmlspecialchars($exercise['custom_exercise_name'] ?: $exercise['exercise_name']); ?></td>
-                                    <td><?php echo $exercise['duration']; ?> min</td>
-                                    <td><?php echo ucfirst($exercise['intensity']); ?></td>
-                                    <td><?php echo number_format($exercise['calories_burned']); ?></td>
-                                    <td><?php echo htmlspecialchars($exercise['notes']); ?></td>
-                                    <td>
+                                    <td class="text-center"><?php echo $exercise['duration']; ?> min</td>
+                                    <td class="text-center"><?php echo ucfirst($exercise['intensity']); ?></td>
+                                    <td class="text-center"><?php echo number_format($exercise['calories_burned']); ?></td>
+                                    <td class="text-truncate" style="max-width: 150px;"><?php echo htmlspecialchars($exercise['notes']); ?></td>
+                                    <td class="text-center">
                                         <div class="btn-group">
                                             <button type="button" 
                                                     class="btn btn-sm btn-outline-success share-btn" 
