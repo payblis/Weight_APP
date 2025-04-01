@@ -6,6 +6,9 @@ session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 
+// Définir le nom du site
+define('SITE_NAME', 'MyFity');
+
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
     redirect('login.php');
@@ -17,11 +20,14 @@ $sql = "SELECT * FROM users WHERE id = ?";
 $user = fetchOne($sql, [$user_id]);
 
 // Récupérer les informations du profil utilisateur
-$sql = "SELECT up.*, u.age, u.gender 
+$sql = "SELECT up.*, u.birth_date, u.gender 
         FROM user_profiles up 
         JOIN users u ON up.user_id = u.id 
         WHERE up.user_id = ?";
 $user_profile = fetchOne($sql, [$user_id]);
+
+// Calculer l'âge
+$user_profile['age'] = calculateAge($user_profile['birth_date']);
 
 // Récupérer l'objectif actuel
 $sql = "SELECT * FROM goals 
