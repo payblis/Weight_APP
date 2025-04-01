@@ -6,7 +6,42 @@ $current_page = basename($_SERVER['PHP_SELF']);
 if (!isset($_SESSION)) {
     session_start();
 }
+
+// Définir les sous-menus pour chaque section
+$submenus = [
+    'dashboard.php' => [],
+    'food-log.php' => [
+        ['title' => 'Journal alimentaire', 'url' => 'food-log.php'],
+        ['title' => 'Gestion des aliments', 'url' => 'food-management.php'],
+        ['title' => 'Préférences alimentaires', 'url' => 'preferences.php']
+    ],
+    'exercise-log.php' => [
+        ['title' => 'Journal d\'exercices', 'url' => 'exercise-log.php'],
+        ['title' => 'Programmes d\'entraînement', 'url' => 'programs.php']
+    ],
+    'reports.php' => [
+        ['title' => 'Suivi de poids', 'url' => 'weight-log.php'],
+        ['title' => 'Historique calorique', 'url' => 'calorie-history.php'],
+        ['title' => 'Rapports & Statistiques', 'url' => 'reports.php']
+    ],
+    'goals.php' => [
+        ['title' => 'Mes objectifs', 'url' => 'goals.php'],
+        ['title' => 'Progression', 'url' => 'goals-progress.php']
+    ]
+];
+
+// Déterminer le menu actif et ses sous-menus
+$active_menu = 'dashboard.php';
+foreach ($submenus as $menu => $items) {
+    foreach ($items as $item) {
+        if ($item['url'] === $current_page) {
+            $active_menu = $menu;
+            break 2;
+        }
+    }
+}
 ?>
+
 <!-- Barre supérieure avec logo et paramètres -->
 <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom d-none d-lg-block top-nav">
     <div class="container">
@@ -39,23 +74,23 @@ if (!isset($_SESSION)) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo $current_page === 'food-log.php' ? 'active' : ''; ?>" href="food-log.php">
+                    <a class="nav-link text-uppercase <?php echo in_array($current_page, ['food-log.php', 'food-management.php', 'preferences.php']) ? 'active' : ''; ?>" href="food-log.php">
                         Aliments
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo $current_page === 'exercise-log.php' ? 'active' : ''; ?>" href="exercise-log.php">
+                    <a class="nav-link text-uppercase <?php echo in_array($current_page, ['exercise-log.php', 'programs.php']) ? 'active' : ''; ?>" href="exercise-log.php">
                         Exercices
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo $current_page === 'reports.php' ? 'active' : ''; ?>" href="reports.php">
+                    <a class="nav-link text-uppercase <?php echo in_array($current_page, ['weight-log.php', 'calorie-history.php', 'reports.php']) ? 'active' : ''; ?>" href="reports.php">
                         Rapports
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo $current_page === 'apps.php' ? 'active' : ''; ?>" href="apps.php">
-                        Applis
+                    <a class="nav-link text-uppercase <?php echo $current_page === 'goals.php' ? 'active' : ''; ?>" href="goals.php">
+                        Objectifs
                     </a>
                 </li>
                 <li class="nav-item">
@@ -79,34 +114,23 @@ if (!isset($_SESSION)) {
 </nav>
 
 <!-- Sous-navigation -->
+<?php if (isset($submenus[$active_menu]) && !empty($submenus[$active_menu])): ?>
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary-dark d-none d-lg-block sub-nav">
     <div class="container">
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav">
+                <?php foreach ($submenus[$active_menu] as $item): ?>
                 <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'exercise-log.php' ? 'active' : ''; ?>" href="exercise-log.php">
-                        Journal d'exercices
+                    <a class="nav-link <?php echo $current_page === $item['url'] ? 'active' : ''; ?>" href="<?php echo $item['url']; ?>">
+                        <?php echo $item['title']; ?>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'exercise-database.php' ? 'active' : ''; ?>" href="exercise-database.php">
-                        Base de données
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'my-exercises.php' ? 'active' : ''; ?>" href="my-exercises.php">
-                        Mes exercices
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'exercise-settings.php' ? 'active' : ''; ?>" href="exercise-settings.php">
-                        Paramètres
-                    </a>
-                </li>
+                <?php endforeach; ?>
             </ul>
         </div>
     </div>
 </nav>
+<?php endif; ?>
 
 <!-- Navigation mobile (bottom bar) -->
 <nav class="navbar fixed-bottom navbar-light bg-white border-top d-lg-none">
