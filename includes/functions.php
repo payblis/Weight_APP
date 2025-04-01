@@ -2045,3 +2045,114 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
     }
 }
 
+function generateExerciseSuggestion($profile, $current_weight, $current_goal, $active_program, $exercise_type) {
+    try {
+        // Vérifier si l'âge existe dans le profil
+        if (!isset($profile['age'])) {
+            $profile['age'] = 30; // Valeur par défaut si l'âge n'est pas défini
+        }
+
+        // Map des types d'exercices pour l'affichage
+        $exercise_type_display = [
+            'cardio' => 'Cardio',
+            'musculation' => 'Musculation',
+            'flexibilite' => 'Flexibilité',
+            'equilibre' => 'Équilibre'
+        ];
+
+        // Règles spécifiques pour chaque type d'exercice
+        $exercise_rules = [
+            'cardio' => [
+                'description' => 'Exercices d\'endurance et de cardio',
+                'typical_exercises' => 'Course à pied, vélo, natation, saut à la corde',
+                'advice' => 'Privilégier les exercices qui augmentent le rythme cardiaque'
+            ],
+            'musculation' => [
+                'description' => 'Exercices de renforcement musculaire',
+                'typical_exercises' => 'Pompes, squats, fentes, planche',
+                'advice' => 'Focus sur la technique et la progression'
+            ],
+            'flexibilite' => [
+                'description' => 'Exercices d\'étirement et de souplesse',
+                'typical_exercises' => 'Yoga, étirements, mobilité articulaire',
+                'advice' => 'Respecter les limites de son corps'
+            ],
+            'equilibre' => [
+                'description' => 'Exercices d\'équilibre et de coordination',
+                'typical_exercises' => 'Exercices sur une jambe, yoga, tai-chi',
+                'advice' => 'Commencer par des exercices simples'
+            ]
+        ];
+
+        // Construire le prompt pour l'API
+        $prompt = "En tant que coach sportif expert, génère une suggestion d'exercice personnalisée en JSON avec la structure suivante :
+        {
+            \"nom_de_l_exercice\": \"Nom de l'exercice\",
+            \"description\": \"Description détaillée de l'exercice\",
+            \"duree\": \"Durée recommandée en minutes\",
+            \"difficulte\": \"Niveau de difficulté (débutant/intermédiaire/avancé)\",
+            \"materiel_necessaire\": \"Liste du matériel nécessaire\",
+            \"conseils\": \"Conseils pour une bonne exécution\",
+            \"variantes\": \"Variantes possibles selon le niveau\",
+            \"contre_indications\": \"Contre-indications éventuelles\"
+        }
+
+        Règles strictes :
+        1. L'exercice doit être adapté à un utilisateur de {$profile['age']} ans
+        2. Le niveau de difficulté doit être adapté au niveau d'activité : {$profile['activity_level']}
+        3. L'exercice doit être de type : {$exercise_type_display[$exercise_type]}
+        4. L'exercice doit être adapté à l'objectif : {$current_goal['goal_type']}
+        5. La durée doit être adaptée au niveau d'activité
+        6. Les conseils doivent être clairs et précis
+        7. Les variantes doivent être proposées pour différents niveaux
+        8. Les contre-indications doivent être mentionnées si pertinentes
+
+        Règles spécifiques pour le type d'exercice :
+        {$exercise_rules[$exercise_type]['description']}
+        Exercices typiques : {$exercise_rules[$exercise_type]['typical_exercises']}
+        Conseil : {$exercise_rules[$exercise_type]['advice']}";
+
+        // Appeler l'API ChatGPT
+        $response = callChatGPTAPI($prompt);
+        
+        // Vérifier si la réponse est valide
+        if (!$response) {
+            throw new Exception("Impossible de générer une suggestion d'exercice. Veuillez réessayer.");
+        }
+
+        // Vérifier que la réponse est un JSON valide
+        $exercise_data = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log("Réponse invalide de l'API : " . $response);
+            throw new Exception("Format de réponse invalide. Veuillez réessayer.");
+        }
+
+        // Vérifier que tous les champs requis sont présents
+        $required_fields = ['nom_de_l_exercice', 'description', 'duree', 'difficulte', 'materiel_necessaire', 'conseils', 'variantes', 'contre_indications'];
+        foreach ($required_fields as $field) {
+            if (!isset($exercise_data[$field])) {
+                error_log("Champ manquant dans la réponse : " . $field);
+                throw new Exception("Données incomplètes. Veuillez réessayer.");
+            }
+        }
+
+        // Formater la suggestion pour l'affichage
+        $suggestion_text = "Exercice suggéré : {$exercise_data['nom_de_l_exercice']}\n\n";
+        $suggestion_text .= "Description : {$exercise_data['description']}\n\n";
+        $suggestion_text .= "Durée recommandée : {$exercise_data['duree']}\n";
+        $suggestion_text .= "Niveau de difficulté : {$exercise_data['difficulte']}\n\n";
+        $suggestion_text .= "Matériel nécessaire : {$exercise_data['materiel_necessaire']}\n\n";
+        $suggestion_text .= "Conseils d'exécution : {$exercise_data['conseils']}\n\n";
+        $suggestion_text .= "Variantes possibles : {$exercise_data['variantes']}\n\n";
+        if (!empty($exercise_data['contre_indications'])) {
+            $suggestion_text .= "Contre-indications : {$exercise_data['contre_indications']}\n";
+        }
+
+        return $suggestion_text;
+
+    } catch (Exception $e) {
+        error_log("Erreur dans generateExerciseSuggestion : " . $e->getMessage());
+        throw $e;
+    }
+}
+

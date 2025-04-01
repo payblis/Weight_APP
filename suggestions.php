@@ -98,30 +98,54 @@ $sql = "SELECT p.* FROM user_programs up
         ORDER BY up.created_at DESC LIMIT 1";
 $active_program = fetchOne($sql, [$user_id]);
 
-// Traitement de la demande de suggestion
+// Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'generate_meal':
-                try {
-                    $meal_type = $_POST['meal_type'];
-                    $suggestion = generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods, $meal_type);
-                    $success = "Suggestion générée avec succès !";
-                } catch (Exception $e) {
-                    $error = "Erreur lors de la génération de la suggestion : " . $e->getMessage();
+    $action = $_POST['action'] ?? '';
+    
+    switch ($action) {
+        case 'generate_meal':
+            try {
+                if (empty($_POST['meal_type'])) {
+                    throw new Exception("Veuillez sélectionner un type de repas");
                 }
-                break;
 
-            case 'generate_exercise':
-                try {
-                    $exercise_type = $_POST['exercise_type'];
-                    $suggestion = generateExerciseSuggestion($profile, $latest_weight, $current_goal, $active_program, $exercise_type);
-                    $success = "Suggestion générée avec succès !";
-                } catch (Exception $e) {
-                    $error = "Erreur lors de la génération de la suggestion : " . $e->getMessage();
+                $meal_type = $_POST['meal_type'];
+                $meal_suggestion = generateMealSuggestion(
+                    $profile,
+                    $latest_weight['weight'],
+                    $current_goal,
+                    $active_program,
+                    $favorite_foods,
+                    $blacklisted_foods,
+                    $meal_type
+                );
+                
+                $meal_suggestion_success = "Suggestion générée avec succès !";
+            } catch (Exception $e) {
+                $meal_suggestion_error = $e->getMessage();
+            }
+            break;
+            
+        case 'generate_exercise':
+            try {
+                if (empty($_POST['exercise_type'])) {
+                    throw new Exception("Veuillez sélectionner un type d'exercice");
                 }
-                break;
-        }
+
+                $exercise_type = $_POST['exercise_type'];
+                $exercise_suggestion = generateExerciseSuggestion(
+                    $profile,
+                    $latest_weight['weight'],
+                    $current_goal,
+                    $active_program,
+                    $exercise_type
+                );
+                
+                $exercise_suggestion_success = "Suggestion générée avec succès !";
+            } catch (Exception $e) {
+                $exercise_suggestion_error = $e->getMessage();
+            }
+            break;
     }
 }
 
@@ -293,152 +317,69 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
             <!-- Formulaire de génération de suggestion -->
             <div class="col-lg-4 mb-4">
                 <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Générer une suggestion</h5>
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Suggestions personnalisées</h5>
                     </div>
                     <div class="card-body">
-                        <?php if (empty($api_key)): ?>
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle me-1"></i>
-                                La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.
-                            </div>
-                        <?php else: ?>
-                            <form method="post" action="suggestions.php" id="suggestionForm">
-                                <input type="hidden" name="suggestion_type" value="<?php echo htmlspecialchars($suggestion_type); ?>">
-                                
-                                <?php if ($suggestion_type === 'alimentation'): ?>
-                                <div class="mb-4">
-                                    <label for="meal_type" class="form-label">Type de repas</label>
-                                    <select id="meal_type" name="meal_type" class="form-select">
-                                        <option value="petit_dejeuner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'petit_dejeuner' ? 'selected' : ''; ?>>Petit-déjeuner</option>
-                                        <option value="dejeuner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'dejeuner' ? 'selected' : ''; ?>>Déjeuner</option>
-                                        <option value="diner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'diner' ? 'selected' : ''; ?>>Dîner</option>
-                                        <option value="collation" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'collation' ? 'selected' : ''; ?>>Collation</option>
-                                    </select>
-                                </div>
-                                <?php endif; ?>
-                                
-                                <p class="mb-3">
-                                    <?php if ($suggestion_type === 'alimentation'): ?>
-                                        Générez des suggestions de repas adaptées à votre profil, vos objectifs et vos préférences alimentaires.
-                                    <?php elseif ($suggestion_type === 'exercice'): ?>
-                                        Générez des suggestions d'exercices adaptées à votre niveau d'activité et vos objectifs de poids.
-                                    <?php else: ?>
-                                        Générez un programme personnalisé complet basé sur votre profil, vos objectifs et vos préférences.
-                                    <?php endif; ?>
-                                </p>
-                                
-                                <div class="d-grid">
-                                    <button type="submit" name="generate" class="btn btn-primary" id="generateButton">
-                                        <i class="fas fa-robot me-1"></i>Générer une suggestion
-                                    </button>
-                                </div>
-                            </form>
-
-                            <!-- Loader -->
-                            <div id="loader" class="text-center mt-3 d-none">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Chargement...</span>
-                                </div>
-                                <p class="mt-2 mb-0">Génération de votre suggestion en cours...</p>
-                            </div>
+                        <?php if (isset($meal_suggestion_error)): ?>
+                            <div class="alert alert-danger"><?php echo $meal_suggestion_error; ?></div>
                         <?php endif; ?>
                         
-                        <div class="mt-3">
-                            <h6>Informations utilisées pour la génération :</h6>
-                            <ul class="small">
-                                <?php if ($profile): ?>
-                                    <li>
-                                        <strong>Profil :</strong>
-                                        <ul class="mb-0">
-                                            <li>Genre : <?php echo $profile['gender'] === 'homme' ? 'Homme' : 'Femme'; ?></li>
-                                            <li>Âge : <?php echo isset($profile['birth_date']) ? calculateAge($profile['birth_date']) : 'Non renseigné'; ?> ans</li>
-                                            <li>Taille : <?php echo $profile['height']; ?> cm</li>
-                                            <li>Niveau d'activité : <?php echo $profile['activity_level']; ?></li>
-                                        </ul>
-                                    </li>
-                                <?php else: ?>
-                                    <li><strong>Profil :</strong> Non renseigné</li>
-                                <?php endif; ?>
-                                
-                                <?php if ($latest_weight): ?>
-                                    <li>
-                                        <strong>Poids actuel :</strong> <?php echo number_format($latest_weight['weight'], 1); ?> kg
-                                        <?php if ($current_goal): ?>
-                                            <br>Objectif : <?php echo number_format($current_goal['target_weight'], 1); ?> kg
-                                            <br>Différence : <?php echo number_format($current_goal['target_weight'] - $latest_weight['weight'], 1); ?> kg
-                                        <?php endif; ?>
-                                    </li>
-                                <?php else: ?>
-                                    <li><strong>Poids actuel :</strong> Non renseigné</li>
-                                <?php endif; ?>
-                                
-                                <?php if ($current_goal): ?>
-                                    <li>
-                                        <strong>Objectif :</strong>
-                                        <ul class="mb-0">
-                                            <li>Type : <?php echo $current_goal['goal_type']; ?></li>
-                                            <li>Poids cible : <?php echo number_format($current_goal['target_weight'], 1); ?> kg</li>
-                                            <li>Date cible : <?php echo date('d/m/Y', strtotime($current_goal['target_date'])); ?></li>
-                                        </ul>
-                                    </li>
-                                <?php else: ?>
-                                    <li><strong>Objectif :</strong> Non défini</li>
-                                <?php endif; ?>
-                                
-                                <?php if ($active_program): ?>
-                                    <li>
-                                        <strong>Programme actif :</strong>
-                                        <ul class="mb-0">
-                                            <li>Nom : <?php echo htmlspecialchars($active_program['name']); ?></li>
-                                            <li>Description : <?php echo htmlspecialchars($active_program['description']); ?></li>
-                                            <li>Type : <?php echo $active_program['program_type']; ?></li>
-                                        </ul>
-                                    </li>
-                                <?php else: ?>
-                                    <li><strong>Programme :</strong> Aucun</li>
-                                <?php endif; ?>
-                                
-                                <li>
-                                    <strong>Préférences alimentaires :</strong>
-                                    <ul class="mb-0">
-                                        <li>Aliments préférés : <?php echo count($favorite_foods); ?> configurés</li>
-                                        <li>Aliments à éviter : <?php echo count($blacklisted_foods); ?> configurés</li>
-                                    </ul>
-                                </li>
+                        <?php if (isset($meal_suggestion_success)): ?>
+                            <div class="alert alert-success"><?php echo $meal_suggestion_success; ?></div>
+                        <?php endif; ?>
 
-                                <?php if ($suggestion_type === 'alimentation'): ?>
-                                    <?php
-                                    // Récupérer les objectifs nutritionnels
-                                    $sql = "SELECT daily_calories, protein_ratio, carbs_ratio, fat_ratio FROM user_profiles WHERE user_id = ?";
-                                    $nutrition_goals = fetchOne($sql, [$user_id]);
-                                    
-                                    if ($nutrition_goals):
-                                        $meal_ratios = [
-                                            'petit_dejeuner' => 0.25,
-                                            'dejeuner' => 0.35,
-                                            'diner' => 0.30,
-                                            'collation' => 0.10
-                                        ];
-                                        $meal_type = isset($_GET['meal_type']) ? $_GET['meal_type'] : 'dejeuner';
-                                        $max_calories = round($nutrition_goals['daily_calories'] * $meal_ratios[$meal_type]);
-                                        $max_protein = round(($max_calories * $nutrition_goals['protein_ratio']) / 4);
-                                        $max_carbs = round(($max_calories * $nutrition_goals['carbs_ratio']) / 4);
-                                        $max_fat = round(($max_calories * $nutrition_goals['fat_ratio']) / 9);
-                                    ?>
-                                        <li>
-                                            <strong>Limites nutritionnelles pour <?php echo ucfirst(str_replace('_', ' ', $meal_type)); ?> :</strong>
-                                            <ul class="mb-0">
-                                                <li>Calories maximales : <?php echo $max_calories; ?> kcal</li>
-                                                <li>Protéines maximales : <?php echo $max_protein; ?> g</li>
-                                                <li>Glucides maximaux : <?php echo $max_carbs; ?> g</li>
-                                                <li>Lipides maximaux : <?php echo $max_fat; ?> g</li>
-                                            </ul>
-                                        </li>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-                            </ul>
-                        </div>
+                        <form method="post" action="">
+                            <input type="hidden" name="action" value="generate_meal">
+                            <div class="mb-3">
+                                <label for="meal_type" class="form-label">Type de suggestion</label>
+                                <select class="form-select" id="meal_type" name="meal_type" required>
+                                    <option value="">Sélectionnez un type</option>
+                                    <option value="petit_dejeuner">Petit-déjeuner</option>
+                                    <option value="dejeuner">Déjeuner</option>
+                                    <option value="diner">Dîner</option>
+                                    <option value="collation">Collation</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Générer une suggestion</button>
+                        </form>
+
+                        <?php if (isset($meal_suggestion)): ?>
+                            <div class="mt-4">
+                                <h6>Suggestion générée :</h6>
+                                <pre class="bg-light p-3 rounded"><?php echo htmlspecialchars($meal_suggestion); ?></pre>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (isset($exercise_suggestion_error)): ?>
+                            <div class="alert alert-danger"><?php echo $exercise_suggestion_error; ?></div>
+                        <?php endif; ?>
+                        
+                        <?php if (isset($exercise_suggestion_success)): ?>
+                            <div class="alert alert-success"><?php echo $exercise_suggestion_success; ?></div>
+                        <?php endif; ?>
+
+                        <form method="post" action="" class="mt-4">
+                            <input type="hidden" name="action" value="generate_exercise">
+                            <div class="mb-3">
+                                <label for="exercise_type" class="form-label">Type d'exercice</label>
+                                <select class="form-select" id="exercise_type" name="exercise_type" required>
+                                    <option value="">Sélectionnez un type</option>
+                                    <option value="cardio">Cardio</option>
+                                    <option value="musculation">Musculation</option>
+                                    <option value="flexibilite">Flexibilité</option>
+                                    <option value="equilibre">Équilibre</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Générer une suggestion</button>
+                        </form>
+
+                        <?php if (isset($exercise_suggestion)): ?>
+                            <div class="mt-4">
+                                <h6>Suggestion générée :</h6>
+                                <pre class="bg-light p-3 rounded"><?php echo htmlspecialchars($exercise_suggestion); ?></pre>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
