@@ -45,42 +45,14 @@ $daily_goal = $daily_goal_result ? $daily_goal_result['goal_calories'] : 0;
 $sql = "SELECT COALESCE(SUM(calories_burned), 0) as total_burned 
         FROM exercise_logs 
         WHERE user_id = ? AND DATE(log_date) = ?";
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[SQL]</span> ";
-echo "Requête calories brûlées : " . $sql;
-echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-echo "</div>";
-
 $exercise_result = fetchOne($sql, [$user_id, $date_filter]);
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[EXERCICES]</span> ";
-echo "Calories brûlées aujourd'hui : " . ($exercise_result ? $exercise_result['total_burned'] : 0);
-echo "<br>Résultat complet : " . print_r($exercise_result, true);
-echo "</div>";
-
 $exercise_calories = $exercise_result ? $exercise_result['total_burned'] : 0;
 
 // Récupérer les calories consommées
 $sql = "SELECT COALESCE(SUM(total_calories), 0) as total_calories 
         FROM meals 
         WHERE user_id = ? AND log_date = ?";
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[SQL]</span> ";
-echo "Requête calories consommées : " . $sql;
-echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-echo "</div>";
-
 $meals_result = fetchOne($sql, [$user_id, $date_filter]);
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[ALIMENTS]</span> ";
-echo "Calories consommées aujourd'hui : " . ($meals_result ? $meals_result['total_calories'] : 0);
-echo "<br>Résultat complet : " . print_r($meals_result, true);
-echo "</div>";
-
 $total_calories = $meals_result ? $meals_result['total_calories'] : 0;
 
 // Vérifier les repas du jour
@@ -88,28 +60,7 @@ $sql = "SELECT m.*,
         (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count
         FROM meals m 
         WHERE m.user_id = ? AND m.log_date = ?";
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[SQL]</span> ";
-echo "Requête repas du jour : " . $sql;
-echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
-echo "</div>";
-
 $meals = fetchAll($sql, [$user_id, $date_filter]);
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[ALIMENTS]</span> ";
-echo "Liste des repas du jour :";
-if (!empty($meals)) {
-    foreach ($meals as $meal) {
-        echo "<br>- " . getMealTypeName($meal['meal_type']) . " : " . 
-             $meal['total_calories'] . " kcal, " . 
-             $meal['food_count'] . " aliments";
-    }
-} else {
-    echo "<br>Aucun repas enregistré pour cette date";
-}
-echo "</div>";
 
 // Vérifier les aliments de chaque repas
 foreach ($meals as $meal) {
@@ -117,28 +68,7 @@ foreach ($meals as $meal) {
             FROM food_logs fl 
             LEFT JOIN foods f ON fl.food_id = f.id 
             WHERE fl.meal_id = ?";
-    echo "<div class='debug-message'>";
-    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-    echo "<span class='debug-category'>[SQL]</span> ";
-    echo "Requête aliments du repas : " . $sql;
-    echo "<br>Paramètres : meal_id=" . $meal['id'];
-    echo "</div>";
-    
     $meal_foods = fetchAll($sql, [$meal['id']]);
-    echo "<div class='debug-message'>";
-    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-    echo "<span class='debug-category'>[ALIMENTS]</span> ";
-    echo "Aliments du repas " . getMealTypeName($meal['meal_type']) . " :";
-    if (!empty($meal_foods)) {
-        foreach ($meal_foods as $food) {
-            echo "<br>- " . ($food['food_name'] ?: $food['custom_food_name']) . " : " . 
-                 $food['quantity'] . "g, " . 
-                 ($food['food_id'] ? ($food['calories'] * $food['quantity'] / 100) : $food['custom_calories']) . " kcal";
-        }
-    } else {
-        echo "<br>Aucun aliment dans ce repas";
-    }
-    echo "</div>";
 }
 
 error_log("=== DÉBUT DU TRAITEMENT ===");
@@ -444,9 +374,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $result = delete($sql, [$food_log_id]);
                     
                     if ($result) {
-                        // Debug: Afficher l'ID de l'aliment supprimé
-                        error_log("Aliment supprimé avec succès. ID: " . $food_log_id);
-                        
                         // Mettre à jour les totaux du repas
                         updateMealTotals($food_log['meal_id']);
                         
@@ -1138,23 +1065,6 @@ if (!empty($exercises)) {
 }
 echo "</div>";
 
-// Vérifier la table exercise_logs
-$sql = "SELECT COUNT(*) as total FROM exercise_logs WHERE user_id = ?";
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[SQL]</span> ";
-echo "Requête total exercices : " . $sql;
-echo "<br>Paramètres : user_id=" . $user_id;
-echo "</div>";
-
-$total_exercises = fetchOne($sql, [$user_id]);
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[EXERCICES]</span> ";
-echo "Total des exercices enregistrés : " . ($total_exercises ? $total_exercises['total'] : 0);
-echo "<br>Résultat complet : " . print_r($total_exercises, true);
-echo "</div>";
-
                 // Vérifier les exercices avec les colonnes correctes
                 $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
                         FROM exercise_logs 
@@ -1774,80 +1684,38 @@ echo "</div>";
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Fonction pour ajouter un message de débogage
-            function addDebugMessage(message, category) {
-                const content = document.getElementById('debugContent');
-                const time = new Date().toLocaleTimeString();
-                const messageElement = document.createElement('div');
-                messageElement.className = 'debug-message';
-                messageElement.innerHTML = `
-                    <span class='debug-time'>[${time}]</span>
-                    <span class='debug-category'>[${category}]</span>
-                    ${message}
-                `;
-                content.appendChild(messageElement);
-                content.scrollTop = content.scrollHeight;
-            }
-
-            // Modifier la fonction updateStats pour inclure le débogage
+            // Fonction pour mettre à jour les stats
             function updateStats() {
-                addDebugMessage("Début de la mise à jour des stats", 'CALORIES');
                 fetch('food-log.php?action=get_stats&date=<?php echo $date_filter; ?>')
                     .then(response => {
-                        addDebugMessage(`Réponse stats reçue : ${response.status}`, 'CALORIES');
                         if (!response.ok) {
                             throw new Error('Erreur réseau: ' + response.status);
                         }
                         return response.json();
                     })
                     .then(data => {
-                        addDebugMessage(`Données stats reçues : ${JSON.stringify(data)}`, 'CALORIES');
-                        
                         // Mise à jour des calories
                         const dailyGoal = document.getElementById('daily-goal');
                         const totalCalories = document.getElementById('total-calories');
                         const exerciseCalories = document.getElementById('exercise-calories');
                         const remainingCalories = document.getElementById('remaining-calories');
                         
-                        if (dailyGoal) {
-                            addDebugMessage(`Objectif quotidien : ${data.daily_goal}`, 'CALORIES');
-                            dailyGoal.textContent = data.daily_goal;
-                        }
-                        if (totalCalories) {
-                            addDebugMessage(`Calories consommées : ${data.total_calories}`, 'CALORIES');
-                            totalCalories.textContent = data.total_calories;
-                        }
-                        if (exerciseCalories) {
-                            addDebugMessage(`Calories brûlées : ${data.exercise_calories}`, 'EXERCICES');
-                            exerciseCalories.textContent = data.exercise_calories;
-                        }
-                        if (remainingCalories) {
-                            addDebugMessage(`Calories restantes : ${data.remaining_calories}`, 'BILAN');
-                            remainingCalories.textContent = data.remaining_calories;
-                        }
+                        if (dailyGoal) dailyGoal.textContent = data.daily_goal;
+                        if (totalCalories) totalCalories.textContent = data.total_calories;
+                        if (exerciseCalories) exerciseCalories.textContent = data.exercise_calories;
+                        if (remainingCalories) remainingCalories.textContent = data.remaining_calories;
                         
                         // Mise à jour des macronutriments
                         const totalProtein = document.getElementById('total-protein');
                         const totalCarbs = document.getElementById('total-carbs');
                         const totalFat = document.getElementById('total-fat');
                         
-                        if (totalProtein) {
-                            addDebugMessage(`Protéines : ${data.total_protein}g`, 'CALORIES');
-                            totalProtein.textContent = data.total_protein;
-                        }
-                        if (totalCarbs) {
-                            addDebugMessage(`Glucides : ${data.total_carbs}g`, 'CALORIES');
-                            totalCarbs.textContent = data.total_carbs;
-                        }
-                        if (totalFat) {
-                            addDebugMessage(`Lipides : ${data.total_fat}g`, 'CALORIES');
-                            totalFat.textContent = data.total_fat;
-                        }
-                        
-                        addDebugMessage("Stats mises à jour avec succès", 'CALORIES');
+                        if (totalProtein) totalProtein.textContent = data.total_protein;
+                        if (totalCarbs) totalCarbs.textContent = data.total_carbs;
+                        if (totalFat) totalFat.textContent = data.total_fat;
                     })
                     .catch(error => {
-                        addDebugMessage(`Erreur stats : ${error.message}`, 'CALORIES');
+                        console.error('Erreur lors de la mise à jour des stats:', error);
                     });
             }
 
@@ -1857,7 +1725,6 @@ echo "</div>";
                     const action = this.querySelector('input[name="action"]').value;
                     if (action === 'remove_food_from_meal' || action === 'delete_meal') {
                         e.preventDefault();
-                        addDebugMessage(`Début de la suppression - Action : ${action}`, 'CALORIES');
                         const formData = new FormData(this);
                         
                         fetch('food-log.php', {
@@ -1868,21 +1735,16 @@ echo "</div>";
                             }
                         })
                         .then(response => {
-                            addDebugMessage(`Réponse reçue : ${response.status}`, 'CALORIES');
                             if (!response.ok) {
                                 throw new Error('Erreur réseau: ' + response.status);
                             }
                             return response.json();
                         })
                         .then(data => {
-                            addDebugMessage(`Données reçues : ${JSON.stringify(data)}`, 'CALORIES');
                             if (data.success) {
                                 if (action === 'remove_food_from_meal') {
                                     const row = this.closest('tr');
-                                    if (row) {
-                                        row.remove();
-                                        addDebugMessage("Ligne supprimée avec succès", 'CALORIES');
-                                    }
+                                    if (row) row.remove();
                                 } else if (action === 'delete_meal') {
                                     const section = this.closest('.meal-section');
                                     if (section) {
@@ -1891,7 +1753,6 @@ echo "</div>";
                                             mealContent.innerHTML = `
                                                 <div class="alert alert-info">Aucun repas enregistré</div>
                                             `;
-                                            addDebugMessage("Contenu de la section mis à jour", 'CALORIES');
                                         }
                                         
                                         const mealActions = section.querySelector('.meal-actions');
@@ -1906,18 +1767,16 @@ echo "</div>";
                                                     </button>
                                                 </form>
                                             `;
-                                            addDebugMessage("Boutons d'action mis à jour", 'CALORIES');
                                         }
                                     }
                                 }
-                                addDebugMessage("Mise à jour des stats après suppression", 'CALORIES');
                                 updateStats();
                             } else {
                                 throw new Error(data.error || 'Une erreur est survenue lors de la suppression');
                             }
                         })
                         .catch(error => {
-                            addDebugMessage(`Erreur : ${error.message}`, 'CALORIES');
+                            console.error('Erreur:', error);
                             alert(error.message || 'Une erreur est survenue lors de la suppression');
                         });
                     }
