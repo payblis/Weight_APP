@@ -649,6 +649,37 @@ function updateMealTotals($meal_id) {
     <?php include 'navigation.php'; ?>
 
     <div class="container py-4">
+        <!-- Stats globales -->
+        <div class="global-stats">
+            <div class="stats-grid">
+                <div class="stats-item">
+                    <div class="stats-value"><?php echo $daily_goal; ?></div>
+                    <div class="stats-label">Objectif</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-operation">-</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-value"><?php echo array_sum(array_column($meals, 'total_calories')); ?></div>
+                    <div class="stats-label">Aliment</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-operation">+</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-value"><?php echo $exercise_calories ?? 0; ?></div>
+                    <div class="stats-label">Exercice</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-operation">=</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-value"><?php echo $daily_goal - array_sum(array_column($meals, 'total_calories')) + ($exercise_calories ?? 0); ?></div>
+                    <div class="stats-label">Restants</div>
+                </div>
+            </div>
+        </div>
+
         <div class="food-journal-header mb-4">
             <div class="date-navigation">
                 <a href="?date=<?php echo date('Y-m-d', strtotime($date_filter . ' -1 day')); ?>" class="nav-arrow">
@@ -808,11 +839,18 @@ function updateMealTotals($meal_id) {
                         <h3 class="meal-title"><?php echo $label; ?></h3>
                         <div class="meal-actions">
                             <?php if (empty($type_meals)): ?>
-                                <a href="food-log.php?action=add_meal&meal_type=<?php echo $type; ?>&date=<?php echo $date_filter; ?>" class="btn btn-primary">
-                                    <i class="fas fa-plus me-1"></i>Créer le repas
-                                </a>
-                            <?php else: ?>
-                                <a href="food-log.php?action=edit_meal&meal_id=<?php echo reset($type_meals)['id']; ?>" class="btn btn-primary">
+                                <form action="food-log.php" method="POST">
+                                    <input type="hidden" name="action" value="add_meal">
+                                    <input type="hidden" name="meal_type" value="<?php echo $type; ?>">
+                                    <input type="hidden" name="date" value="<?php echo $date_filter; ?>">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>Créer le repas
+                                    </button>
+                                </form>
+                            <?php else: 
+                                $meal = reset($type_meals);
+                            ?>
+                                <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-primary">
                                     <i class="fas fa-plus me-1"></i>Ajouter un aliment
                                 </a>
                             <?php endif; ?>
@@ -824,69 +862,55 @@ function updateMealTotals($meal_id) {
                             Aucun repas enregistré
                         </div>
                     <?php else: ?>
-                        <?php foreach ($type_meals as $meal): ?>
-                            <div class="table-responsive mb-4">
-                                <table class="table table-hover">
-                                    <thead class="table-light">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Aliment</th>
+                                        <th>Quantité</th>
+                                        <th>Calories</th>
+                                        <th>Protéines</th>
+                                        <th>Glucides</th>
+                                        <th>Lipides</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $meal = reset($type_meals);
+                                    $sql = "SELECT fl.*, f.name as food_name, f.calories, f.protein, f.carbs, f.fat 
+                                           FROM food_logs fl 
+                                           LEFT JOIN foods f ON fl.food_id = f.id 
+                                           WHERE fl.meal_id = ?";
+                                    $meal_foods = fetchAll($sql, [$meal['id']]);
+                                    
+                                    foreach ($meal_foods as $food):
+                                        $calories = $food['food_id'] ? ($food['calories'] * $food['quantity'] / 100) : $food['custom_calories'];
+                                        $protein = $food['food_id'] ? ($food['protein'] * $food['quantity'] / 100) : $food['custom_protein'];
+                                        $carbs = $food['food_id'] ? ($food['carbs'] * $food['quantity'] / 100) : $food['custom_carbs'];
+                                        $fat = $food['food_id'] ? ($food['fat'] * $food['quantity'] / 100) : $food['custom_fat'];
+                                    ?>
                                         <tr>
-                                            <th>Aliment</th>
-                                            <th>Quantité (g)</th>
-                                            <th>Calories</th>
-                                            <th>Protéines</th>
-                                            <th>Glucides</th>
-                                            <th>Lipides</th>
-                                            <th>Actions</th>
+                                            <td><?php echo $food['food_id'] ? $food['food_name'] : $food['custom_food_name']; ?></td>
+                                            <td><?php echo $food['quantity']; ?>g</td>
+                                            <td><?php echo round($calories); ?></td>
+                                            <td><?php echo round($protein, 1); ?></td>
+                                            <td><?php echo round($carbs, 1); ?></td>
+                                            <td><?php echo round($fat, 1); ?></td>
+                                            <td>
+                                                <form action="food-log.php" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?');">
+                                                    <input type="hidden" name="action" value="remove_food_from_meal">
+                                                    <input type="hidden" name="food_log_id" value="<?php echo $food['id']; ?>">
+                                                    <button type="submit" class="btn btn-sm btn-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $sql = "SELECT fl.*, 
-                                                f.name as food_name, 
-                                                f.calories as food_calories, 
-                                                f.protein as food_protein, 
-                                                f.carbs as food_carbs, 
-                                                f.fat as food_fat
-                                                FROM food_logs fl 
-                                                LEFT JOIN foods f ON fl.food_id = f.id 
-                                                WHERE fl.meal_id = ? 
-                                                ORDER BY fl.created_at";
-                                        $meal_foods = fetchAll($sql, [$meal['id']]);
-                                        
-                                        foreach ($meal_foods as $food):
-                                            $nutrients = calculateNutrients($food);
-                                        ?>
-                                            <tr>
-                                                <td><?php echo $food['food_id'] ? $food['food_name'] : $food['custom_food_name']; ?></td>
-                                                <td><?php echo $food['quantity']; ?></td>
-                                                <td><?php echo $nutrients['calories']; ?></td>
-                                                <td><?php echo $nutrients['protein']; ?></td>
-                                                <td><?php echo $nutrients['carbs']; ?></td>
-                                                <td><?php echo $nutrients['fat']; ?></td>
-                                                <td>
-                                                    <form action="food-log.php" method="POST" class="d-inline">
-                                                        <input type="hidden" name="action" value="remove_food_from_meal">
-                                                        <input type="hidden" name="food_log_id" value="<?php echo $food['id']; ?>">
-                                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?')">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="d-flex justify-content-end mt-2">
-                                <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-primary me-2">
-                                    <i class="fas fa-edit"></i> Modifier
-                                </a>
-                                <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" 
-                                   class="btn btn-sm btn-danger"
-                                   onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
-                                    <i class="fas fa-trash"></i> Supprimer
-                                </a>
-                            </div>
-                        <?php endforeach; ?>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>

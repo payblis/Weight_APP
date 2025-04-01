@@ -10,6 +10,10 @@
     --light-color: #f8f9fa;
     --gray-color: #6c757d;
     --light-gray-color: #e9ecef;
+    --background-color: #f8f9fa;
+    --border-color: #dee2e6;
+    --text-color: #212529;
+    --text-muted: #6c757d;
 }
 
 /* Styles généraux */
@@ -1218,4 +1222,150 @@ footer h5 {
 .total-goal {
     font-size: 0.875rem;
     color: #6b7280;
+}
+
+/* Styles pour les stats globales */
+.global-stats {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: white;
+    padding: 1rem;
+    margin: -1rem -1rem 1rem -1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    text-align: center;
+}
+
+.stats-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stats-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.stats-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.stats-operation {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin: 0 0.5rem;
+}
+
+/* Styles pour les repas */
+.meal-section {
+    background-color: white;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.meal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.meal-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.meal-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.meal-empty {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-muted);
+    background-color: var(--background-color);
+    border-radius: 8px;
+}
+
+/* Media Queries pour Mobile */
+@media (max-width: 768px) {
+    .container {
+        padding: 0;
+    }
+
+    .global-stats {
+        padding: 0.75rem;
+        margin: 0 0 1rem 0;
+    }
+
+    .stats-grid {
+        gap: 0.25rem;
+    }
+
+    .stats-value {
+        font-size: 1.2rem;
+    }
+
+    .stats-label {
+        font-size: 0.7rem;
+    }
+
+    .meal-section {
+        margin: 0.5rem;
+        border-radius: 8px;
+    }
+
+    .meal-header {
+        padding: 0.5rem;
+    }
+
+    .meal-title {
+        font-size: 1.1rem;
+    }
+
+    .meal-empty {
+        padding: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+
+    /* Ajustement du padding pour le contenu principal */
+    .main-content {
+        padding: 0.5rem;
+    }
+
+    /* Optimisation de l'espace pour les tableaux */
+    .table-responsive {
+        margin: 0;
+        padding: 0;
+    }
+
+    .table {
+        font-size: 0.85rem;
+    }
+
+    .table th, .table td {
+        padding: 0.5rem 0.25rem;
+    }
 }
