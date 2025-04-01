@@ -16,90 +16,67 @@ include 'header.php';
 
 <main>
     <!-- Hero Section -->
-    <section class="hero">
+    <section class="hero bg-primary text-white py-5">
         <div class="container">
-            <div class="row">
-                <div class="col-lg-7">
-                    <h1 class="text-white mb-4">Une bonne santé, c'est d'abord une bonne alimentation.</h1>
-                    <p class="lead text-white-50 mb-5">Suivez vos repas, atteignez vos objectifs et vivez une vie plus saine avec MyFity. Simple, efficace et gratuit.</p>
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h1 class="display-4 fw-bold mb-4">Une bonne santé, c'est d'abord une bonne alimentation.</h1>
+                    <p class="lead mb-4">Vous voulez faire plus attention à ce que vous mangez ? Faites un suivi de vos repas, apprenez-en plus sur vos habitudes et atteignez vos objectifs avec MyFity.</p>
                     <a href="register.php" class="btn btn-light btn-lg">Démarrez gratuitement</a>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="features py-5">
-        <div class="container">
-            <div class="text-center mb-5">
-                <h2 class="display-5">Les outils pour vos objectifs</h2>
-                <p class="lead text-muted">Tout ce dont vous avez besoin pour atteindre vos objectifs de santé et de fitness.</p>
-            </div>
-
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body text-center">
-                            <i class="fas fa-utensils fa-3x text-primary mb-3"></i>
-                            <h3 class="h4 mb-3">Suivi alimentaire simplifié</h3>
-                            <p class="text-muted">Consignez ce que vous mangez et analysez vos habitudes alimentaires.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body text-center">
-                            <i class="fas fa-dumbbell fa-3x text-primary mb-3"></i>
-                            <h3 class="h4 mb-3">Suivi des exercices</h3>
-                            <p class="text-muted">Enregistrez vos séances d'entraînement et suivez vos progrès.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body text-center">
-                            <i class="fas fa-weight fa-3x text-primary mb-3"></i>
-                            <h3 class="h4 mb-3">Suivi du poids</h3>
-                            <p class="text-muted">Suivez votre progression avec des graphiques détaillés.</p>
-                        </div>
-                    </div>
+                <div class="col-lg-6">
+                    <img src="assets/images/hero-image.jpg" alt="MyFity App" class="img-fluid rounded shadow">
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- How It Works Section -->
-    <section class="how-it-works py-5 bg-light">
+    <!-- Food Tracking Section -->
+    <section class="py-5">
         <div class="container">
-            <div class="text-center mb-5">
-                <h2 class="display-5">Comment ça marche ?</h2>
-                <p class="lead text-muted">Trois étapes simples pour commencer votre voyage vers une meilleure santé.</p>
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h2 class="display-5 fw-bold mb-4">Consignez ce que vous mangez grâce aux plus de 14 millions d'aliments.</h2>
+                    <p class="lead text-muted mb-4">Consultez l'analyse des calories et des nutriments, comparez les portions et découvrez comment les aliments que vous consommez soutiennent vos objectifs.</p>
+                    <a href="food-log.php" class="btn btn-primary btn-lg">Commencer à suivre</a>
+                </div>
+                <div class="col-lg-6">
+                    <img src="assets/images/food-tracking.jpg" alt="Suivi alimentaire" class="img-fluid rounded shadow">
+                </div>
             </div>
+        </div>
+    </section>
 
+    <!-- Tools Section -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <h2 class="text-center display-5 fw-bold mb-5">Les outils pour vos objectifs</h2>
             <div class="row g-4">
                 <div class="col-md-4">
-                    <div class="text-center">
-                        <div class="circle-step mb-3">1</div>
-                        <h3 class="h4">Créez votre compte</h3>
-                        <p class="text-muted">Inscrivez-vous gratuitement et définissez vos objectifs personnels.</p>
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chart-line fa-3x text-primary mb-3"></i>
+                            <h3 class="h4 mb-3">Apprendre. Suivre. Progresser.</h3>
+                            <p class="text-muted">Tenir un journal alimentaire vous permet de mieux comprendre vos habitudes et accroît vos chances d'atteindre vos objectifs.</p>
+                        </div>
                     </div>
                 </div>
-
                 <div class="col-md-4">
-                    <div class="text-center">
-                        <div class="circle-step mb-3">2</div>
-                        <h3 class="h4">Suivez vos activités</h3>
-                        <p class="text-muted">Enregistrez vos repas, exercices et votre poids quotidiennement.</p>
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="fas fa-barcode fa-3x text-primary mb-3"></i>
+                            <h3 class="h4 mb-3">Consigner plus facilement.</h3>
+                            <p class="text-muted">Numérisez des codes-barres, enregistrez des repas et recettes, et utilisez Outils rapide pour un suivi alimentaire facile et rapide.</p>
+                        </div>
                     </div>
                 </div>
-
                 <div class="col-md-4">
-                    <div class="text-center">
-                        <div class="circle-step mb-3">3</div>
-                        <h3 class="h4">Atteignez vos objectifs</h3>
-                        <p class="text-muted">Visualisez vos progrès et restez motivé.</p>
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                            <h3 class="h4 mb-3">Garder la motivation.</h3>
+                            <p class="text-muted">Rejoignez la plus grande communauté de fitness au monde pour profiter de conseils et astuces, ainsi que d'une assistance 24/7.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -107,13 +84,9 @@ include 'header.php';
     </section>
 
     <!-- Success Stories Section -->
-    <section class="success-stories py-5">
+    <section class="py-5">
         <div class="container">
-            <div class="text-center mb-5">
-                <h2 class="display-5">Histoires de réussites</h2>
-                <p class="lead text-muted">Découvrez comment MyFity aide nos membres à atteindre leurs objectifs.</p>
-            </div>
-
+            <h2 class="text-center display-5 fw-bold mb-5">Histoires de réussites</h2>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm">
@@ -126,19 +99,17 @@ include 'header.php';
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm">
                         <div class="card-body">
                             <div class="mb-3">
                                 <img src="assets/images/testimonial-2.jpg" alt="Stéphanie" class="rounded-circle testimonial-img">
                             </div>
-                            <p class="mb-3">"MyFity m'a permis de comprendre mes habitudes alimentaires et de faire les ajustements nécessaires pour atteindre mes objectifs."</p>
+                            <p class="mb-3">"MyFity m'a permis de tirer la sonnette d'alarme concernant mon alimentation, et de comprendre clairement ce que je devais à tout prix modifier."</p>
                             <p class="text-primary mb-0">- Stéphanie</p>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm">
                         <div class="card-body">
@@ -155,9 +126,9 @@ include 'header.php';
     </section>
 
     <!-- CTA Section -->
-    <section class="cta py-5 text-white">
+    <section class="py-5 bg-primary text-white">
         <div class="container text-center">
-            <h2 class="display-5 mb-4">Prêt à commencer votre voyage ?</h2>
+            <h2 class="display-5 fw-bold mb-4">DÉBUTEZ VOTRE VOYAGE DÈS AUJOURD'HUI</h2>
             <p class="lead mb-4">Rejoignez des milliers d'utilisateurs qui ont déjà transformé leur vie avec MyFity.</p>
             <a href="register.php" class="btn btn-light btn-lg">Démarrer gratuitement</a>
         </div>
