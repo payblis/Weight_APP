@@ -285,16 +285,6 @@ if (!empty($pending_invitations)):
                 width: 85%;
                 height: auto;
             }
-            .card {
-                height: 100%;
-                display: flex;
-                flex-direction: column;
-            }
-            .card-body {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-            }
         }
         .card {
             border: none;
@@ -303,6 +293,28 @@ if (!empty($pending_invitations)):
             height: 100%;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             margin-bottom: 1rem;
+        }
+        .calories-container {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        .calories-details {
+            flex: 1;
+        }
+        .progress-circle {
+            width: 180px;
+            height: 180px;
+            flex-shrink: 0;
+        }
+        @media (max-width: 768px) {
+            .calories-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .calories-details {
+                width: 100%;
+            }
         }
         .exercise-swiper .swiper-slide {
             width: 45%;
@@ -320,11 +332,6 @@ if (!empty($pending_invitations)):
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-        }
-        .progress-circle {
-            width: 200px;
-            height: 200px;
-            margin: 0 auto;
         }
         .macro-circle {
             width: 100px;
@@ -407,13 +414,13 @@ if (!empty($pending_invitations)):
                                 <h5 class="card-title mb-3">Calories</h5>
                                 <p class="text-muted small mb-3">Reste = Objectif - Aliments + Exercices</p>
                                 
-                                <div class="text-center mb-4 flex-grow-1 d-flex flex-column justify-content-center">
+                                <div class="calories-container">
                                     <div class="progress-circle position-relative">
-                                        <svg width="200" height="200" viewBox="0 0 200 200">
+                                        <svg width="180" height="180" viewBox="0 0 200 200">
                                             <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="12"/>
                                             <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="12"
                                                 stroke-dasharray="<?php 
-                                                    $percentage = ($calorie_goal - $remaining_calories) / $calorie_goal * 100;
+                                                    $percentage = (($calorie_goal - $remaining_calories) / $calorie_goal) * 100;
                                                     echo min(100, $percentage) * 5.65;
                                                 ?> 565"
                                                 transform="rotate(-90 100 100)"/>
@@ -423,30 +430,32 @@ if (!empty($pending_invitations)):
                                             <span class="text-muted">Reste</span>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-flag text-primary me-2"></i>
-                                        <span>Objectif de base</span>
-                                    </div>
-                                    <strong><?php echo number_format($calorie_goal); ?></strong>
-                                </div>
+                                    <div class="calories-details">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-flag text-primary me-2"></i>
+                                                <span>Objectif de base</span>
+                                            </div>
+                                            <strong><?php echo number_format($calorie_goal); ?></strong>
+                                        </div>
 
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-utensils text-success me-2"></i>
-                                        <span>Aliments</span>
-                                    </div>
-                                    <strong><?php echo number_format($calories_in); ?></strong>
-                                </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-utensils text-success me-2"></i>
+                                                <span>Aliments</span>
+                                            </div>
+                                            <strong><?php echo number_format($calories_in); ?></strong>
+                                        </div>
 
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-fire text-danger me-2"></i>
-                                        <span>Exercices</span>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-fire text-danger me-2"></i>
+                                                <span>Exercices</span>
+                                            </div>
+                                            <strong><?php echo number_format($calories_out); ?></strong>
+                                        </div>
                                     </div>
-                                    <strong><?php echo number_format($calories_out); ?></strong>
                                 </div>
                             </div>
                         </div>
@@ -742,12 +751,15 @@ if (!empty($pending_invitations)):
                             <h5 class="card-title mb-3">Calories</h5>
                             <p class="text-muted small mb-3">Reste = Objectif - Aliments + Exercices</p>
                             
-                            <div class="text-center mb-4">
+                            <div class="calories-container">
                                 <div class="progress-circle position-relative">
-                                    <svg width="200" height="200" viewBox="0 0 200 200">
+                                    <svg width="180" height="180" viewBox="0 0 200 200">
                                         <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="12"/>
                                         <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="12"
-                                            stroke-dasharray="<?php echo min(100, ($remaining_calories / $calorie_goal) * 100) * 5.65; ?> 565"
+                                            stroke-dasharray="<?php 
+                                                $percentage = (($calorie_goal - $remaining_calories) / $calorie_goal) * 100;
+                                                echo min(100, $percentage) * 5.65;
+                                            ?> 565"
                                             transform="rotate(-90 100 100)"/>
                                     </svg>
                                     <div class="position-absolute top-50 start-50 translate-middle text-center">
@@ -755,30 +767,32 @@ if (!empty($pending_invitations)):
                                         <span class="text-muted">Reste</span>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-flag text-primary me-2"></i>
-                                    <span>Objectif de base</span>
-                                </div>
-                                <strong><?php echo number_format($calorie_goal); ?></strong>
-                            </div>
+                                <div class="calories-details">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-flag text-primary me-2"></i>
+                                            <span>Objectif de base</span>
+                                        </div>
+                                        <strong><?php echo number_format($calorie_goal); ?></strong>
+                                    </div>
 
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-utensils text-success me-2"></i>
-                                    <span>Aliments</span>
-                                </div>
-                                <strong><?php echo number_format($calories_in); ?></strong>
-                            </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-utensils text-success me-2"></i>
+                                            <span>Aliments</span>
+                                        </div>
+                                        <strong><?php echo number_format($calories_in); ?></strong>
+                                    </div>
 
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-fire text-danger me-2"></i>
-                                    <span>Exercices</span>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-fire text-danger me-2"></i>
+                                            <span>Exercices</span>
+                                        </div>
+                                        <strong><?php echo number_format($calories_out); ?></strong>
+                                    </div>
                                 </div>
-                                <strong><?php echo number_format($calories_out); ?></strong>
                             </div>
                         </div>
                     </div>
@@ -859,8 +873,46 @@ if (!empty($pending_invitations)):
                 </div>
             </div>
 
-            <!-- Deuxième ligne : Hydratation et Informations personnelles -->
-            <div class="row g-4">
+            <!-- Exercices version desktop -->
+            <div class="row g-4 mt-4 d-none d-md-flex">
+                <!-- Durée d'exercice -->
+                <div class="col-6">
+                    <div class="exercise-card">
+                        <div class="d-flex align-items-center">
+                            <div class="exercise-icon">
+                                <i class="fas fa-clock text-info"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold"><?php 
+                                    $sql = "SELECT SEC_TO_TIME(SUM(TIME_TO_SEC(duration))) as total_duration 
+                                           FROM exercise_logs 
+                                           WHERE user_id = ? AND log_date = CURDATE()";
+                                    $duration = fetchOne($sql, [$user_id]);
+                                    echo $duration['total_duration'] ?? '00:00';
+                                ?></div>
+                                <small class="text-muted">Durée d'exercice</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Calories brûlées -->
+                <div class="col-6">
+                    <div class="exercise-card">
+                        <div class="d-flex align-items-center">
+                            <div class="exercise-icon">
+                                <i class="fas fa-fire text-danger"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold"><?php echo number_format($calories_out); ?></div>
+                                <small class="text-muted">kcal brûlées</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deuxième ligne : Hydratation et Informations personnelles (visible uniquement sur mobile) -->
+            <div class="row g-4 d-md-none">
                 <!-- Section Hydratation -->
                 <div class="col-6">
                     <div class="card h-100">
