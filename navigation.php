@@ -46,7 +46,7 @@ foreach ($submenus as $menu => $items) {
 <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom d-none d-lg-block top-nav">
     <div class="container">
         <a class="navbar-brand" href="dashboard.php">
-            <i class="fas fa-weight me-2"></i>MyFity
+            <img src="./assets/icons/icon-96x96.png" alt="MyFity" class="me-2" style="height: 30px; width: auto;">MyFity
         </a>
         <div class="d-flex align-items-center">
             <a href="messages.php" class="nav-link position-relative me-3">
