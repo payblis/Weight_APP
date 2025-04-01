@@ -637,11 +637,34 @@ function updateMealTotals($meal_id) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Journal alimentaire - Weight Tracker</title>
+    <!-- Debug: Vérification du chargement des CSS -->
+    <style>
+        /* Debug: Style de test */
+        .debug-test {
+            background-color: red;
+            color: white;
+            padding: 10px;
+            margin: 10px;
+        }
+    </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Debug: Vérification du chemin du CSS -->
+    <script>
+        window.addEventListener('load', function() {
+            console.log('=== Debug CSS ===');
+            const styles = document.styleSheets;
+            for (let i = 0; i < styles.length; i++) {
+                console.log('StyleSheet ' + i + ':', styles[i].href);
+            }
+        });
+    </script>
 </head>
 <body>
+    <!-- Debug: Élément de test -->
+    <div class="debug-test">Test de chargement CSS</div>
+    
     <?php include 'navigation.php'; ?>
 
     <div class="container py-4">
