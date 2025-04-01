@@ -962,7 +962,7 @@ echo "<span class='debug-category'>[EXERCICES]</span> ";
 echo "Liste des exercices du jour :";
 if (!empty($exercises)) {
     foreach ($exercises as $exercise) {
-        echo "<br>- " . $exercise['exercise_name'] . " : " . 
+        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
              $exercise['duration'] . " min, " . 
              $exercise['calories_burned'] . " kcal";
     }
@@ -989,7 +989,7 @@ echo "<br>Résultat complet : " . print_r($total_exercises, true);
 echo "</div>";
 
                 // Vérifier les exercices avec les colonnes correctes
-                $sql = "SELECT name, duration, calories_burned, log_date 
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
                         FROM exercise_logs 
                         WHERE user_id = ? AND log_date = ? 
                         ORDER BY log_date DESC";
@@ -1007,7 +1007,7 @@ echo "</div>";
                 echo "Liste des exercices du jour :";
                 if (!empty($exercises)) {
                     foreach ($exercises as $exercise) {
-                        echo "<br>- " . $exercise['name'] . " : " . 
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
                              $exercise['duration'] . " min, " . 
                              $exercise['calories_burned'] . " kcal";
                     }
@@ -1017,7 +1017,7 @@ echo "</div>";
                 echo "</div>";
 
                 // Vérifier tous les exercices de l'utilisateur sans filtre de date
-                $sql = "SELECT name, duration, calories_burned, log_date 
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
                        FROM exercise_logs 
                        WHERE user_id = ? 
                        ORDER BY log_date DESC";
@@ -1035,7 +1035,7 @@ echo "</div>";
                 echo "Liste de tous les exercices :";
                 if (!empty($all_exercises)) {
                     foreach ($all_exercises as $exercise) {
-                        echo "<br>- " . $exercise['name'] . " : " . 
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
                              $exercise['duration'] . " min, " . 
                              $exercise['calories_burned'] . " kcal, " .
                              "date: " . $exercise['log_date'];
@@ -1178,7 +1178,7 @@ echo "</div>";
                 echo "Liste des exercices du jour :";
                 if (!empty($exercises)) {
                     foreach ($exercises as $exercise) {
-                        echo "<br>- " . $exercise['exercise_name'] . " : " . 
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
                              $exercise['duration'] . " min, " . 
                              $exercise['calories_burned'] . " kcal";
                     }
@@ -1205,7 +1205,7 @@ echo "</div>";
                 echo "</div>";
 
                 // Vérifier les exercices avec les colonnes correctes
-                $sql = "SELECT name, duration, calories_burned, log_date 
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
                         FROM exercise_logs 
                         WHERE user_id = ? AND log_date = ? 
                         ORDER BY log_date DESC";
@@ -1223,7 +1223,7 @@ echo "</div>";
                 echo "Liste des exercices du jour :";
                 if (!empty($exercises)) {
                     foreach ($exercises as $exercise) {
-                        echo "<br>- " . $exercise['name'] . " : " . 
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
                              $exercise['duration'] . " min, " . 
                              $exercise['calories_burned'] . " kcal";
                     }
@@ -1233,7 +1233,7 @@ echo "</div>";
                 echo "</div>";
 
                 // Vérifier tous les exercices de l'utilisateur sans filtre de date
-                $sql = "SELECT name, duration, calories_burned, log_date 
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
                        FROM exercise_logs 
                        WHERE user_id = ? 
                        ORDER BY log_date DESC";
@@ -1251,7 +1251,7 @@ echo "</div>";
                 echo "Liste de tous les exercices :";
                 if (!empty($all_exercises)) {
                     foreach ($all_exercises as $exercise) {
-                        echo "<br>- " . $exercise['name'] . " : " . 
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
                              $exercise['duration'] . " min, " . 
                              $exercise['calories_burned'] . " kcal, " .
                              "date: " . $exercise['log_date'];
