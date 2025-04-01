@@ -59,7 +59,6 @@
         }
 
         .user-controls a {
-            color: #666;
             text-decoration: none;
             font-size: 0.9rem;
             display: flex;
