@@ -83,48 +83,6 @@ include 'header.php';
         </div>
     </section>
 
-    <!-- Success Stories Section -->
-    <section class="py-5">
-        <div class="container">
-            <h2 class="text-center display-5 fw-bold mb-5">Histoires de réussites</h2>
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <img src="assets/images/testimonial-1.jpg" alt="Lori" class="rounded-circle testimonial-img">
-                            </div>
-                            <p class="mb-3">"Maintenant, quand mes amis se mettent à la course à pied et ressentent de la frustration, je leur dis de s'accrocher car ils finiront par aller plus vite."</p>
-                            <p class="text-primary mb-0">- Lori</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <img src="assets/images/testimonial-2.jpg" alt="Stéphanie" class="rounded-circle testimonial-img">
-                            </div>
-                            <p class="mb-3">"MyFity m'a permis de tirer la sonnette d'alarme concernant mon alimentation, et de comprendre clairement ce que je devais à tout prix modifier."</p>
-                            <p class="text-primary mb-0">- Stéphanie</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <img src="assets/images/testimonial-3.jpg" alt="Eric" class="rounded-circle testimonial-img">
-                            </div>
-                            <p class="mb-3">"J'ai adopté naturellement le concept d'alimentation consciente... il faut 15 à 20 minutes aux aliments pour atteindre l'estomac, j'ai donc commencé à manger plus lentement."</p>
-                            <p class="text-primary mb-0">- Eric</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- CTA Section -->
     <section class="py-5 bg-primary text-white">
         <div class="container text-center">
