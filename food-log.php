@@ -481,15 +481,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $exercise_calories = fetchOne($sql, [$user_id, $date])['total_burned'] ?? 0;
         
         // Récupérer l'objectif calorique
-        $sql = "SELECT goal_calories FROM user_calorie_needs WHERE user_id = ?";
-        error_log("=== RÉCUPÉRATION DE L'OBJECTIF CALORIQUE ===");
-        error_log("SQL : " . $sql);
-        error_log("User ID : " . $user_id);
+        $sql = "SELECT daily_calories as goal_calories FROM user_profiles WHERE user_id = ?";
+        echo "<div class='debug-message'>";
+        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+        echo "<span class='debug-category'>[SQL]</span> ";
+        echo "Requête objectif calorique : " . $sql;
+        echo "<br>Paramètres : user_id=" . $user_id;
+        echo "</div>";
+        
         $daily_goal_result = fetchOne($sql, [$user_id]);
-        error_log("Résultat de la requête : " . print_r($daily_goal_result, true));
-        $daily_goal = $daily_goal_result ? $daily_goal_result['goal_calories'] : 0;
-        error_log("Objectif calorique final : " . $daily_goal);
-        error_log("=== FIN DE LA RÉCUPÉRATION DE L'OBJECTIF CALORIQUE ===");
+        
+        // Si aucun objectif n'est trouvé, calculer et créer un objectif par défaut
+        if (!$daily_goal_result) {
+            echo "<div class='debug-message'>";
+            echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+            echo "<span class='debug-category'>[CALCUL]</span> ";
+            echo "Calcul de l'objectif calorique par défaut...";
+            echo "</div>";
+            
+            // Récupérer les informations de l'utilisateur
+            $sql = "SELECT * FROM users WHERE id = ?";
+            $user_info = fetchOne($sql, [$user_id]);
+            
+            if ($user_info) {
+                // Calculer le BMR (Basal Metabolic Rate) avec la formule de Mifflin-St Jeor
+                $weight = $user_info['weight'] ?? 70; // poids en kg
+                $height = $user_info['height'] ?? 170; // taille en cm
+                $age = $user_info['age'] ?? 30; // âge
+                $gender = $user_info['gender'] ?? 'M'; // genre
+                
+                // BMR = (10 × poids en kg) + (6,25 × taille en cm) - (5 × âge en années) + 5 (homme) ou -161 (femme)
+                $bmr = (10 * $weight) + (6.25 * $height) - (5 * $age);
+                $bmr += ($gender === 'M') ? 5 : -161;
+                
+                // Calculer l'objectif calorique (BMR * 1.2 pour un mode de vie sédentaire)
+                $daily_goal = round($bmr * 1.2);
+                
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[CALCUL]</span> ";
+                echo "BMR calculé : " . round($bmr) . " kcal";
+                echo "<br>Objectif calorique calculé : " . $daily_goal . " kcal";
+                echo "</div>";
+                
+                // Insérer l'objectif dans la table user_profiles
+                $sql = "INSERT INTO user_profiles (user_id, daily_calories, created_at) VALUES (?, ?, NOW())";
+                $result = insert($sql, [$user_id, $daily_goal]);
+                
+                if ($result) {
+                    echo "<div class='debug-message debug-success'>";
+                    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                    echo "<span class='debug-category'>[SUCCÈS]</span> ";
+                    echo "Objectif calorique créé avec succès : " . $daily_goal . " kcal";
+                    echo "</div>";
+                    
+                    $daily_goal_result = ['goal_calories' => $daily_goal];
+                } else {
+                    echo "<div class='debug-message debug-error'>";
+                    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                    echo "<span class='debug-category'>[ERREUR]</span> ";
+                    echo "Échec de la création de l'objectif calorique";
+                    echo "</div>";
+                }
+            } else {
+                echo "<div class='debug-message debug-error'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[ERREUR]</span> ";
+                echo "Impossible de trouver les informations de l'utilisateur";
+                echo "</div>";
+            }
+        }
+        
+        echo "<div class='debug-message'>";
+        echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+        echo "<span class='debug-category'>[OBJECTIF]</span> ";
+        echo "Objectif calorique : " . ($daily_goal_result ? $daily_goal_result['goal_calories'] : 0);
+        echo "<br>Résultat complet : " . print_r($daily_goal_result, true);
+        echo "</div>";
         
         // Calculer les totaux
         $total_calories = array_sum(array_column($meals, 'total_calories'));
@@ -768,7 +836,7 @@ function updateDailyCalorieBalance($user_id) {
         $exercise_calories = $exercise_result['total_burned'];
         
         // Récupérer l'objectif calorique
-        $sql = "SELECT goal_calories FROM user_calorie_needs WHERE user_id = ?";
+        $sql = "SELECT goal_calories FROM user_profiles WHERE user_id = ?";
         $goal_result = fetchOne($sql, [$user_id]);
         $daily_goal = $goal_result ? $goal_result['goal_calories'] : 0;
         
@@ -851,6 +919,68 @@ function debugFoodData($food_id, $data) {
 function debugStats($data) {
     debugLog('STATS', "Stats Update", $data);
 }
+
+// Déboguer les calories brûlées
+$sql = "SELECT SUM(calories_burned) as calories_out FROM exercise_logs WHERE user_id = ? AND log_date = ?";
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[SQL]</span> ";
+echo "Requête calories brûlées : " . $sql;
+echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+echo "</div>";
+
+$today_exercise = fetchOne($sql, [$user_id, $date_filter]);
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[EXERCICES]</span> ";
+echo "Calories brûlées aujourd'hui : " . ($today_exercise ? round($today_exercise['calories_out'] ?? 0) : 0);
+echo "<br>Résultat complet : " . print_r($today_exercise, true);
+echo "</div>";
+
+// Ajouter une requête pour voir les exercices individuels
+$sql = "SELECT exercise_name, duration, calories_burned, log_date 
+       FROM exercise_logs 
+       WHERE user_id = ? AND log_date = ? 
+       ORDER BY log_date DESC";
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[SQL]</span> ";
+echo "Requête détails exercices : " . $sql;
+echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+echo "</div>";
+
+$exercises = fetchAll($sql, [$user_id, $date_filter]);
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[EXERCICES]</span> ";
+echo "Liste des exercices du jour :";
+if (!empty($exercises)) {
+    foreach ($exercises as $exercise) {
+        echo "<br>- " . $exercise['exercise_name'] . " : " . 
+             $exercise['duration'] . " min, " . 
+             $exercise['calories_burned'] . " kcal";
+    }
+} else {
+    echo "<br>Aucun exercice enregistré pour cette date";
+}
+echo "</div>";
+
+// Vérifier la table exercise_logs
+$sql = "SELECT COUNT(*) as total FROM exercise_logs WHERE user_id = ?";
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[SQL]</span> ";
+echo "Requête total exercices : " . $sql;
+echo "<br>Paramètres : user_id=" . $user_id;
+echo "</div>";
+
+$total_exercises = fetchOne($sql, [$user_id]);
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[EXERCICES]</span> ";
+echo "Total des exercices enregistrés : " . ($total_exercises ? $total_exercises['total'] : 0);
+echo "<br>Résultat complet : " . print_r($total_exercises, true);
+echo "</div>";
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -966,44 +1096,49 @@ function debugStats($data) {
                 echo "<br>Résultat complet : " . print_r($today_exercise, true);
                 echo "</div>";
 
-                // Déboguer l'objectif calorique
-                $sql = "SELECT goal_calories FROM user_calorie_needs WHERE user_id = ?";
+                // Ajouter une requête pour voir les exercices individuels
+                $sql = "SELECT exercise_name, duration, calories_burned, log_date 
+                       FROM exercise_logs 
+                       WHERE user_id = ? AND log_date = ? 
+                       ORDER BY log_date DESC";
                 echo "<div class='debug-message'>";
                 echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
                 echo "<span class='debug-category'>[SQL]</span> ";
-                echo "Requête objectif calorique : " . $sql;
+                echo "Requête détails exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
+                
+                $exercises = fetchAll($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste des exercices du jour :";
+                if (!empty($exercises)) {
+                    foreach ($exercises as $exercise) {
+                        echo "<br>- " . $exercise['exercise_name'] . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal";
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré pour cette date";
+                }
+                echo "</div>";
+
+                // Vérifier la table exercise_logs
+                $sql = "SELECT COUNT(*) as total FROM exercise_logs WHERE user_id = ?";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête total exercices : " . $sql;
                 echo "<br>Paramètres : user_id=" . $user_id;
                 echo "</div>";
                 
-                $daily_goal_result = fetchOne($sql, [$user_id]);
+                $total_exercises = fetchOne($sql, [$user_id]);
                 echo "<div class='debug-message'>";
                 echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[OBJECTIF]</span> ";
-                echo "Objectif calorique : " . ($daily_goal_result ? $daily_goal_result['goal_calories'] : 0);
-                echo "<br>Résultat complet : " . print_r($daily_goal_result, true);
-                echo "</div>";
-
-                // Vérifier si l'utilisateur a un objectif calorique défini
-                if (!$daily_goal_result) {
-                    echo "<div class='debug-message debug-error'>";
-                    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                    echo "<span class='debug-category'>[ERREUR]</span> ";
-                    echo "Aucun objectif calorique trouvé pour l'utilisateur " . $user_id;
-                    echo "</div>";
-                }
-
-                // Déboguer le bilan calorique
-                $net_calories = ($today_food ? round($today_food['calories_in'] ?? 0) : 0) - 
-                               ($today_exercise ? round($today_exercise['calories_out'] ?? 0) : 0);
-                $remaining_calories = ($daily_goal_result ? $daily_goal_result['goal_calories'] : 0) - $net_calories;
-                echo "<div class='debug-message'>";
-                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-                echo "<span class='debug-category'>[BILAN]</span> ";
-                echo "Bilan calorique : " . $net_calories . " (Restant : " . $remaining_calories . ")";
-                echo "<br>Détail du calcul :";
-                echo "<br>- Calories consommées : " . ($today_food ? round($today_food['calories_in'] ?? 0) : 0);
-                echo "<br>- Calories brûlées : " . ($today_exercise ? round($today_exercise['calories_out'] ?? 0) : 0);
-                echo "<br>- Objectif : " . ($daily_goal_result ? $daily_goal_result['goal_calories'] : 0);
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Total des exercices enregistrés : " . ($total_exercises ? $total_exercises['total'] : 0);
+                echo "<br>Résultat complet : " . print_r($total_exercises, true);
                 echo "</div>";
                 ?>
             </div>
