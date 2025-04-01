@@ -730,8 +730,8 @@ function updateMealTotals($meal_id) {
                     <!-- Liste des aliments du repas -->
                     <?php if (!empty($meal_foods)): ?>
                         <div class="table-responsive mb-4">
-                            <table class="table">
-                                <thead>
+                            <table class="table table-hover">
+                                <thead class="table-light">
                                     <tr>
                                         <th>Aliment</th>
                                         <th>Quantité (g)</th>
