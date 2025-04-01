@@ -169,20 +169,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                     
                     if ($result) {
+                        // Debug: Afficher les informations de l'aliment ajouté
+                        error_log("Aliment ajouté avec succès: " . print_r([
+                            'food_id' => $food_id,
+                            'custom_food_name' => $custom_food_name,
+                            'quantity' => $quantity,
+                            'custom_calories' => $custom_calories,
+                            'custom_protein' => $custom_protein,
+                            'custom_carbs' => $custom_carbs,
+                            'custom_fat' => $custom_fat
+                        ], true));
+                        
                         // Mettre à jour les totaux du repas
                         updateMealTotals($meal_id);
-                        
-                        // Si c'est une requête AJAX, retourner une réponse JSON
-                        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                            header('Content-Type: application/json');
-                            echo json_encode([
-                                'success' => true,
-                                'message' => 'Aliment ajouté avec succès'
-                            ]);
-                            exit;
-                        } else {
-                            $success_message = "Aliment ajouté au repas avec succès";
-                        }
+                        $success_message = "Aliment ajouté au repas avec succès";
                     } else {
                         $errors[] = "Une erreur s'est produite lors de l'ajout de l'aliment";
                     }
@@ -190,16 +190,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Exception $e) {
                 $errors[] = "Erreur: " . $e->getMessage();
             }
-        }
-        
-        // Si c'est une requête AJAX et qu'il y a des erreurs, retourner une réponse JSON
-        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-            header('Content-Type: application/json');
-            echo json_encode([
-                'success' => false,
-                'error' => implode(', ', $errors)
-            ]);
-            exit;
         }
     }
     
@@ -762,422 +752,941 @@ $predefined_meals = fetchAll($sql, [$user_id]);
 
 // Récupérer les aliments disponibles
 $sql = "SELECT * FROM foods ORDER BY name";
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[SQL]</span> ";
-echo "Requête récupération des aliments : " . $sql;
-echo "</div>";
-
 $foods = fetchAll($sql, []);
-echo "<div class='debug-message'>";
-echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[ALIMENTS]</span> ";
-echo "Nombre d'aliments trouvés : " . count($foods);
-echo "</div>";
 
-// Récupérer les aliments de chaque repas
-foreach ($meals as $meal) {
-    $sql = "SELECT fl.*, f.name as food_name 
+// Récupérer les détails d'un repas spécifique si demandé
+$meal_details = null;
+$meal_foods = [];
+
+if ($action === 'edit_meal' && $meal_id > 0) {
+    $sql = "SELECT * FROM meals WHERE id = ? AND user_id = ?";
+    $meal_details = fetchOne($sql, [$meal_id, $user_id]);
+    
+    if ($meal_details) {
+        $sql = "SELECT fl.*, 
+                f.name as food_name, 
+                f.calories as food_calories, 
+                f.protein as food_protein, 
+                f.carbs as food_carbs, 
+                f.fat as food_fat
+                FROM food_logs fl 
+                LEFT JOIN foods f ON fl.food_id = f.id 
+                WHERE fl.meal_id = ? 
+                ORDER BY fl.created_at";
+        $meal_foods = fetchAll($sql, [$meal_id]);
+    }
+}
+
+// Récupérer les détails d'un repas prédéfini si demandé
+$predefined_meal_details = null;
+$predefined_meal_foods = [];
+
+if ($action === 'view_predefined_meal' && $predefined_meal_id > 0) {
+    $sql = "SELECT * FROM predefined_meals WHERE id = ? AND (user_id = ? OR is_public = 1 OR created_by_admin = 1)";
+    $predefined_meal_details = fetchOne($sql, [$predefined_meal_id, $user_id]);
+    
+    if ($predefined_meal_details) {
+        $sql = "SELECT pmf.*, 
+                f.name as food_name, 
+                f.calories as food_calories, 
+                f.protein as food_protein, 
+                f.carbs as food_carbs, 
+                f.fat as food_fat
+                FROM predefined_meal_items pmf 
+                LEFT JOIN foods f ON pmf.food_id = f.id 
+                WHERE pmf.predefined_meal_id = ? 
+                ORDER BY pmf.created_at";
+        $predefined_meal_foods = fetchAll($sql, [$predefined_meal_id]);
+    }
+}
+
+// Récupérer l'historique des repas
+$sql = "SELECT m.*, 
+        DATE_FORMAT(m.log_date, '%d/%m/%Y') as formatted_date,
+        (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count
+        FROM meals m 
+        WHERE m.user_id = ? 
+        ORDER BY m.log_date DESC, FIELD(m.meal_type, 'petit_dejeuner', 'dejeuner', 'diner', 'collation', 'autre')
+        LIMIT 50";
+$meal_history = fetchAll($sql, [$user_id]);
+
+// Fonction pour obtenir le nom du type de repas
+function getMealTypeName($type) {
+    $types = [
+        'petit_dejeuner' => 'Petit déjeuner',
+        'dejeuner' => 'Déjeuner',
+        'diner' => 'Dîner',
+        'collation' => 'Collation',
+        'autre' => 'Autre'
+    ];
+    
+    return $types[$type] ?? $type;
+}
+
+// Fonction pour calculer les macronutriments d'un aliment
+function calculateNutrients($food) {
+    $calories = 0;
+    $protein = 0;
+    $carbs = 0;
+    $fat = 0;
+    
+    if (isset($food['food_id']) && $food['food_id'] > 0 && isset($food['food_calories'])) {
+        // Aliment de la base de données
+        $calories = ($food['food_calories'] * $food['quantity']) / 100;
+        $protein = ($food['food_protein'] * $food['quantity']) / 100;
+        $carbs = ($food['food_carbs'] * $food['quantity']) / 100;
+        $fat = ($food['food_fat'] * $food['quantity']) / 100;
+    } else {
+        // Aliment personnalisé
+        $calories = $food['custom_calories'];
+        $protein = $food['custom_protein'];
+        $carbs = $food['custom_carbs'];
+        $fat = $food['custom_fat'];
+    }
+    
+    return [
+        'calories' => round($calories),
+        'protein' => round($protein, 1),
+        'carbs' => round($carbs, 1),
+        'fat' => round($fat, 1)
+    ];
+}
+
+// Fonction pour mettre à jour les totaux d'un repas
+function updateMealTotals($meal_id) {
+    global $db;
+    
+    // Debug: Afficher l'ID du repas
+    error_log("Mise à jour des totaux pour le repas ID: " . $meal_id);
+    
+    // Debug: Vérifier les aliments du repas avant la mise à jour
+    $sql = "SELECT fl.*, f.name as food_name, f.calories as food_calories, f.protein as food_protein, f.carbs as food_carbs, f.fat as food_fat
             FROM food_logs fl 
             LEFT JOIN foods f ON fl.food_id = f.id 
             WHERE fl.meal_id = ?";
-    $meal_foods = fetchAll($sql, [$meal['id']]);
+    $foods = fetchAll($sql, [$meal_id]);
+    error_log("Aliments dans le repas avant mise à jour: " . print_r($foods, true));
+    
+    // Calculer les totaux
+    $total_calories = 0;
+    $total_protein = 0;
+    $total_carbs = 0;
+    $total_fat = 0;
+    
+    foreach ($foods as $food) {
+        if ($food['food_id'] > 0) {
+            // Aliment de la base de données
+            $total_calories += ($food['food_calories'] * $food['quantity']) / 100;
+            $total_protein += ($food['food_protein'] * $food['quantity']) / 100;
+            $total_carbs += ($food['food_carbs'] * $food['quantity']) / 100;
+            $total_fat += ($food['food_fat'] * $food['quantity']) / 100;
+        } else {
+            // Aliment personnalisé
+            $total_calories += $food['custom_calories'];
+            $total_protein += $food['custom_protein'];
+            $total_carbs += $food['custom_carbs'];
+            $total_fat += $food['custom_fat'];
+        }
+    }
+    
+    // Mettre à jour les totaux dans la table meals
+    $sql = "UPDATE meals 
+            SET total_calories = ?, 
+                total_protein = ?, 
+                total_carbs = ?, 
+                total_fat = ?
+            WHERE id = ?";
+            
+    $result = update($sql, [
+        round($total_calories),
+        round($total_protein, 1),
+        round($total_carbs, 1),
+        round($total_fat, 1),
+        $meal_id
+    ]);
+    
+    // Debug: Vérifier les totaux après la mise à jour
+    $sql = "SELECT total_calories, total_protein, total_carbs, total_fat FROM meals WHERE id = ?";
+    $totals = fetchOne($sql, [$meal_id]);
+    error_log("Totaux après mise à jour: " . print_r($totals, true));
+    
+    return $result;
 }
 
-// Total des calories consommées
-$sql = "SELECT 
-    SUM(m.total_calories) as total_calories,
-    SUM(m.total_protein) as total_protein,
-    SUM(m.total_carbs) as total_carbs,
-    SUM(m.total_fat) as total_fat
-FROM meals m
-WHERE m.user_id = ? AND m.log_date = ?";
+// Fonction pour mettre à jour le bilan calorique quotidien
+function updateDailyCalorieBalance($user_id) {
+    global $pdo;
+    
+    try {
+        // Récupérer la date du jour
+        $today = date('Y-m-d');
+        
+        // Récupérer les calories des repas du jour
+        $sql = "SELECT COALESCE(SUM(total_calories), 0) as total_calories 
+                FROM meals 
+                WHERE user_id = ? AND log_date = ?";
+        $meals_result = fetchOne($sql, [$user_id, $today]);
+        $total_calories = $meals_result['total_calories'];
+        
+        // Récupérer les calories brûlées par l'exercice
+        $sql = "SELECT COALESCE(SUM(calories_burned), 0) as total_burned 
+                FROM exercise_logs 
+                WHERE user_id = ? AND DATE(log_date) = ?";
+        $exercise_result = fetchOne($sql, [$user_id, $today]);
+        $exercise_calories = $exercise_result['total_burned'];
+        
+        // Récupérer l'objectif calorique
+        $sql = "SELECT goal_calories FROM user_profiles WHERE user_id = ?";
+        $goal_result = fetchOne($sql, [$user_id]);
+        $daily_goal = $goal_result ? $goal_result['goal_calories'] : 0;
+        
+        // Calculer le bilan
+        $balance = $daily_goal - $total_calories + $exercise_calories;
+        
+        // Mettre à jour ou insérer le bilan dans la table daily_calorie_balance
+        $sql = "INSERT INTO daily_calorie_balance (user_id, date, total_calories, exercise_calories, daily_goal, balance) 
+                VALUES (?, ?, ?, ?, ?, ?) 
+                ON DUPLICATE KEY UPDATE 
+                total_calories = VALUES(total_calories),
+                exercise_calories = VALUES(exercise_calories),
+                daily_goal = VALUES(daily_goal),
+                balance = VALUES(balance)";
+        
+        $result = update($sql, [$user_id, $today, $total_calories, $exercise_calories, $daily_goal, $balance]);
+        
+        error_log("Mise à jour du bilan calorique : " . print_r([
+            'user_id' => $user_id,
+            'date' => $today,
+            'total_calories' => $total_calories,
+            'exercise_calories' => $exercise_calories,
+            'daily_goal' => $daily_goal,
+            'balance' => $balance
+        ], true));
+        
+        return $result;
+    } catch (Exception $e) {
+        error_log("Erreur lors de la mise à jour du bilan calorique : " . $e->getMessage());
+        return false;
+    }
+}
+
+// Ajouter une fonction de débogage structurée
+function debugLog($category, $message, $data = null, $type = 'info') {
+    $timestamp = date('Y-m-d H:i:s');
+    $log = "[$timestamp] [$category] $message";
+    if ($data !== null) {
+        $log .= "\nData: " . print_r($data, true);
+    }
+    error_log($log);
+    
+    // Ajouter au panneau de débogage si on est dans le contexte web
+    if (isset($_SERVER['REQUEST_URI'])) {
+        echo "<div class='debug-message debug-{$type}'>";
+        echo "<span class='debug-time'>[$timestamp]</span>";
+        echo "<span class='debug-category'>[$category]</span> ";
+        echo htmlspecialchars($message);
+        if ($data !== null) {
+            echo "<pre class='debug-data'>" . htmlspecialchars(print_r($data, true)) . "</pre>";
+        }
+        echo "</div>";
+    }
+}
+
+// Fonction pour déboguer les requêtes SQL
+function debugQuery($sql, $params = [], $result = null) {
+    debugLog('SQL', "Query: $sql", [
+        'params' => $params,
+        'result' => $result
+    ]);
+}
+
+// Fonction pour déboguer les données utilisateur
+function debugUserData($user_id, $data) {
+    debugLog('USER', "User ID: $user_id", $data);
+}
+
+// Fonction pour déboguer les repas
+function debugMealData($meal_id, $data) {
+    debugLog('MEAL', "Meal ID: $meal_id", $data);
+}
+
+// Fonction pour déboguer les aliments
+function debugFoodData($food_id, $data) {
+    debugLog('FOOD', "Food ID: $food_id", $data);
+}
+
+// Fonction pour déboguer les stats
+function debugStats($data) {
+    debugLog('STATS', "Stats Update", $data);
+}
+
+// Déboguer les calories brûlées
+$sql = "SELECT SUM(calories_burned) as calories_out FROM exercise_logs WHERE user_id = ? AND log_date = ?";
 echo "<div class='debug-message'>";
 echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
 echo "<span class='debug-category'>[SQL]</span> ";
-echo "Requête total calories : " . $sql;
+echo "Requête calories brûlées : " . $sql;
 echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
 echo "</div>";
 
-$totals = fetchOne($sql, [$user_id, $date_filter]);
+$today_exercise = fetchOne($sql, [$user_id, $date_filter]);
 echo "<div class='debug-message'>";
 echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
-echo "<span class='debug-category'>[TOTAUX]</span> ";
-echo "Total de la journée :<br>" .
-     "- Calories : " . round($totals['total_calories']) . " kcal<br>" .
-     "- Protéines : " . round($totals['total_protein'], 1) . "g<br>" .
-     "- Glucides : " . round($totals['total_carbs'], 1) . "g<br>" .
-     "- Lipides : " . round($totals['total_fat'], 1) . "g";
+echo "<span class='debug-category'>[EXERCICES]</span> ";
+echo "Calories brûlées aujourd'hui : " . ($today_exercise ? round($today_exercise['calories_out'] ?? 0) : 0);
+echo "<br>Résultat complet : " . print_r($today_exercise, true);
 echo "</div>";
-?>
 
-<!-- Stats globales -->
-<div class="global-stats">
-    <div class="stats-grid">
-        <div class="stats-item">
-            <div class="stats-value" id="daily-goal"><?php echo $daily_goal; ?></div>
-            <div class="stats-label">Objectif</div>
-        </div>
-        <div class="stats-item">
-            <div class="stats-operation">-</div>
-        </div>
-        <div class="stats-item">
-            <div class="stats-value" id="total-calories"><?php echo $total_calories; ?></div>
-            <div class="stats-label">Aliments</div>
-        </div>
-        <div class="stats-item">
-            <div class="stats-operation">+</div>
-        </div>
-        <div class="stats-item">
-            <div class="stats-value" id="exercise-calories"><?php echo $exercise_calories; ?></div>
-            <div class="stats-label">Exercice</div>
-        </div>
-        <div class="stats-item">
-            <div class="stats-operation">=</div>
-        </div>
-        <div class="stats-item">
-            <div class="stats-value" id="remaining-calories"><?php echo $daily_goal - $total_calories + $exercise_calories; ?></div>
-            <div class="stats-label">Restants</div>
-        </div>
-    </div>
-    <div class="macros-grid">
-        <div class="macro-item">
-            <div class="macro-value" id="total-protein"><?php echo round(array_sum(array_column($meals, 'total_protein')), 1); ?></div>
-            <div class="macro-label">Protéines (g)</div>
-        </div>
-        <div class="macro-item">
-            <div class="macro-value" id="total-carbs"><?php echo round(array_sum(array_column($meals, 'total_carbs')), 1); ?></div>
-            <div class="macro-label">Glucides (g)</div>
-        </div>
-        <div class="macro-item">
-            <div class="macro-value" id="total-fat"><?php echo round(array_sum(array_column($meals, 'total_fat')), 1); ?></div>
-            <div class="macro-label">Lipides (g)</div>
-        </div>
-    </div>
-</div>
+// Ajouter une requête pour voir les exercices individuels
+$sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
+       FROM exercise_logs 
+       WHERE user_id = ? AND log_date = ? 
+       ORDER BY log_date DESC";
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[SQL]</span> ";
+echo "Requête détails exercices : " . $sql;
+echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+echo "</div>";
 
-<div class="food-journal-header mb-4">
-    <div class="date-navigation">
-        <a href="?date=<?php echo date('Y-m-d', strtotime($date_filter . ' -1 day')); ?>" class="nav-arrow">
-            <i class="fas fa-chevron-left"></i>
-        </a>
-        <div class="current-date">
-            <?php echo date('d/m/Y', strtotime($date_filter)); ?>
-        </div>
-        <a href="?date=<?php echo date('Y-m-d', strtotime($date_filter . ' +1 day')); ?>" class="nav-arrow">
-            <i class="fas fa-chevron-right"></i>
-        </a>
-    </div>
-</div>
+$exercises = fetchAll($sql, [$user_id, $date_filter]);
+echo "<div class='debug-message'>";
+echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+echo "<span class='debug-category'>[EXERCICES]</span> ";
+echo "Liste des exercices du jour :";
+if (!empty($exercises)) {
+    foreach ($exercises as $exercise) {
+        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
+             $exercise['duration'] . " min, " . 
+             $exercise['calories_burned'] . " kcal";
+    }
+} else {
+    echo "<br>Aucun exercice enregistré pour cette date";
+}
+echo "</div>";
 
-<?php if (!empty($success_message)): ?>
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <?php echo $success_message; ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-<?php endif; ?>
-
-<?php if (!empty($errors)): ?>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <ul class="mb-0">
-            <?php foreach ($errors as $error): ?>
-                <li><?php echo $error; ?></li>
-            <?php endforeach; ?>
-        </ul>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-<?php endif; ?>
-
-<?php if ($action === 'edit_meal' && $meal_details): ?>
-    <!-- Édition d'un repas -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white">
-            <h5 class="card-title mb-0">Éditer le repas: <?php echo getMealTypeName($meal_details['meal_type']); ?></h5>
-        </div>
-        <div class="card-body">
-            <!-- Liste des aliments du repas -->
-            <?php if (!empty($meal_foods)): ?>
-                <div class="table-responsive mb-4">
-                    <table class="table table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Aliment</th>
-                                <th>Quantité (g)</th>
-                                <th>Calories</th>
-                                <th>Protéines</th>
-                                <th>Glucides</th>
-                                <th>Lipides</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($meal_foods as $food): ?>
-                                <?php $nutrients = calculateNutrients($food); ?>
-                                <tr>
-                                    <td><?php echo $food['food_id'] ? $food['food_name'] : $food['custom_food_name']; ?></td>
-                                    <td><?php echo $food['quantity']; ?></td>
-                                    <td><?php echo $nutrients['calories']; ?></td>
-                                    <td><?php echo $nutrients['protein']; ?></td>
-                                    <td><?php echo $nutrients['carbs']; ?></td>
-                                    <td><?php echo $nutrients['fat']; ?></td>
-                                    <td>
-                                        <form action="food-log.php" method="POST" class="d-inline">
-                                            <input type="hidden" name="action" value="remove_food_from_meal">
-                                            <input type="hidden" name="food_log_id" value="<?php echo $food['id']; ?>">
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?')">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php else: ?>
-                <div class="alert alert-info">Aucun aliment dans ce repas</div>
-            <?php endif; ?>
-
-            <!-- Formulaire d'ajout d'aliment -->
-            <form action="food-log.php" method="POST">
-                <input type="hidden" name="action" value="add_food_to_meal">
-                <input type="hidden" name="meal_id" value="<?php echo $meal_details['id']; ?>">
+                // Vérifier les exercices avec les colonnes correctes
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
+                        FROM exercise_logs 
+                        WHERE user_id = ? AND log_date = ? 
+                        ORDER BY log_date DESC";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête détails exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
                 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="food_id" class="form-label">Aliment</label>
-                        <select class="form-select" id="food_id" name="food_id">
-                            <option value="">Sélectionnez un aliment</option>
-                            <?php foreach ($foods as $food): ?>
-                                <option value="<?php echo $food['id']; ?>" 
-                                        data-calories="<?php echo $food['calories']; ?>"
-                                        data-protein="<?php echo $food['protein']; ?>"
-                                        data-carbs="<?php echo $food['carbs']; ?>"
-                                        data-fat="<?php echo $food['fat']; ?>">
-                                    <?php echo $food['name']; ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="custom_food_name" class="form-label">Ou nom personnalisé</label>
-                        <input type="text" class="form-control" id="custom_food_name" name="custom_food_name">
-                    </div>
-                </div>
+                $exercises = fetchAll($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste des exercices du jour :";
+                if (!empty($exercises)) {
+                    foreach ($exercises as $exercise) {
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal";
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré pour cette date";
+                }
+                echo "</div>";
 
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="quantity" class="form-label">Quantité (g)</label>
-                        <input type="number" class="form-control" id="quantity" name="quantity" value="100" min="1">
-                    </div>
-                    <div class="col">
-                        <label for="custom_calories" class="form-label">Calories</label>
-                        <input type="number" class="form-control" id="custom_calories" name="custom_calories" value="0">
-                    </div>
-                    <div class="col">
-                        <label for="custom_protein" class="form-label">Protéines (g)</label>
-                        <input type="number" class="form-control" id="custom_protein" name="custom_protein" value="0" step="0.1">
-                    </div>
-                    <div class="col">
-                        <label for="custom_carbs" class="form-label">Glucides (g)</label>
-                        <input type="number" class="form-control" id="custom_carbs" name="custom_carbs" value="0" step="0.1">
-                    </div>
-                    <div class="col">
-                        <label for="custom_fat" class="form-label">Lipides (g)</label>
-                        <input type="number" class="form-control" id="custom_fat" name="custom_fat" value="0" step="0.1">
-                    </div>
-                </div>
+                // Vérifier tous les exercices de l'utilisateur sans filtre de date
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
+                       FROM exercise_logs 
+                       WHERE user_id = ? 
+                       ORDER BY log_date DESC";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête tous les exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id;
+                echo "</div>";
+                
+                $all_exercises = fetchAll($sql, [$user_id]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste de tous les exercices :";
+                if (!empty($all_exercises)) {
+                    foreach ($all_exercises as $exercise) {
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal, " .
+                             "date: " . $exercise['log_date'];
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré";
+                }
+                echo "</div>";
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journal alimentaire - Weight Tracker</title>
+    <!-- Prévention du cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <style>
+        .debug-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .debug-panel h4 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        .debug-message {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .debug-message:last-child {
+            border-bottom: none;
+        }
+        .debug-time {
+            color: #6c757d;
+            margin-right: 5px;
+        }
+        .debug-category {
+            color: #0d6efd;
+            margin-right: 5px;
+            font-weight: bold;
+        }
+        .debug-error {
+            color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .debug-success {
+            color: #28a745;
+            background-color: #d4edda;
+        }
+        .debug-data {
+            margin-top: 5px;
+            padding: 5px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            font-size: 11px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <?php include 'navigation.php'; ?>
 
-                <div class="d-flex justify-content-between">
-                    <a href="food-log.php" class="btn btn-secondary">Retour</a>
-                    <button type="submit" class="btn btn-primary">Ajouter l'aliment</button>
-                </div>
-            </form>
+    <div class="container py-4">
+        <!-- Panneau de débogage des calories et exercices -->
+        <div class="debug-panel">
+            <h4>Debug Calories & Exercices</h4>
+            <div id="debugContent">
+                <?php
+                // Déboguer les calories consommées
+                $sql = "SELECT 
+                    SUM(m.total_calories) as calories_in,
+                    SUM(m.total_protein) as protein_in,
+                    SUM(m.total_carbs) as carbs_in,
+                    SUM(m.total_fat) as fat_in
+                FROM meals m
+                WHERE m.user_id = ? AND m.log_date = ?";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête calories consommées : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
+                
+                $today_food = fetchOne($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[CALORIES]</span> ";
+                echo "Calories consommées aujourd'hui : " . ($today_food ? round($today_food['calories_in'] ?? 0) : 0);
+                echo "<br>Résultat complet : " . print_r($today_food, true);
+                echo "</div>";
+
+                // Déboguer les calories brûlées
+                $sql = "SELECT SUM(calories_burned) as calories_out FROM exercise_logs WHERE user_id = ? AND log_date = ?";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête calories brûlées : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
+                
+                $today_exercise = fetchOne($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Calories brûlées aujourd'hui : " . ($today_exercise ? round($today_exercise['calories_out'] ?? 0) : 0);
+                echo "<br>Résultat complet : " . print_r($today_exercise, true);
+                echo "</div>";
+
+                // Ajouter une requête pour voir les exercices individuels
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
+                       FROM exercise_logs 
+                       WHERE user_id = ? AND log_date = ? 
+                       ORDER BY log_date DESC";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête détails exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
+                
+                $exercises = fetchAll($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste des exercices du jour :";
+                if (!empty($exercises)) {
+                    foreach ($exercises as $exercise) {
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal";
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré pour cette date";
+                }
+                echo "</div>";
+
+                // Vérifier la table exercise_logs
+                $sql = "SELECT COUNT(*) as total FROM exercise_logs WHERE user_id = ?";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête total exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id;
+                echo "</div>";
+                
+                $total_exercises = fetchOne($sql, [$user_id]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Total des exercices enregistrés : " . ($total_exercises ? $total_exercises['total'] : 0);
+                echo "<br>Résultat complet : " . print_r($total_exercises, true);
+                echo "</div>";
+
+                // Vérifier les exercices avec les colonnes correctes
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
+                        FROM exercise_logs 
+                        WHERE user_id = ? AND log_date = ? 
+                        ORDER BY log_date DESC";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête détails exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
+                
+                $exercises = fetchAll($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste des exercices du jour :";
+                if (!empty($exercises)) {
+                    foreach ($exercises as $exercise) {
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal";
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré pour cette date";
+                }
+                echo "</div>";
+
+                // Vérifier tous les exercices de l'utilisateur sans filtre de date
+                $sql = "SELECT custom_exercise_name as exercise_name, duration, calories_burned, log_date 
+                       FROM exercise_logs 
+                       WHERE user_id = ? 
+                       ORDER BY log_date DESC";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête tous les exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id;
+                echo "</div>";
+                
+                $all_exercises = fetchAll($sql, [$user_id]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste de tous les exercices :";
+                if (!empty($all_exercises)) {
+                    foreach ($all_exercises as $exercise) {
+                        echo "<br>- " . ($exercise['exercise_name'] ?: 'Exercice sans nom') . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal, " .
+                             "date: " . $exercise['log_date'];
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré";
+                }
+                echo "</div>";
+
+                // Vérifier le format de la date dans la base de données
+                $sql = "SELECT DATE_FORMAT(log_date, '%Y-%m-%d') as formatted_date, COUNT(*) as count 
+                       FROM exercise_logs 
+                       WHERE user_id = ? 
+                       GROUP BY DATE(log_date)";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête format dates : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id;
+                echo "</div>";
+                
+                $date_counts = fetchAll($sql, [$user_id]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Nombre d'exercices par date :";
+                if (!empty($date_counts)) {
+                    foreach ($date_counts as $count) {
+                        echo "<br>- Date: " . $count['formatted_date'] . 
+                             ", Nombre d'exercices: " . $count['count'];
+                    }
+                } else {
+                    echo "<br>Aucune date trouvée";
+                }
+                echo "</div>";
+
+                // Vérifier la structure de la table exercise_logs
+                $sql = "DESCRIBE exercise_logs";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Structure de la table exercise_logs : " . $sql;
+                echo "</div>";
+                
+                $table_structure = fetchAll($sql, []);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[STRUCTURE]</span> ";
+                echo "Structure de la table :";
+                if (!empty($table_structure)) {
+                    foreach ($table_structure as $column) {
+                        echo "<br>- " . $column['Field'] . " : " . $column['Type'];
+                    }
+                } else {
+                    echo "<br>Structure non trouvée";
+                }
+                echo "</div>";
+                ?>
+            </div>
         </div>
-    </div>
-<?php else: ?>
-    <!-- Affichage des repas par type -->
-    <?php
-    $meal_types = [
-        'petit_dejeuner' => 'Petit Déjeuner',
-        'dejeuner' => 'Déjeuner',
-        'diner' => 'Dîner',
-        'collation' => 'Collation'
-    ];
 
-    foreach ($meal_types as $type => $label):
-        $type_meals = array_filter($meals, function($meal) use ($type) {
-            return $meal['meal_type'] === $type;
-        });
-    ?>
-        <div class="meal-section">
-            <div class="meal-header">
-                <h3 class="meal-title"><?php echo $label; ?></h3>
-                <div class="meal-actions">
+        <!-- Stats globales -->
+        <div class="global-stats">
+            <div class="stats-grid">
+                <div class="stats-item">
+                    <div class="stats-value" id="daily-goal"><?php echo $daily_goal; ?></div>
+                    <div class="stats-label">Objectif</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-operation">-</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-value" id="total-calories"><?php echo $total_calories; ?></div>
+                    <div class="stats-label">Aliments</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-operation">+</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-value" id="exercise-calories"><?php echo $exercise_calories; ?></div>
+                    <div class="stats-label">Exercice</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-operation">=</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-value" id="remaining-calories"><?php echo $daily_goal - $total_calories + $exercise_calories; ?></div>
+                    <div class="stats-label">Restants</div>
+                </div>
+            </div>
+            <div class="macros-grid">
+                <div class="macro-item">
+                    <div class="macro-value" id="total-protein"><?php echo round(array_sum(array_column($meals, 'total_protein')), 1); ?></div>
+                    <div class="macro-label">Protéines (g)</div>
+                </div>
+                <div class="macro-item">
+                    <div class="macro-value" id="total-carbs"><?php echo round(array_sum(array_column($meals, 'total_carbs')), 1); ?></div>
+                    <div class="macro-label">Glucides (g)</div>
+                </div>
+                <div class="macro-item">
+                    <div class="macro-value" id="total-fat"><?php echo round(array_sum(array_column($meals, 'total_fat')), 1); ?></div>
+                    <div class="macro-label">Lipides (g)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="food-journal-header mb-4">
+            <div class="date-navigation">
+                <a href="?date=<?php echo date('Y-m-d', strtotime($date_filter . ' -1 day')); ?>" class="nav-arrow">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                <div class="current-date">
+                    <?php echo date('d/m/Y', strtotime($date_filter)); ?>
+                </div>
+                <a href="?date=<?php echo date('Y-m-d', strtotime($date_filter . ' +1 day')); ?>" class="nav-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <?php if (!empty($success_message)): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <?php echo $success_message; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($errors)): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <ul class="mb-0">
+                    <?php foreach ($errors as $error): ?>
+                        <li><?php echo $error; ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($action === 'edit_meal' && $meal_details): ?>
+            <!-- Édition d'un repas -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Éditer le repas: <?php echo getMealTypeName($meal_details['meal_type']); ?></h5>
+                </div>
+                <div class="card-body">
+                    <!-- Liste des aliments du repas -->
+                    <?php if (!empty($meal_foods)): ?>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Aliment</th>
+                                        <th>Quantité (g)</th>
+                                        <th>Calories</th>
+                                        <th>Protéines</th>
+                                        <th>Glucides</th>
+                                        <th>Lipides</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($meal_foods as $food): ?>
+                                        <?php $nutrients = calculateNutrients($food); ?>
+                                        <tr>
+                                            <td><?php echo $food['food_id'] ? $food['food_name'] : $food['custom_food_name']; ?></td>
+                                            <td><?php echo $food['quantity']; ?></td>
+                                            <td><?php echo $nutrients['calories']; ?></td>
+                                            <td><?php echo $nutrients['protein']; ?></td>
+                                            <td><?php echo $nutrients['carbs']; ?></td>
+                                            <td><?php echo $nutrients['fat']; ?></td>
+                                            <td>
+                                                <form action="food-log.php" method="POST" class="d-inline">
+                                                    <input type="hidden" name="action" value="remove_food_from_meal">
+                                                    <input type="hidden" name="food_log_id" value="<?php echo $food['id']; ?>">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-info">Aucun aliment dans ce repas</div>
+                    <?php endif; ?>
+
+                    <!-- Formulaire d'ajout d'aliment -->
+                    <form action="food-log.php" method="POST">
+                        <input type="hidden" name="action" value="add_food_to_meal">
+                        <input type="hidden" name="meal_id" value="<?php echo $meal_details['id']; ?>">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="food_id" class="form-label">Aliment</label>
+                                <select class="form-select" id="food_id" name="food_id">
+                                    <option value="">Sélectionnez un aliment</option>
+                                    <?php foreach ($foods as $food): ?>
+                                        <option value="<?php echo $food['id']; ?>" 
+                                                data-calories="<?php echo $food['calories']; ?>"
+                                                data-protein="<?php echo $food['protein']; ?>"
+                                                data-carbs="<?php echo $food['carbs']; ?>"
+                                                data-fat="<?php echo $food['fat']; ?>">
+                                            <?php echo $food['name']; ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="custom_food_name" class="form-label">Ou nom personnalisé</label>
+                                <input type="text" class="form-control" id="custom_food_name" name="custom_food_name">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label for="quantity" class="form-label">Quantité (g)</label>
+                                <input type="number" class="form-control" id="quantity" name="quantity" value="100" min="1">
+                            </div>
+                            <div class="col">
+                                <label for="custom_calories" class="form-label">Calories</label>
+                                <input type="number" class="form-control" id="custom_calories" name="custom_calories" value="0">
+                            </div>
+                            <div class="col">
+                                <label for="custom_protein" class="form-label">Protéines (g)</label>
+                                <input type="number" class="form-control" id="custom_protein" name="custom_protein" value="0" step="0.1">
+                            </div>
+                            <div class="col">
+                                <label for="custom_carbs" class="form-label">Glucides (g)</label>
+                                <input type="number" class="form-control" id="custom_carbs" name="custom_carbs" value="0" step="0.1">
+                            </div>
+                            <div class="col">
+                                <label for="custom_fat" class="form-label">Lipides (g)</label>
+                                <input type="number" class="form-control" id="custom_fat" name="custom_fat" value="0" step="0.1">
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="food-log.php" class="btn btn-secondary">Retour</a>
+                            <button type="submit" class="btn btn-primary">Ajouter l'aliment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        <?php else: ?>
+            <!-- Affichage des repas par type -->
+            <?php
+            $meal_types = [
+                'petit_dejeuner' => 'Petit Déjeuner',
+                'dejeuner' => 'Déjeuner',
+                'diner' => 'Dîner',
+                'collation' => 'Collation'
+            ];
+
+            foreach ($meal_types as $type => $label):
+                $type_meals = array_filter($meals, function($meal) use ($type) {
+                    return $meal['meal_type'] === $type;
+                });
+            ?>
+                <div class="meal-section">
+                    <div class="meal-header">
+                        <h3 class="meal-title"><?php echo $label; ?></h3>
+                        <div class="meal-actions">
+                            <?php if (empty($type_meals)): ?>
+                                <form action="food-log.php" method="POST">
+                                    <input type="hidden" name="action" value="add_meal">
+                                    <input type="hidden" name="meal_type" value="<?php echo $type; ?>">
+                                    <input type="hidden" name="date" value="<?php echo $date_filter; ?>">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>Créer le repas
+                                    </button>
+                                </form>
+                            <?php else: 
+                                $meal = reset($type_meals);
+                            ?>
+                                <div class="d-flex gap-2">
+                                    <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>Ajouter un aliment
+                                    </a>
+                                    <form action="food-log.php" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?');">
+                                        <input type="hidden" name="action" value="delete_meal">
+                                        <input type="hidden" name="meal_id" value="<?php echo $meal['id']; ?>">
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
                     <?php if (empty($type_meals)): ?>
-                        <form action="food-log.php" method="POST">
-                            <input type="hidden" name="action" value="add_meal">
-                            <input type="hidden" name="meal_type" value="<?php echo $type; ?>">
-                            <input type="hidden" name="date" value="<?php echo $date_filter; ?>">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus me-1"></i>Créer le repas
-                            </button>
-                        </form>
-                    <?php else: 
-                        $meal = reset($type_meals);
-                    ?>
-                        <div class="d-flex gap-2">
-                            <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-primary">
-                                <i class="fas fa-plus me-1"></i>Ajouter un aliment
-                            </a>
-                            <form action="food-log.php" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?');">
-                                <input type="hidden" name="action" value="delete_meal">
-                                <input type="hidden" name="meal_id" value="<?php echo $meal['id']; ?>">
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
+                        <div class="meal-empty">
+                            Aucun repas enregistré
+                        </div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Aliment</th>
+                                        <th>Qté</th>
+                                        <th>Cal</th>
+                                        <th>Prot</th>
+                                        <th>Gluc</th>
+                                        <th>Lip</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $meal = reset($type_meals);
+                                    $sql = "SELECT fl.*, f.name as food_name, f.calories, f.protein, f.carbs, f.fat 
+                                           FROM food_logs fl 
+                                           LEFT JOIN foods f ON fl.food_id = f.id 
+                                           WHERE fl.meal_id = ?";
+                                    $meal_foods = fetchAll($sql, [$meal['id']]);
+                                    
+                                    foreach ($meal_foods as $food):
+                                        $calories = $food['food_id'] ? ($food['calories'] * $food['quantity'] / 100) : $food['custom_calories'];
+                                        $protein = $food['food_id'] ? ($food['protein'] * $food['quantity'] / 100) : $food['custom_protein'];
+                                        $carbs = $food['food_id'] ? ($food['carbs'] * $food['quantity'] / 100) : $food['custom_carbs'];
+                                        $fat = $food['food_id'] ? ($food['fat'] * $food['quantity'] / 100) : $food['custom_fat'];
+                                    ?>
+                                        <tr>
+                                            <td><?php echo $food['food_id'] ? $food['food_name'] : $food['custom_food_name']; ?></td>
+                                            <td><?php echo $food['quantity']; ?>g</td>
+                                            <td><?php echo round($calories); ?></td>
+                                            <td><?php echo round($protein, 1); ?></td>
+                                            <td><?php echo round($carbs, 1); ?></td>
+                                            <td><?php echo round($fat, 1); ?></td>
+                                            <td>
+                                                <form action="food-log.php" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?');">
+                                                    <input type="hidden" name="action" value="remove_food_from_meal">
+                                                    <input type="hidden" name="food_log_id" value="<?php echo $food['id']; ?>">
+                                                    <button type="submit" class="btn btn-sm btn-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                     <?php endif; ?>
                 </div>
-            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
 
-            <?php if (empty($type_meals)): ?>
-                <div class="meal-empty">
-                    Aucun repas enregistré
-                </div>
-            <?php else: ?>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Aliment</th>
-                                <th>Qté</th>
-                                <th>Cal</th>
-                                <th>Prot</th>
-                                <th>Gluc</th>
-                                <th>Lip</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            $meal = reset($type_meals);
-                            $sql = "SELECT fl.*, f.name as food_name, f.calories, f.protein, f.carbs, f.fat 
-                                   FROM food_logs fl 
-                                   LEFT JOIN foods f ON fl.food_id = f.id 
-                                   WHERE fl.meal_id = ?";
-                            $meal_foods = fetchAll($sql, [$meal['id']]);
-                            
-                            foreach ($meal_foods as $food):
-                                $calories = $food['food_id'] ? ($food['calories'] * $food['quantity'] / 100) : $food['custom_calories'];
-                                $protein = $food['food_id'] ? ($food['protein'] * $food['quantity'] / 100) : $food['custom_protein'];
-                                $carbs = $food['food_id'] ? ($food['carbs'] * $food['quantity'] / 100) : $food['custom_carbs'];
-                                $fat = $food['food_id'] ? ($food['fat'] * $food['quantity'] / 100) : $food['custom_fat'];
-                            ?>
-                                <tr>
-                                    <td><?php echo $food['food_id'] ? $food['food_name'] : $food['custom_food_name']; ?></td>
-                                    <td><?php echo $food['quantity']; ?>g</td>
-                                    <td><?php echo round($calories); ?></td>
-                                    <td><?php echo round($protein, 1); ?></td>
-                                    <td><?php echo round($carbs, 1); ?></td>
-                                    <td><?php echo round($fat, 1); ?></td>
-                                    <td>
-                                        <form action="food-log.php" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?');">
-                                            <input type="hidden" name="action" value="remove_food_from_meal">
-                                            <input type="hidden" name="food_log_id" value="<?php echo $food['id']; ?>">
-                                            <button type="submit" class="btn btn-sm btn-danger">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </div>
-    <?php endforeach; ?>
-<?php endif; ?>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Fonction pour mettre à jour les stats
-        function updateStats() {
-            fetch('food-log.php?action=get_stats&date=<?php echo $date_filter; ?>')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erreur réseau: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Données reçues:', data); // Debug des données reçues
-                    
-                    // Mise à jour des calories
-                    const dailyGoal = document.getElementById('daily-goal');
-                    const totalCalories = document.getElementById('total-calories');
-                    const exerciseCalories = document.getElementById('exercise-calories');
-                    const remainingCalories = document.getElementById('remaining-calories');
-                    
-                    if (dailyGoal) {
-                        dailyGoal.textContent = data.daily_goal;
-                        console.log('Objectif mis à jour:', data.daily_goal); // Debug
-                    }
-                    if (totalCalories) {
-                        totalCalories.textContent = data.total_calories;
-                        console.log('Calories totales mises à jour:', data.total_calories); // Debug
-                    }
-                    if (exerciseCalories) {
-                        exerciseCalories.textContent = data.exercise_calories;
-                        console.log('Calories exercices mises à jour:', data.exercise_calories); // Debug
-                    }
-                    if (remainingCalories) {
-                        remainingCalories.textContent = data.remaining_calories;
-                        console.log('Calories restantes mises à jour:', data.remaining_calories); // Debug
-                    }
-                    
-                    // Mise à jour des macronutriments
-                    const totalProtein = document.getElementById('total-protein');
-                    const totalCarbs = document.getElementById('total-carbs');
-                    const totalFat = document.getElementById('total-fat');
-                    
-                    if (totalProtein) {
-                        totalProtein.textContent = data.total_protein;
-                        console.log('Protéines mises à jour:', data.total_protein); // Debug
-                    }
-                    if (totalCarbs) {
-                        totalCarbs.textContent = data.total_carbs;
-                        console.log('Glucides mis à jour:', data.total_carbs); // Debug
-                    }
-                    if (totalFat) {
-                        totalFat.textContent = data.total_fat;
-                        console.log('Lipides mis à jour:', data.total_fat); // Debug
-                    }
-                })
-                .catch(error => {
-                    console.error('Erreur lors de la mise à jour des stats:', error);
-                });
-        }
-
-        // Modifier les gestionnaires d'événements pour la suppression
-        document.querySelectorAll('form[action="food-log.php"]').forEach(form => {
-            form.addEventListener('submit', function(e) {
-                const action = this.querySelector('input[name="action"]').value;
-                if (action === 'remove_food_from_meal' || action === 'delete_meal') {
-                    e.preventDefault();
-                    const formData = new FormData(this);
-                    
-                    fetch('food-log.php', {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fonction pour mettre à jour les stats
+            function updateStats() {
+                fetch('food-log.php?action=get_stats&date=<?php echo $date_filter; ?>')
                     .then(response => {
                         if (!response.ok) {
                             throw new Error('Erreur réseau: ' + response.status);
@@ -1185,85 +1694,95 @@ echo "</div>";
                         return response.json();
                     })
                     .then(data => {
-                        console.log('Réponse de suppression:', data); // Debug
-                        if (data.success) {
-                            if (action === 'remove_food_from_meal') {
-                                const row = this.closest('tr');
-                                if (row) row.remove();
-                            } else if (action === 'delete_meal') {
-                                const section = this.closest('.meal-section');
-                                if (section) {
-                                    const mealContent = section.querySelector('.table-responsive');
-                                    if (mealContent) {
-                                        mealContent.innerHTML = `
-                                            <div class="alert alert-info">Aucun repas enregistré</div>
-                                        `;
-                                    }
-                                    
-                                    const mealActions = section.querySelector('.meal-actions');
-                                    if (mealActions) {
-                                        mealActions.innerHTML = `
-                                            <form action="food-log.php" method="POST">
-                                                <input type="hidden" name="action" value="add_meal">
-                                                <input type="hidden" name="meal_type" value="${this.querySelector('input[name="meal_type"]')?.value || ''}">
-                                                <input type="hidden" name="date" value="<?php echo $date_filter; ?>">
-                                                <button type="submit" class="btn btn-primary">
-                                                    <i class="fas fa-plus me-1"></i>Créer le repas
-                                                </button>
-                                            </form>
-                                        `;
-                                    }
-                                }
-                            }
-                            updateStats();
-                        } else {
-                            throw new Error(data.error || 'Une erreur est survenue lors de la suppression');
-                        }
+                        // Mise à jour des calories
+                        const dailyGoal = document.getElementById('daily-goal');
+                        const totalCalories = document.getElementById('total-calories');
+                        const exerciseCalories = document.getElementById('exercise-calories');
+                        const remainingCalories = document.getElementById('remaining-calories');
+                        
+                        if (dailyGoal) dailyGoal.textContent = data.daily_goal;
+                        if (totalCalories) totalCalories.textContent = data.total_calories;
+                        if (exerciseCalories) exerciseCalories.textContent = data.exercise_calories;
+                        if (remainingCalories) remainingCalories.textContent = data.remaining_calories;
+                        
+                        // Mise à jour des macronutriments
+                        const totalProtein = document.getElementById('total-protein');
+                        const totalCarbs = document.getElementById('total-carbs');
+                        const totalFat = document.getElementById('total-fat');
+                        
+                        if (totalProtein) totalProtein.textContent = data.total_protein;
+                        if (totalCarbs) totalCarbs.textContent = data.total_carbs;
+                        if (totalFat) totalFat.textContent = data.total_fat;
                     })
                     .catch(error => {
-                        console.error('Erreur:', error);
-                        alert(error.message || 'Une erreur est survenue lors de la suppression');
+                        console.error('Erreur lors de la mise à jour des stats:', error);
                     });
-                }
-            });
-        });
+            }
 
-        // Ajouter un gestionnaire pour le formulaire d'ajout d'aliment
-        const addFoodForm = document.querySelector('form[action="food-log.php"] input[name="action"][value="add_food_to_meal"]')?.closest('form');
-        if (addFoodForm) {
-            addFoodForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const formData = new FormData(this);
-                
-                fetch('food-log.php', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
+            // Modifier les gestionnaires d'événements pour la suppression
+            document.querySelectorAll('form[action="food-log.php"]').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    const action = this.querySelector('input[name="action"]').value;
+                    if (action === 'remove_food_from_meal' || action === 'delete_meal') {
+                        e.preventDefault();
+                        const formData = new FormData(this);
+                        
+                        fetch('food-log.php', {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Erreur réseau: ' + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                if (action === 'remove_food_from_meal') {
+                                    const row = this.closest('tr');
+                                    if (row) row.remove();
+                                } else if (action === 'delete_meal') {
+                                    const section = this.closest('.meal-section');
+                                    if (section) {
+                                        const mealContent = section.querySelector('.table-responsive');
+                                        if (mealContent) {
+                                            mealContent.innerHTML = `
+                                                <div class="alert alert-info">Aucun repas enregistré</div>
+                                            `;
+                                        }
+                                        
+                                        const mealActions = section.querySelector('.meal-actions');
+                                        if (mealActions) {
+                                            mealActions.innerHTML = `
+                                                <form action="food-log.php" method="POST">
+                                                    <input type="hidden" name="action" value="add_meal">
+                                                    <input type="hidden" name="meal_type" value="${this.querySelector('input[name="meal_type"]')?.value || ''}">
+                                                    <input type="hidden" name="date" value="<?php echo $date_filter; ?>">
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="fas fa-plus me-1"></i>Créer le repas
+                                                    </button>
+                                                </form>
+                                            `;
+                                        }
+                                    }
+                                }
+                                updateStats();
+                            } else {
+                                throw new Error(data.error || 'Une erreur est survenue lors de la suppression');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erreur:', error);
+                            alert(error.message || 'Une erreur est survenue lors de la suppression');
+                        });
                     }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erreur réseau: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Réponse d\'ajout d\'aliment:', data); // Debug
-                    if (data.success) {
-                        updateStats();
-                        window.location.reload();
-                    } else {
-                        throw new Error(data.error || 'Une erreur est survenue lors de l\'ajout de l\'aliment');
-                    }
-                })
-                .catch(error => {
-                    console.error('Erreur:', error);
-                    alert(error.message || 'Une erreur est survenue lors de l\'ajout de l\'aliment');
                 });
             });
-        }
-    });
-</script>
+        });
+    </script>
 </body>
 </html>
