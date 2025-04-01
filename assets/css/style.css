@@ -1240,6 +1240,7 @@ footer h5 {
     grid-template-columns: repeat(7, 1fr);
     gap: 0.5rem;
     text-align: center;
+    margin-bottom: 1rem;
 }
 
 .stats-item {
@@ -1264,6 +1265,33 @@ footer h5 {
     font-size: 1.2rem;
     color: var(--text-muted);
     margin-top: 0.5rem;
+}
+
+.macros-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    text-align: center;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.macro-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.macro-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.macro-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
 }
 
 /* Media Queries pour Mobile */
@@ -1293,6 +1321,19 @@ footer h5 {
     .stats-operation {
         font-size: 1rem;
         margin-top: 0.25rem;
+    }
+
+    .macros-grid {
+        gap: 0.5rem;
+        padding-top: 0.75rem;
+    }
+
+    .macro-value {
+        font-size: 1rem;
+    }
+
+    .macro-label {
+        font-size: 0.7rem;
     }
 
     .meal-section {

@@ -399,6 +399,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     error_log("Action GET : " . $action);
     error_log("ID du repas : " . $meal_id);
     
+    if ($action === 'get_stats') {
+        $date = isset($_GET['date']) ? sanitizeInput($_GET['date']) : date('Y-m-d');
+        
+        // Récupérer les repas du jour
+        $sql = "SELECT * FROM meals WHERE user_id = ? AND log_date = ?";
+        $meals = fetchAll($sql, [$user_id, $date]);
+        
+        // Récupérer les calories des exercices
+        $sql = "SELECT COALESCE(SUM(calories_burned), 0) as total_burned 
+                FROM exercise_logs 
+                WHERE user_id = ? AND DATE(log_date) = ?";
+        $exercise_calories = fetchOne($sql, [$user_id, $date])['total_burned'] ?? 0;
+        
+        // Récupérer l'objectif calorique
+        $sql = "SELECT goal_calories FROM user_calorie_needs WHERE user_id = ?";
+        $daily_goal = fetchOne($sql, [$user_id])['goal_calories'] ?? 0;
+        
+        // Calculer les totaux
+        $total_calories = array_sum(array_column($meals, 'total_calories'));
+        $total_protein = array_sum(array_column($meals, 'total_protein'));
+        $total_carbs = array_sum(array_column($meals, 'total_carbs'));
+        $total_fat = array_sum(array_column($meals, 'total_fat'));
+        $remaining_calories = $daily_goal - $total_calories + $exercise_calories;
+        
+        // Retourner les données en JSON
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'daily_goal' => $daily_goal,
+            'total_calories' => $total_calories,
+            'exercise_calories' => $exercise_calories,
+            'remaining_calories' => $remaining_calories,
+            'total_protein' => round($total_protein, 1),
+            'total_carbs' => round($total_carbs, 1),
+            'total_fat' => round($total_fat, 1)
+        ]);
+        exit;
+    }
+    
     if ($action === 'delete_meal' && $meal_id > 0) {
         error_log("=== DÉBUT DE LA SUPPRESSION DE REPAS VIA GET ===");
         try {
@@ -688,6 +727,20 @@ function updateMealTotals($meal_id) {
                     <div class="stats-label">Restants</div>
                 </div>
             </div>
+            <div class="macros-grid">
+                <div class="macro-item">
+                    <div class="macro-value"><?php echo round(array_sum(array_column($meals, 'total_protein')), 1); ?></div>
+                    <div class="macro-label">Protéines (g)</div>
+                </div>
+                <div class="macro-item">
+                    <div class="macro-value"><?php echo round(array_sum(array_column($meals, 'total_carbs')), 1); ?></div>
+                    <div class="macro-label">Glucides (g)</div>
+                </div>
+                <div class="macro-item">
+                    <div class="macro-value"><?php echo round(array_sum(array_column($meals, 'total_fat')), 1); ?></div>
+                    <div class="macro-label">Lipides (g)</div>
+                </div>
+            </div>
         </div>
 
         <div class="food-journal-header mb-4">
@@ -860,9 +913,18 @@ function updateMealTotals($meal_id) {
                             <?php else: 
                                 $meal = reset($type_meals);
                             ?>
-                                <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-primary">
-                                    <i class="fas fa-plus me-1"></i>Ajouter un aliment
-                                </a>
+                                <div class="d-flex gap-2">
+                                    <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>Ajouter un aliment
+                                    </a>
+                                    <form action="food-log.php" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?');">
+                                        <input type="hidden" name="action" value="delete_meal">
+                                        <input type="hidden" name="meal_id" value="<?php echo $meal['id']; ?>">
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -980,6 +1042,48 @@ function updateMealTotals($meal_id) {
                     }
                 });
             }
+
+            // Fonction pour mettre à jour les stats
+            function updateStats() {
+                fetch('food-log.php?action=get_stats&date=<?php echo $date_filter; ?>')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Mise à jour des calories
+                        document.querySelector('.stats-value:nth-child(1)').textContent = data.daily_goal;
+                        document.querySelector('.stats-value:nth-child(3)').textContent = data.total_calories;
+                        document.querySelector('.stats-value:nth-child(5)').textContent = data.exercise_calories;
+                        document.querySelector('.stats-value:nth-child(7)').textContent = data.remaining_calories;
+                        
+                        // Mise à jour des macronutriments
+                        document.querySelector('.macro-value:nth-child(1)').textContent = data.total_protein;
+                        document.querySelector('.macro-value:nth-child(2)').textContent = data.total_carbs;
+                        document.querySelector('.macro-value:nth-child(3)').textContent = data.total_fat;
+                    });
+            }
+
+            // Gestionnaire pour la suppression d'aliments
+            document.querySelectorAll('form[action="food-log.php"]').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    if (this.querySelector('input[name="action"]').value === 'remove_food_from_meal') {
+                        e.preventDefault();
+                        const formData = new FormData(this);
+                        
+                        fetch('food-log.php', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Supprimer la ligne du tableau
+                                this.closest('tr').remove();
+                                // Mettre à jour les stats
+                                updateStats();
+                            }
+                        });
+                    }
+                });
+            });
         });
     </script>
 </body>
