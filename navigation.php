@@ -96,6 +96,16 @@ foreach ($submenus as $menu => $items) {
                         Objectifs
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php echo $current_page === 'weight_logs' ? 'active' : ''; ?>" href="weight_logs.php">
+                        <i class="fas fa-weight me-1"></i>Suivi du poids
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php echo $current_page === 'suggestions' ? 'active' : ''; ?>" href="suggestions.php?type=alimentation">
+                        <i class="fas fa-robot me-1"></i>Mon Coach
+                    </a>
+                </li>
             </ul>
         </div>
     </div>

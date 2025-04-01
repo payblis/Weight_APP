@@ -133,7 +133,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 switch ($suggestion_type) {
                     case 'alimentation':
-                        $suggestion_content = generateMealSuggestion($user_profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods);
+                        // Récupérer les aliments préférés et à éviter
+                        $sql = "SELECT favorite_foods, blacklisted_foods FROM user_profiles WHERE user_id = ?";
+                        $food_preferences = fetchOne($sql, [$user_id]);
+                        $favorite_foods = $food_preferences ? explode(',', $food_preferences['favorite_foods']) : [];
+                        $blacklisted_foods = $food_preferences ? explode(',', $food_preferences['blacklisted_foods']) : [];
+
+                        // Récupérer le dernier poids enregistré
+                        $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
+                        $latest_weight = fetchOne($sql, [$user_id]);
+
+                        // Récupérer l'objectif actif
+                        $sql = "SELECT * FROM goals WHERE user_id = ? AND status = 'en_cours' ORDER BY created_at DESC LIMIT 1";
+                        $current_goal = fetchOne($sql, [$user_id]);
+
+                        // Récupérer le programme actif
+                        $sql = "SELECT p.* FROM user_programs up 
+                                JOIN programs p ON up.program_id = p.id 
+                                WHERE up.user_id = ? AND up.status = 'actif' 
+                                ORDER BY up.created_at DESC LIMIT 1";
+                        $active_program = fetchOne($sql, [$user_id]);
+
+                        // Générer la suggestion
+                        $meal_type = isset($_GET['meal_type']) ? $_GET['meal_type'] : 'dejeuner';
+                        $suggestion_content = generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods, $meal_type);
                         break;
                         
                     case 'exercice':
@@ -211,6 +234,72 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        @media (max-width: 768px) {
+            .nav-tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+            .nav-tabs::-webkit-scrollbar {
+                display: none;
+            }
+            .nav-tabs .nav-link {
+                white-space: nowrap;
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+            .card {
+                margin-bottom: 1rem;
+            }
+            .accordion-button {
+                padding: 0.75rem;
+                font-size: 0.9rem;
+            }
+            .btn-group {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .btn-group .btn {
+                width: 100%;
+                margin: 0;
+            }
+            .d-flex.justify-content-end {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .d-flex.justify-content-end .btn {
+                width: 100%;
+                margin: 0;
+            }
+            .card-header {
+                padding: 0.75rem;
+            }
+            .card-header h5 {
+                font-size: 1.1rem;
+                margin: 0;
+            }
+            .card-body {
+                padding: 0.75rem;
+            }
+            .small {
+                font-size: 0.8rem;
+            }
+            .mb-4 {
+                margin-bottom: 1rem !important;
+            }
+            .mt-4 {
+                margin-top: 1rem !important;
+            }
+            .py-4 {
+                padding-top: 1rem !important;
+                padding-bottom: 1rem !important;
+            }
+        }
+    </style>
 </head>
 <body>
     <?php include 'navigation.php'; ?>
@@ -218,16 +307,18 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
     <!-- Contenu principal -->
     <div class="container py-4">
         <div class="row mb-4">
-            <div class="col-md-8">
+            <div class="col-12 col-md-8">
                 <h1 class="mb-4">Suggestions IA</h1>
             </div>
-            <div class="col-md-4 text-md-end">
-                <a href="preferences.php" class="btn btn-primary">
-                    <i class="fas fa-cog me-1"></i>Préférences
-                </a>
-                <a href="food-management.php" class="btn btn-success">
-                    <i class="fas fa-apple-alt me-1"></i>Aliments
-                </a>
+            <div class="col-12 col-md-4 text-md-end mb-3 mb-md-0">
+                <div class="d-grid d-md-block gap-2">
+                    <a href="preferences.php" class="btn btn-primary">
+                        <i class="fas fa-cog me-1"></i>Préférences
+                    </a>
+                    <a href="food-management.php" class="btn btn-success">
+                        <i class="fas fa-apple-alt me-1"></i>Aliments
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -251,17 +342,17 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
         <ul class="nav nav-tabs mb-4">
             <li class="nav-item">
                 <a class="nav-link <?php echo $suggestion_type === 'alimentation' ? 'active' : ''; ?>" href="suggestions.php?type=alimentation">
-                    <i class="fas fa-utensils me-1"></i>Suggestions de repas
+                    <i class="fas fa-utensils me-1"></i>Repas
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo $suggestion_type === 'exercice' ? 'active' : ''; ?>" href="suggestions.php?type=exercice">
-                    <i class="fas fa-running me-1"></i>Suggestions d'exercices
+                    <i class="fas fa-running me-1"></i>Exercices
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php echo $suggestion_type === 'programme' ? 'active' : ''; ?>" href="suggestions.php?type=programme">
-                    <i class="fas fa-calendar-alt me-1"></i>Programmes personnalisés
+                    <i class="fas fa-calendar-alt me-1"></i>Programmes
                 </a>
             </li>
         </ul>
@@ -283,7 +374,19 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                             <form method="post" action="suggestions.php" id="suggestionForm">
                                 <input type="hidden" name="suggestion_type" value="<?php echo htmlspecialchars($suggestion_type); ?>">
                                 
-                                <p>
+                                <?php if ($suggestion_type === 'alimentation'): ?>
+                                <div class="mb-4">
+                                    <label for="meal_type" class="form-label">Type de repas</label>
+                                    <select id="meal_type" name="meal_type" class="form-select">
+                                        <option value="petit_dejeuner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'petit_dejeuner' ? 'selected' : ''; ?>>Petit-déjeuner</option>
+                                        <option value="dejeuner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'dejeuner' ? 'selected' : ''; ?>>Déjeuner</option>
+                                        <option value="diner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'diner' ? 'selected' : ''; ?>>Dîner</option>
+                                        <option value="collation" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'collation' ? 'selected' : ''; ?>>Collation</option>
+                                    </select>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <p class="mb-3">
                                     <?php if ($suggestion_type === 'alimentation'): ?>
                                         Générez des suggestions de repas adaptées à votre profil, vos objectifs et vos préférences alimentaires.
                                     <?php elseif ($suggestion_type === 'exercice'): ?>
@@ -294,7 +397,7 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                                 </p>
                                 
                                 <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary" id="generateButton">
+                                    <button type="submit" name="generate" class="btn btn-primary" id="generateButton">
                                         <i class="fas fa-robot me-1"></i>Générer une suggestion
                                     </button>
                                 </div>
@@ -384,11 +487,11 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                                                 <div class="mb-3">
                                                     <?php echo nl2br(htmlspecialchars($suggestion['content'])); ?>
                                                 </div>
-                                                <div class="d-flex justify-content-end">
+                                                <div class="d-flex flex-column flex-md-row justify-content-end gap-2">
                                                     <?php if (!$suggestion['is_read']): ?>
                                                         <form method="POST" action="mark_suggestion_read.php" style="display: inline;">
                                                             <input type="hidden" name="suggestion_id" value="<?php echo $suggestion['id']; ?>">
-                                                            <button type="submit" class="btn btn-sm btn-success me-2">
+                                                            <button type="submit" class="btn btn-sm btn-success w-100">
                                                                 <i class="fas fa-check me-1"></i>Marquer comme lu
                                                             </button>
                                                         </form>
@@ -396,12 +499,12 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                                                     <?php if (!$suggestion['is_implemented']): ?>
                                                         <form method="POST" action="mark_suggestion_implemented.php" style="display: inline;">
                                                             <input type="hidden" name="suggestion_id" value="<?php echo $suggestion['id']; ?>">
-                                                            <button type="submit" class="btn btn-sm btn-primary me-2">
+                                                            <button type="submit" class="btn btn-sm btn-primary w-100">
                                                                 <i class="fas fa-check-double me-1"></i>Marquer comme implémenté
                                                             </button>
                                                         </form>
                                                     <?php endif; ?>
-                                                    <a href="suggestions.php?type=<?php echo urlencode($suggestion_type); ?>&action=delete&id=<?php echo $suggestion['id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette suggestion ?');">
+                                                    <a href="suggestions.php?type=<?php echo urlencode($suggestion_type); ?>&action=delete&id=<?php echo $suggestion['id']; ?>" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette suggestion ?');">
                                                         <i class="fas fa-trash me-1"></i>Supprimer
                                                     </a>
                                                 </div>
@@ -423,7 +526,7 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-12 col-md-4 mb-4 mb-md-0">
                         <h6><i class="fas fa-utensils me-1"></i>Suggestions de repas</h6>
                         <p>
                             Les suggestions de repas sont générées en fonction de votre profil, vos objectifs de poids et vos préférences alimentaires.
@@ -433,7 +536,7 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                             <strong>Conseil :</strong> Ajoutez plus de préférences alimentaires pour obtenir des suggestions plus personnalisées.
                         </p>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-12 col-md-4 mb-4 mb-md-0">
                         <h6><i class="fas fa-running me-1"></i>Suggestions d'exercices</h6>
                         <p>
                             Les suggestions d'exercices sont adaptées à votre niveau d'activité et vos objectifs.
@@ -443,7 +546,7 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                             <strong>Conseil :</strong> Mettez à jour votre niveau d'activité dans votre profil pour des suggestions plus précises.
                         </p>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-12 col-md-4">
                         <h6><i class="fas fa-calendar-alt me-1"></i>Programmes personnalisés</h6>
                         <p>
                             Les programmes personnalisés combinent nutrition et exercice pour créer un plan complet adapté à vos objectifs.
