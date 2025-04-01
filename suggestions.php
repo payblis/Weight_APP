@@ -65,7 +65,7 @@ $sql = "SELECT * FROM user_calorie_needs
 $calorie_needs = fetchOne($sql, [$user_id]);
 
 // Initialiser les variables
-$suggestion_type = isset($_GET['type']) ? sanitizeInput($_GET['type']) : 'repas';
+$suggestion_type = isset($_GET['type']) ? sanitizeInput($_GET['type']) : 'alimentation';
 $success_message = '';
 $errors = [];
 
@@ -119,9 +119,9 @@ foreach ($preferences as $pref) {
 
 // Traitement de la demande de suggestion
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $suggestion_type = sanitizeInput($_POST['suggestion_type'] ?? 'repas');
+    $suggestion_type = sanitizeInput($_POST['suggestion_type'] ?? 'alimentation');
     
-    if (!in_array($suggestion_type, ['repas', 'exercice', 'programme'])) {
+    if (!in_array($suggestion_type, ['alimentation', 'exercice', 'programme'])) {
         $errors[] = "Type de suggestion invalide";
     } else {
         try {
@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = "Veuillez compléter votre profil avant d'utiliser les suggestions.";
             } else {
                 switch ($suggestion_type) {
-                    case 'repas':
+                    case 'alimentation':
                         $suggestion_content = generateMealSuggestion($user_profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods);
                         break;
                         
@@ -250,7 +250,7 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
         <!-- Onglets de navigation -->
         <ul class="nav nav-tabs mb-4">
             <li class="nav-item">
-                <a class="nav-link <?php echo $suggestion_type === 'repas' ? 'active' : ''; ?>" href="suggestions.php?type=repas">
+                <a class="nav-link <?php echo $suggestion_type === 'alimentation' ? 'active' : ''; ?>" href="suggestions.php?type=alimentation">
                     <i class="fas fa-utensils me-1"></i>Suggestions de repas
                 </a>
             </li>
@@ -284,7 +284,7 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                                 <input type="hidden" name="suggestion_type" value="<?php echo htmlspecialchars($suggestion_type); ?>">
                                 
                                 <p>
-                                    <?php if ($suggestion_type === 'repas'): ?>
+                                    <?php if ($suggestion_type === 'alimentation'): ?>
                                         Générez des suggestions de repas adaptées à votre profil, vos objectifs et vos préférences alimentaires.
                                     <?php elseif ($suggestion_type === 'exercice'): ?>
                                         Générez des suggestions d'exercices adaptées à votre niveau d'activité et vos objectifs de poids.
@@ -349,7 +349,7 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">
                             <?php 
-                            if ($suggestion_type === 'repas') {
+                            if ($suggestion_type === 'alimentation') {
                                 echo 'Suggestions de repas';
                             } elseif ($suggestion_type === 'exercice') {
                                 echo 'Suggestions d\'exercices';

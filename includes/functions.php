@@ -1983,14 +1983,16 @@ function generateExerciseSuggestion($profile, $latest_weight, $current_goal, $ac
         }
 
         // Construire le prompt
-        $prompt = "En tant que coach sportif professionnel, génère un programme d'exercices adapté au profil suivant :
+        $prompt = "Tu es un coach sportif professionnel expert en fitness et en musculation. Ta tâche est de générer un programme d'exercices adapté au profil suivant :
+
 - Poids : {$profile['weight']} kg
 - Taille : {$profile['height']} cm
 - Âge : {$profile['age']} ans
 - Niveau d'activité : {$profile['activity_level']}
 - Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
 
-IMPORTANT : Réponds UNIQUEMENT avec un objet JSON contenant les champs suivants, sans aucun texte supplémentaire :
+IMPORTANT : Tu dois répondre UNIQUEMENT avec un objet JSON contenant les champs suivants, sans aucun texte supplémentaire, sans aucune suggestion de repas ou de nutrition :
+
 {
     \"nom_du_programme\": \"string\",
     \"objectif\": \"string\",
@@ -2008,7 +2010,14 @@ IMPORTANT : Réponds UNIQUEMENT avec un objet JSON contenant les champs suivants
     ]
 }
 
-Ne fournis PAS de suggestions de repas ou d'autres informations non liées aux exercices.";
+Les exercices doivent être :
+1. Adaptés au niveau d'activité de l'utilisateur
+2. Respecter les objectifs du programme choisi
+3. Être réalistes et réalisables
+4. Inclure un mélange de cardio, renforcement musculaire et flexibilité
+5. Ne pas inclure de suggestions alimentaires ou nutritionnelles
+
+Ne fournis PAS de suggestions de repas ou d'autres informations non liées aux exercices. Tu es un coach sportif, pas un nutritionniste.";
 
         // Appeler l'API ChatGPT
         $response = callChatGPTAPI($prompt, $api_key);
