@@ -267,6 +267,9 @@ if (!empty($pending_invitations)):
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.css">
     <script src="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.js"></script>
     <style>
+        body {
+            background-color: #fbfbfb;
+        }
         .dashboard-container {
             max-width: 992px;
             margin: 0 auto;
@@ -294,6 +297,19 @@ if (!empty($pending_invitations)):
             .calories-details {
                 padding-top: 0.5rem;
             }
+            .calories-details .detail-item {
+                text-align: center;
+                margin-bottom: 1rem;
+            }
+            .calories-details .detail-item span {
+                display: block;
+                margin-bottom: 0.25rem;
+                font-size: 0.9rem;
+            }
+            .calories-details .detail-item strong {
+                display: block;
+                font-size: 1.1rem;
+            }
             .progress-circle {
                 width: 120px;
                 height: 120px;
@@ -305,27 +321,34 @@ if (!empty($pending_invitations)):
             .progress-circle .text-muted {
                 font-size: 0.8rem;
             }
-            .card-title {
-                font-size: 1.1rem;
-                margin-bottom: 0.5rem;
+            .exercise-swiper .swiper-slide {
+                width: 48%;
             }
-            .text-muted {
-                font-size: 0.8rem;
+        }
+
+        .hydration-container {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        .water-drop {
+            width: 150px;
+            height: 150px;
+            margin: 0;
+        }
+        .water-actions {
+            flex: 1;
+        }
+        @media (max-width: 768px) {
+            .water-drop {
+                width: 120px;
+                height: 120px;
             }
-            .calories-details .d-flex {
-                margin-bottom: 0.5rem;
-            }
-            .calories-details .d-flex:last-child {
-                margin-bottom: 0;
-            }
-            .calories-details i {
-                font-size: 0.9rem;
-            }
-            .calories-details span {
-                font-size: 0.9rem;
-            }
-            .calories-details strong {
-                font-size: 0.9rem;
+        }
+
+        @media (min-width: 768px) {
+            .exercise-swiper .swiper-slide {
+                width: 23%;
             }
         }
         .card {
@@ -351,11 +374,6 @@ if (!empty($pending_invitations)):
             height: 180px;
             flex-shrink: 0;
         }
-        @media (min-width: 768px) {
-            .exercise-swiper .swiper-slide {
-                width: 23%;
-            }
-        }
         .exercise-card {
             background: #f8f9fa;
             border-radius: 12px;
@@ -369,11 +387,6 @@ if (!empty($pending_invitations)):
         .macro-circle {
             width: 100px;
             height: 100px;
-            margin: 0 auto;
-        }
-        .water-drop {
-            width: 150px;
-            height: 150px;
             margin: 0 auto;
         }
         .info-icon {
@@ -450,24 +463,24 @@ if (!empty($pending_invitations)):
                                     </div>
 
                                     <div class="calories-details">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <div class="d-flex align-items-center">
+                                        <div class="detail-item mb-3">
+                                            <div class="d-flex align-items-center justify-content-center mb-2">
                                                 <i class="fas fa-flag text-primary me-2"></i>
                                                 <span>Objectif de base</span>
                                             </div>
                                             <strong><?php echo number_format($calorie_goal); ?></strong>
                                         </div>
 
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <div class="d-flex align-items-center">
+                                        <div class="detail-item mb-3">
+                                            <div class="d-flex align-items-center justify-content-center mb-2">
                                                 <i class="fas fa-utensils text-success me-2"></i>
                                                 <span>Aliments</span>
                                             </div>
                                             <strong><?php echo number_format($calories_in); ?></strong>
                                         </div>
 
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div class="d-flex align-items-center">
+                                        <div class="detail-item">
+                                            <div class="d-flex align-items-center justify-content-center mb-2">
                                                 <i class="fas fa-fire text-danger me-2"></i>
                                                 <span>Exercices</span>
                                             </div>
@@ -556,7 +569,7 @@ if (!empty($pending_invitations)):
                         <div class="card h-100">
                             <div class="card-body">
                                 <h5 class="card-title mb-4">Hydratation</h5>
-                                <div class="text-center mb-4">
+                                <div class="hydration-container">
                                     <div class="water-drop position-relative">
                                         <svg width="150" height="150" viewBox="0 0 100 100">
                                             <path d="M50,10 L70,40 A30,30 0 1,1 30,40 L50,10" 
@@ -569,22 +582,24 @@ if (!empty($pending_invitations)):
                                             <strong><?php echo number_format($water_consumed, 1); ?>L</strong>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div class="row g-2">
-                                    <?php
-                                    $water_amounts = [0.25, 0.5, 0.75, 1];
-                                    foreach ($water_amounts as $amount):
-                                    ?>
-                                    <div class="col-6">
-                                        <form action="water-log.php" method="POST">
-                                            <input type="hidden" name="amount" value="<?php echo $amount; ?>">
-                                            <button type="submit" class="btn btn-outline-info w-100">
-                                                +<?php echo number_format($amount, 2); ?>L
-                                            </button>
-                                        </form>
+                                    
+                                    <div class="water-actions">
+                                        <div class="row g-2">
+                                            <?php
+                                            $water_amounts = [0.25, 0.5, 0.75, 1];
+                                            foreach ($water_amounts as $amount):
+                                            ?>
+                                            <div class="col-6">
+                                                <form action="water-log.php" method="POST">
+                                                    <input type="hidden" name="amount" value="<?php echo $amount; ?>">
+                                                    <button type="submit" class="btn btn-outline-info w-100">
+                                                        +<?php echo number_format($amount, 2); ?>L
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            <?php endforeach; ?>
+                                        </div>
                                     </div>
-                                    <?php endforeach; ?>
                                 </div>
                             </div>
                         </div>
@@ -782,24 +797,24 @@ if (!empty($pending_invitations)):
                                 </div>
 
                                 <div class="calories-details">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <div class="d-flex align-items-center">
+                                    <div class="detail-item mb-3">
+                                        <div class="d-flex align-items-center justify-content-center mb-2">
                                             <i class="fas fa-flag text-primary me-2"></i>
                                             <span>Objectif de base</span>
                                         </div>
                                         <strong><?php echo number_format($calorie_goal); ?></strong>
                                     </div>
 
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <div class="d-flex align-items-center">
+                                    <div class="detail-item mb-3">
+                                        <div class="d-flex align-items-center justify-content-center mb-2">
                                             <i class="fas fa-utensils text-success me-2"></i>
                                             <span>Aliments</span>
                                         </div>
                                         <strong><?php echo number_format($calories_in); ?></strong>
                                     </div>
 
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div class="d-flex align-items-center">
+                                    <div class="detail-item">
+                                        <div class="d-flex align-items-center justify-content-center mb-2">
                                             <i class="fas fa-fire text-danger me-2"></i>
                                             <span>Exercices</span>
                                         </div>
@@ -889,7 +904,7 @@ if (!empty($pending_invitations)):
                         <div class="card-body">
                             <h5 class="card-title mb-4">Hydratation</h5>
                             
-                            <div class="text-center mb-4">
+                            <div class="hydration-container">
                                 <div class="water-drop position-relative">
                                     <svg width="150" height="150" viewBox="0 0 100 100">
                                         <path d="M50,10 L70,40 A30,30 0 1,1 30,40 L50,10" 
@@ -902,22 +917,24 @@ if (!empty($pending_invitations)):
                                         <strong><?php echo number_format($water_consumed, 1); ?>L</strong>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="row g-2">
-                                <?php
-                                $water_amounts = [0.25, 0.5, 0.75, 1];
-                                foreach ($water_amounts as $amount):
-                                ?>
-                                <div class="col-6">
-                                    <form action="water-log.php" method="POST">
-                                        <input type="hidden" name="amount" value="<?php echo $amount; ?>">
-                                        <button type="submit" class="btn btn-outline-info w-100">
-                                            +<?php echo number_format($amount, 2); ?>L
-                                        </button>
-                                    </form>
+                                
+                                <div class="water-actions">
+                                    <div class="row g-2">
+                                        <?php
+                                        $water_amounts = [0.25, 0.5, 0.75, 1];
+                                        foreach ($water_amounts as $amount):
+                                        ?>
+                                        <div class="col-6">
+                                            <form action="water-log.php" method="POST">
+                                                <input type="hidden" name="amount" value="<?php echo $amount; ?>">
+                                                <button type="submit" class="btn btn-outline-info w-100">
+                                                    +<?php echo number_format($amount, 2); ?>L
+                                                </button>
+                                            </form>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
-                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
