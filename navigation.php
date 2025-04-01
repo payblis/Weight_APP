@@ -73,27 +73,27 @@ foreach ($submenus as $menu => $items) {
             <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">
-                        Mon Accueil
+                        <i class="fas fa-home me-1"></i>Mon Accueil
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo in_array($current_page, ['food-log.php', 'food-management.php', 'preferences.php']) ? 'active' : ''; ?>" href="food-log.php">
-                        Aliments
+                        <i class="fas fa-utensils me-1"></i>Aliments
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo in_array($current_page, ['exercise-log.php', 'programs.php']) ? 'active' : ''; ?>" href="exercise-log.php">
-                        Exercices
+                        <i class="fas fa-dumbbell me-1"></i>Exercices
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo in_array($current_page, ['weight-log.php', 'calorie-history.php', 'reports.php']) ? 'active' : ''; ?>" href="reports.php">
-                        Rapports
+                        <i class="fas fa-chart-bar me-1"></i>Rapports
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'goals.php' ? 'active' : ''; ?>" href="goals.php">
-                        Objectifs
+                        <i class="fas fa-bullseye me-1"></i>Objectifs
                     </a>
                 </li>
                 <li class="nav-item">

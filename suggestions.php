@@ -413,33 +413,98 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                         <?php endif; ?>
                         
                         <div class="mt-3">
-                            <h6>Informations utilisées :</h6>
+                            <h6>Informations utilisées pour la génération :</h6>
                             <ul class="small">
                                 <?php if ($profile): ?>
-                                    <li>Profil : <?php echo $profile['gender'] === 'homme' ? 'Homme' : 'Femme'; ?>, <?php echo isset($profile['birth_date']) ? calculateAge($profile['birth_date']) : '?'; ?> ans</li>
+                                    <li>
+                                        <strong>Profil :</strong>
+                                        <ul class="mb-0">
+                                            <li>Genre : <?php echo $profile['gender'] === 'homme' ? 'Homme' : 'Femme'; ?></li>
+                                            <li>Âge : <?php echo isset($profile['birth_date']) ? calculateAge($profile['birth_date']) : 'Non renseigné'; ?> ans</li>
+                                            <li>Taille : <?php echo $profile['height']; ?> cm</li>
+                                            <li>Niveau d'activité : <?php echo $profile['activity_level']; ?></li>
+                                        </ul>
+                                    </li>
                                 <?php else: ?>
-                                    <li>Profil : Non renseigné</li>
+                                    <li><strong>Profil :</strong> Non renseigné</li>
                                 <?php endif; ?>
                                 
                                 <?php if ($latest_weight): ?>
-                                    <li>Poids actuel : <?php echo number_format($latest_weight['weight'], 1); ?> kg</li>
+                                    <li>
+                                        <strong>Poids actuel :</strong> <?php echo number_format($latest_weight['weight'], 1); ?> kg
+                                        <?php if ($current_goal): ?>
+                                            <br>Objectif : <?php echo number_format($current_goal['target_weight'], 1); ?> kg
+                                            <br>Différence : <?php echo number_format($current_goal['target_weight'] - $latest_weight['weight'], 1); ?> kg
+                                        <?php endif; ?>
+                                    </li>
                                 <?php else: ?>
-                                    <li>Poids actuel : Non renseigné</li>
+                                    <li><strong>Poids actuel :</strong> Non renseigné</li>
                                 <?php endif; ?>
                                 
                                 <?php if ($current_goal): ?>
-                                    <li>Objectif : <?php echo number_format($current_goal['target_weight'], 1); ?> kg</li>
+                                    <li>
+                                        <strong>Objectif :</strong>
+                                        <ul class="mb-0">
+                                            <li>Type : <?php echo $current_goal['goal_type']; ?></li>
+                                            <li>Poids cible : <?php echo number_format($current_goal['target_weight'], 1); ?> kg</li>
+                                            <li>Date cible : <?php echo date('d/m/Y', strtotime($current_goal['target_date'])); ?></li>
+                                        </ul>
+                                    </li>
                                 <?php else: ?>
-                                    <li>Objectif : Non défini</li>
+                                    <li><strong>Objectif :</strong> Non défini</li>
                                 <?php endif; ?>
                                 
                                 <?php if ($active_program): ?>
-                                    <li>Programme : <?php echo htmlspecialchars($active_program['name']); ?></li>
+                                    <li>
+                                        <strong>Programme actif :</strong>
+                                        <ul class="mb-0">
+                                            <li>Nom : <?php echo htmlspecialchars($active_program['name']); ?></li>
+                                            <li>Description : <?php echo htmlspecialchars($active_program['description']); ?></li>
+                                            <li>Type : <?php echo $active_program['program_type']; ?></li>
+                                        </ul>
+                                    </li>
                                 <?php else: ?>
-                                    <li>Programme : Aucun</li>
+                                    <li><strong>Programme :</strong> Aucun</li>
                                 <?php endif; ?>
                                 
-                                <li>Préférences : <?php echo count($favorite_foods) + count($blacklisted_foods); ?> aliments configurés</li>
+                                <li>
+                                    <strong>Préférences alimentaires :</strong>
+                                    <ul class="mb-0">
+                                        <li>Aliments préférés : <?php echo count($favorite_foods); ?> configurés</li>
+                                        <li>Aliments à éviter : <?php echo count($blacklisted_foods); ?> configurés</li>
+                                    </ul>
+                                </li>
+
+                                <?php if ($suggestion_type === 'alimentation'): ?>
+                                    <?php
+                                    // Récupérer les objectifs nutritionnels
+                                    $sql = "SELECT daily_calories, protein_ratio, carbs_ratio, fat_ratio FROM user_profiles WHERE user_id = ?";
+                                    $nutrition_goals = fetchOne($sql, [$user_id]);
+                                    
+                                    if ($nutrition_goals):
+                                        $meal_ratios = [
+                                            'petit_dejeuner' => 0.25,
+                                            'dejeuner' => 0.35,
+                                            'diner' => 0.30,
+                                            'collation' => 0.10
+                                        ];
+                                        $meal_type = isset($_GET['meal_type']) ? $_GET['meal_type'] : 'dejeuner';
+                                        $max_calories = round($nutrition_goals['daily_calories'] * $meal_ratios[$meal_type]);
+                                        $max_protein = round(($max_calories * $nutrition_goals['protein_ratio']) / 4);
+                                        $max_carbs = round(($max_calories * $nutrition_goals['carbs_ratio']) / 4);
+                                        $max_fat = round(($max_calories * $nutrition_goals['fat_ratio']) / 9);
+                                    ?>
+                                        <li>
+                                            <strong>Limites nutritionnelles pour <?php echo ucfirst(str_replace('_', ' ', $meal_type)); ?> :</strong>
+                                            <ul class="mb-0">
+                                                <li>Calories maximales : <?php echo $max_calories; ?> kcal</li>
+                                                <li>Protéines maximales : <?php echo $max_protein; ?> g</li>
+                                                <li>Glucides maximaux : <?php echo $max_carbs; ?> g</li>
+                                                <li>Lipides maximaux : <?php echo $max_fat; ?> g</li>
+                                            </ul>
+                                        </li>
+                                    <?php endif; ?>
+                                <?php endif; ?>
                             </ul>
                         </div>
                     </div>
