@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
                     $result = insert($sql, [
                         $user_id, 
-                        $food_id > 0 ? $food_id : 0,  // Utiliser 0 au lieu de NULL
+                        $food_id > 0 ? $food_id : 0,
                         !empty($custom_food_name) ? $custom_food_name : '', 
                         $quantity, 
                         $custom_calories, 
@@ -169,20 +169,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]);
                     
                     if ($result) {
-                        // Debug: Afficher les informations de l'aliment ajouté
-                        error_log("Aliment ajouté avec succès: " . print_r([
-                            'food_id' => $food_id,
-                            'custom_food_name' => $custom_food_name,
-                            'quantity' => $quantity,
-                            'custom_calories' => $custom_calories,
-                            'custom_protein' => $custom_protein,
-                            'custom_carbs' => $custom_carbs,
-                            'custom_fat' => $custom_fat
-                        ], true));
-                        
                         // Mettre à jour les totaux du repas
                         updateMealTotals($meal_id);
-                        $success_message = "Aliment ajouté au repas avec succès";
+                        
+                        // Si c'est une requête AJAX, retourner une réponse JSON
+                        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                            header('Content-Type: application/json');
+                            echo json_encode(['success' => true]);
+                            exit;
+                        } else {
+                            $success_message = "Aliment ajouté au repas avec succès";
+                            redirect("food-log.php?action=edit_meal&meal_id={$meal_id}");
+                        }
                     } else {
                         $errors[] = "Une erreur s'est produite lors de l'ajout de l'aliment";
                     }
@@ -1524,6 +1522,36 @@ echo "</div>";
                 });
             }
 
+            // Gestionnaire pour le formulaire d'ajout d'aliment
+            const addFoodForm = document.querySelector('form[action="food-log.php"] input[name="action"][value="add_food_to_meal"]').closest('form');
+            if (addFoodForm) {
+                addFoodForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    
+                    fetch('food-log.php', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Recharger la page pour afficher le nouvel aliment
+                            window.location.reload();
+                        } else {
+                            alert('Une erreur est survenue lors de l\'ajout de l\'aliment');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert('Une erreur est survenue lors de l\'ajout de l\'aliment');
+                    });
+                });
+            }
+
             // Modifier les gestionnaires d'événements pour la suppression
             document.querySelectorAll('form[action="food-log.php"]').forEach(form => {
                 form.addEventListener('submit', function(e) {
@@ -1539,12 +1567,7 @@ echo "</div>";
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
                         })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Erreur réseau: ' + response.status);
-                            }
-                            return response.json();
-                        })
+                        .then(response => response.json())
                         .then(data => {
                             if (data.success) {
                                 if (action === 'remove_food_from_meal') {
