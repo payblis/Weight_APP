@@ -1102,7 +1102,7 @@ footer h5 {
     border-radius: 0.375rem;
     font-weight: 500;
     cursor: pointer;
-    display: block;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
 }
