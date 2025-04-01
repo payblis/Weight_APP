@@ -518,6 +518,35 @@ $previous_date = date('Y-m-d', strtotime($selected_date . ' -1 day'));
 $next_date = date('Y-m-d', strtotime($selected_date . ' +1 day'));
 
 // Récupérer les objectifs quotidiens de l'utilisateur
+$sql = "SHOW TABLES LIKE 'user_goals'";
+$table_exists = fetchOne($sql);
+
+if (!$table_exists) {
+    // Créer la table user_goals si elle n'existe pas
+    $sql = "CREATE TABLE IF NOT EXISTS user_goals (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        daily_calories INT DEFAULT 2000,
+        daily_protein INT DEFAULT 50,
+        daily_carbs INT DEFAULT 250,
+        daily_fat INT DEFAULT 70,
+        daily_sodium INT DEFAULT 2300,
+        daily_sugar INT DEFAULT 50,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )";
+    try {
+        $pdo->exec($sql);
+        // Insérer les objectifs par défaut pour l'utilisateur
+        $sql = "INSERT INTO user_goals (user_id) VALUES (?)";
+        insert($sql, [$user_id]);
+    } catch (Exception $e) {
+        error_log("Erreur lors de la création de la table user_goals : " . $e->getMessage());
+    }
+}
+
+// Récupérer les objectifs quotidiens de l'utilisateur
 $sql = "SELECT daily_calories, daily_protein, daily_carbs, daily_fat, daily_sodium, daily_sugar FROM user_goals WHERE user_id = ?";
 $goals = fetchOne($sql, [$user_id]) ?? [
     'daily_calories' => 2000,
@@ -534,9 +563,7 @@ function getMealsByType($user_id, $date, $meal_type) {
             SUM(fl.custom_calories) as total_calories,
             SUM(fl.custom_protein) as total_protein,
             SUM(fl.custom_carbs) as total_carbs,
-            SUM(fl.custom_fat) as total_fat,
-            SUM(fl.custom_sodium) as total_sodium,
-            SUM(fl.custom_sugar) as total_sugar
+            SUM(fl.custom_fat) as total_fat
             FROM meals m 
             LEFT JOIN food_logs fl ON m.id = fl.meal_id
             WHERE m.user_id = ? AND m.log_date = ? AND m.meal_type = ?
@@ -549,9 +576,7 @@ $sql = "SELECT
         SUM(fl.custom_calories) as total_calories,
         SUM(fl.custom_protein) as total_protein,
         SUM(fl.custom_carbs) as total_carbs,
-        SUM(fl.custom_fat) as total_fat,
-        SUM(fl.custom_sodium) as total_sodium,
-        SUM(fl.custom_sugar) as total_sugar
+        SUM(fl.custom_fat) as total_fat
         FROM meals m 
         LEFT JOIN food_logs fl ON m.id = fl.meal_id
         WHERE m.user_id = ? AND m.log_date = ?";
@@ -563,6 +588,38 @@ $daily_totals = fetchOne($sql, [$user_id, $selected_date]) ?? [
     'total_sodium' => 0,
     'total_sugar' => 0
 ];
+
+// Récupérer les repas de la journée
+$sql = "SELECT m.*, 
+        COUNT(fl.id) as food_count,
+        SUM(fl.custom_calories) as total_calories,
+        SUM(fl.custom_protein) as total_protein,
+        SUM(fl.custom_carbs) as total_carbs,
+        SUM(fl.custom_fat) as total_fat
+        FROM meals m 
+        LEFT JOIN food_logs fl ON m.id = fl.meal_id
+        WHERE m.user_id = ? AND m.log_date = ?
+        GROUP BY m.id
+        ORDER BY m.meal_type, m.created_at";
+$meals = fetchAll($sql, [$user_id, $selected_date]);
+
+// Récupérer les repas prédéfinis
+$sql = "SELECT * FROM predefined_meals 
+        WHERE user_id = ? OR is_public = 1 OR created_by_admin = 1
+        ORDER BY created_by_admin DESC, is_public DESC, created_at DESC";
+$predefined_meals = fetchAll($sql, [$user_id]);
+
+// Récupérer l'historique des repas
+$sql = "SELECT m.*, 
+        COUNT(fl.id) as food_count,
+        SUM(fl.custom_calories) as total_calories
+        FROM meals m 
+        LEFT JOIN food_logs fl ON m.id = fl.meal_id
+        WHERE m.user_id = ?
+        GROUP BY m.id
+        ORDER BY m.log_date DESC, m.meal_type
+        LIMIT 10";
+$meal_history = fetchAll($sql, [$user_id]);
 
 // Inclure l'en-tête
 include 'header.php';
@@ -612,8 +669,54 @@ include 'header.php';
             <p class="text-gray-500 italic">Aucun aliment enregistré</p>
         <?php else:
             foreach ($breakfast_meals as $meal):
-                // Afficher les aliments du petit déjeuner
-            endforeach;
+                // Récupérer les aliments du repas
+                $sql = "SELECT fl.*, f.name as food_name 
+                        FROM food_logs fl 
+                        LEFT JOIN foods f ON fl.food_id = f.id 
+                        WHERE fl.meal_id = ?";
+                $foods = fetchAll($sql, [$meal['id']]);
+                ?>
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                    <div class="grid grid-cols-6 gap-4">
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_calories']) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_carbs'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_fat'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_protein'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_sodium'] ?? 0) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_sugar'] ?? 0, 1) ?></div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <?php foreach ($foods as $food): ?>
+                            <div class="flex justify-between items-center py-2 border-b">
+                                <div>
+                                    <?= $food['food_name'] ?: $food['custom_food_name'] ?>
+                                    <span class="text-sm text-gray-500">(<?= $food['quantity'] ?>g)</span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="editFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach;
         endif;
         ?>
     </div>
@@ -632,8 +735,54 @@ include 'header.php';
             <p class="text-gray-500 italic">Aucun aliment enregistré</p>
         <?php else:
             foreach ($lunch_meals as $meal):
-                // Afficher les aliments du déjeuner
-            endforeach;
+                // Récupérer les aliments du repas
+                $sql = "SELECT fl.*, f.name as food_name 
+                        FROM food_logs fl 
+                        LEFT JOIN foods f ON fl.food_id = f.id 
+                        WHERE fl.meal_id = ?";
+                $foods = fetchAll($sql, [$meal['id']]);
+                ?>
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                    <div class="grid grid-cols-6 gap-4">
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_calories']) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_carbs'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_fat'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_protein'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_sodium'] ?? 0) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_sugar'] ?? 0, 1) ?></div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <?php foreach ($foods as $food): ?>
+                            <div class="flex justify-between items-center py-2 border-b">
+                                <div>
+                                    <?= $food['food_name'] ?: $food['custom_food_name'] ?>
+                                    <span class="text-sm text-gray-500">(<?= $food['quantity'] ?>g)</span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="editFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach;
         endif;
         ?>
     </div>
@@ -652,8 +801,54 @@ include 'header.php';
             <p class="text-gray-500 italic">Aucun aliment enregistré</p>
         <?php else:
             foreach ($dinner_meals as $meal):
-                // Afficher les aliments du dîner
-            endforeach;
+                // Récupérer les aliments du repas
+                $sql = "SELECT fl.*, f.name as food_name 
+                        FROM food_logs fl 
+                        LEFT JOIN foods f ON fl.food_id = f.id 
+                        WHERE fl.meal_id = ?";
+                $foods = fetchAll($sql, [$meal['id']]);
+                ?>
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                    <div class="grid grid-cols-6 gap-4">
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_calories']) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_carbs'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_fat'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_protein'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_sodium'] ?? 0) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_sugar'] ?? 0, 1) ?></div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <?php foreach ($foods as $food): ?>
+                            <div class="flex justify-between items-center py-2 border-b">
+                                <div>
+                                    <?= $food['food_name'] ?: $food['custom_food_name'] ?>
+                                    <span class="text-sm text-gray-500">(<?= $food['quantity'] ?>g)</span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="editFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach;
         endif;
         ?>
     </div>
@@ -672,8 +867,54 @@ include 'header.php';
             <p class="text-gray-500 italic">Aucun aliment enregistré</p>
         <?php else:
             foreach ($snack_meals as $meal):
-                // Afficher les aliments des snacks
-            endforeach;
+                // Récupérer les aliments du repas
+                $sql = "SELECT fl.*, f.name as food_name 
+                        FROM food_logs fl 
+                        LEFT JOIN foods f ON fl.food_id = f.id 
+                        WHERE fl.meal_id = ?";
+                $foods = fetchAll($sql, [$meal['id']]);
+                ?>
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                    <div class="grid grid-cols-6 gap-4">
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_calories']) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_carbs'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_fat'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_protein'], 1) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_sodium'] ?? 0) ?></div>
+                        </div>
+                        <div class="text-center">
+                            <div class="font-bold"><?= number_format($meal['total_sugar'] ?? 0, 1) ?></div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <?php foreach ($foods as $food): ?>
+                            <div class="flex justify-between items-center py-2 border-b">
+                                <div>
+                                    <?= $food['food_name'] ?: $food['custom_food_name'] ?>
+                                    <span class="text-sm text-gray-500">(<?= $food['quantity'] ?>g)</span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="editFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach;
         endif;
         ?>
     </div>
@@ -698,11 +939,11 @@ include 'header.php';
                 <div class="text-sm text-gray-600">/ <?= number_format($goals['daily_protein']) ?></div>
             </div>
             <div class="text-center">
-                <div class="font-bold"><?= number_format($daily_totals['total_sodium']) ?></div>
+                <div class="font-bold"><?= number_format($daily_totals['total_sodium'] ?? 0) ?></div>
                 <div class="text-sm text-gray-600">/ <?= number_format($goals['daily_sodium']) ?></div>
             </div>
             <div class="text-center">
-                <div class="font-bold"><?= number_format($daily_totals['total_sugar'], 1) ?></div>
+                <div class="font-bold"><?= number_format($daily_totals['total_sugar'] ?? 0, 1) ?></div>
                 <div class="text-sm text-gray-600">/ <?= number_format($goals['daily_sugar']) ?></div>
             </div>
         </div>
@@ -718,13 +959,52 @@ include 'header.php';
             <input type="hidden" name="meal_type" id="meal_type">
             
             <div class="mb-4">
-                <label for="food_search">Rechercher un aliment:</label>
-                <input type="text" id="food_search" class="form-input" placeholder="Tapez pour rechercher...">
+                <label for="food_id">Sélectionner un aliment:</label>
+                <select name="food_id" id="food_id" class="form-select" required>
+                    <option value="">Sélectionnez un aliment</option>
+                    <?php
+                    $sql = "SELECT * FROM foods ORDER BY name";
+                    $foods = fetchAll($sql);
+                    foreach ($foods as $food): ?>
+                        <option value="<?= $food['id'] ?>" 
+                                data-calories="<?= $food['calories'] ?>"
+                                data-protein="<?= $food['protein'] ?>"
+                                data-carbs="<?= $food['carbs'] ?>"
+                                data-fat="<?= $food['fat'] ?>">
+                            <?= htmlspecialchars($food['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label for="custom_food_name">Ou saisir un aliment personnalisé:</label>
+                <input type="text" name="custom_food_name" id="custom_food_name" class="form-input">
             </div>
 
             <div class="mb-4">
                 <label for="quantity">Quantité (g):</label>
-                <input type="number" name="quantity" id="quantity" class="form-input" value="100">
+                <input type="number" name="quantity" id="quantity" class="form-input" value="100" required>
+            </div>
+
+            <div class="mb-4">
+                <label for="custom_calories">Calories:</label>
+                <input type="number" name="custom_calories" id="custom_calories" class="form-input" value="0">
+            </div>
+
+            <div class="mb-4">
+                <label for="custom_protein">Protéines (g):</label>
+                <input type="number" step="0.1" name="custom_protein" id="custom_protein" class="form-input" value="0">
+            </div>
+
+            <div class="mb-4">
+                <label for="custom_carbs">Glucides (g):</label>
+                <input type="number" step="0.1" name="custom_carbs" id="custom_carbs" class="form-input" value="0">
+            </div>
+
+            <div class="mb-4">
+                <label for="custom_fat">Lipides (g):</label>
+                <input type="number" step="0.1" name="custom_fat" id="custom_fat" class="form-input" value="0">
             </div>
 
             <div class="grid grid-cols-2 gap-4">
@@ -753,6 +1033,74 @@ function showDatePicker() {
 window.onclick = function(event) {
     if (event.target == document.getElementById('addFoodModal')) {
         closeAddFoodModal();
+    }
+}
+
+// Gestionnaire pour le sélecteur d'aliments
+document.getElementById('food_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const quantity = document.getElementById('quantity').value;
+    
+    if (this.value) {
+        // Récupérer les valeurs nutritionnelles de l'option sélectionnée
+        const calories = selectedOption.dataset.calories;
+        const protein = selectedOption.dataset.protein;
+        const carbs = selectedOption.dataset.carbs;
+        const fat = selectedOption.dataset.fat;
+        
+        // Calculer les valeurs en fonction de la quantité
+        const ratio = quantity / 100;
+        document.getElementById('custom_calories').value = Math.round(calories * ratio);
+        document.getElementById('custom_protein').value = (protein * ratio).toFixed(1);
+        document.getElementById('custom_carbs').value = (carbs * ratio).toFixed(1);
+        document.getElementById('custom_fat').value = (fat * ratio).toFixed(1);
+        
+        // Vider le champ de nom personnalisé
+        document.getElementById('custom_food_name').value = '';
+    } else {
+        // Réinitialiser les champs si aucun aliment n'est sélectionné
+        document.getElementById('custom_calories').value = '0';
+        document.getElementById('custom_protein').value = '0';
+        document.getElementById('custom_carbs').value = '0';
+        document.getElementById('custom_fat').value = '0';
+    }
+});
+
+// Gestionnaire pour le champ de quantité
+document.getElementById('quantity').addEventListener('input', function() {
+    const foodSelect = document.getElementById('food_id');
+    const selectedOption = foodSelect.options[foodSelect.selectedIndex];
+    
+    if (foodSelect.value) {
+        const quantity = this.value;
+        const calories = selectedOption.dataset.calories;
+        const protein = selectedOption.dataset.protein;
+        const carbs = selectedOption.dataset.carbs;
+        const fat = selectedOption.dataset.fat;
+        
+        // Calculer les valeurs en fonction de la quantité
+        const ratio = quantity / 100;
+        document.getElementById('custom_calories').value = Math.round(calories * ratio);
+        document.getElementById('custom_protein').value = (protein * ratio).toFixed(1);
+        document.getElementById('custom_carbs').value = (carbs * ratio).toFixed(1);
+        document.getElementById('custom_fat').value = (fat * ratio).toFixed(1);
+    }
+});
+
+function editFood(foodId) {
+    // Implémenter la modification d'un aliment
+}
+
+function deleteFood(foodId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="action" value="remove_food_from_meal">
+            <input type="hidden" name="food_log_id" value="${foodId}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 </script>
