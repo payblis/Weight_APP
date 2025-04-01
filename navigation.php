@@ -51,11 +51,11 @@ foreach ($submenus as $menu => $items) {
         <div class="d-flex align-items-center">
             <a href="messages.php" class="nav-link position-relative me-3">
                 <i class="far fa-envelope"></i>
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">1</span>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
             </a>
             <a href="#" class="nav-link me-3">
                 <i class="far fa-user me-1"></i>
-                <?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?>
+            <a href="profile.php" class="nav-link me-3"><?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?></a>
             </a>
             <a href="settings.php" class="nav-link me-3">Paramètres</a>
             <a href="logout.php" class="nav-link">Déconnexion</a>
