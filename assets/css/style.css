@@ -763,10 +763,9 @@ footer h5 {
 /* Styles pour le journal alimentaire */
 .food-journal-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 1rem 0;
-    border-bottom: 1px solid #e2e8f0;
+    align-items: center;
+    margin-bottom: 2rem;
 }
 
 .date-navigation {
@@ -776,86 +775,155 @@ footer h5 {
 }
 
 .current-date {
-    background-color: #1e40af;
-    color: white;
-    padding: 0.5rem 2rem;
-    font-weight: 500;
+    font-size: 1.25rem;
+    font-weight: 600;
 }
 
 .nav-arrow {
-    color: #1e40af;
-    cursor: pointer;
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    text-decoration: none;
 }
 
 .nutrient-header {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    background-color: #1e40af;
-    color: white;
-    padding: 0.5rem;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--light-color);
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
     text-align: center;
-    font-size: 0.875rem;
-}
-
-.nutrient-header div {
-    padding: 0.25rem;
+    font-weight: 600;
 }
 
 .meal-section {
-    margin-bottom: 1.5rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .meal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 0;
+    margin-bottom: 1.5rem;
 }
 
 .meal-title {
-    color: #1e40af;
+    font-size: 1.25rem;
     font-weight: 600;
-    font-size: 1.125rem;
-}
-
-.meal-actions {
-    display: flex;
-    gap: 1rem;
+    margin: 0;
 }
 
 .meal-actions a {
-    color: #2563eb;
+    color: var(--primary-color);
     text-decoration: none;
 }
 
-.meal-actions a:hover {
-    color: #1e40af;
+.meal-empty {
+    text-align: center;
+    color: var(--gray-color);
+    padding: 2rem;
+    background-color: var(--light-color);
+    border-radius: 0.5rem;
 }
 
-.meal-empty {
-    color: #6b7280;
-    font-style: italic;
-    padding: 0.5rem 0;
+.nutrient-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+    background-color: var(--light-color);
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.nutrient-item {
+    text-align: center;
+}
+
+.nutrient-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.nutrient-label {
+    font-size: 0.875rem;
+    color: var(--gray-color);
+}
+
+.daily-totals {
+    margin-top: 3rem;
+    padding: 2rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .totals-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
+    gap: 1.5rem;
+}
+
+.total-item {
     text-align: center;
-    gap: 1rem;
-    margin-top: 2rem;
 }
 
-.totals-row {
-    font-weight: 600;
+.total-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
 }
 
-.goals-row {
-    color: #1e40af;
+.total-goal {
+    font-size: 0.875rem;
+    color: var(--gray-color);
 }
 
-.remaining-row {
-    color: #059669;
+/* Modal */
+.modal-content {
+    border-radius: 0.5rem;
+    border: none;
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--light-gray-color);
+    padding: 1.5rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--light-gray-color);
+    padding: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .nutrient-header,
+    .nutrient-grid,
+    .totals-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+    }
+
+    .meal-section {
+        padding: 1rem;
+    }
+
+    .meal-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
 }
 
 /* Styles pour les modales et formulaires existants */
@@ -868,16 +936,6 @@ footer h5 {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-}
-
-.modal-content {
-    background-color: #fff;
-    margin: 15% auto;
-    padding: 20px;
-    border-radius: 8px;
-    width: 80%;
-    max-width: 500px;
-    position: relative;
 }
 
 .btn {
