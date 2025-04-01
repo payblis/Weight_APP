@@ -817,89 +817,100 @@ function updateDailyCalorieBalance($user_id) {
     <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
     <style>
         .debug-panel {
-            position: fixed;
-            bottom: 0;
-            right: 0;
-            width: 300px;
-            max-height: 300px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
             font-family: monospace;
             font-size: 12px;
+            max-height: 200px;
             overflow-y: auto;
-            z-index: 9999;
-            display: none;
         }
-        .debug-panel.show {
-            display: block;
+        .debug-panel h4 {
+            margin-bottom: 10px;
+            color: #495057;
         }
-        .debug-toggle {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #000;
-            color: #fff;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 10000;
+        .debug-message {
+            margin-bottom: 5px;
+            padding: 3px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .debug-message:last-child {
+            border-bottom: none;
+        }
+        .debug-time {
+            color: #6c757d;
+            margin-right: 5px;
+        }
+        .debug-error {
+            color: #dc3545;
+        }
+        .debug-success {
+            color: #28a745;
         }
     </style>
 </head>
 <body>
-    <!-- Ajouter le bouton de débogage -->
-    <div class="debug-toggle" onclick="toggleDebug()">Debug</div>
-    
-    <!-- Ajouter le panneau de débogage -->
-    <div class="debug-panel" id="debugPanel">
-        <h4>Debug Info</h4>
-        <div id="debugContent"></div>
-    </div>
-
     <?php include 'navigation.php'; ?>
 
     <div class="container py-4">
+        <!-- Panneau de débogage -->
+        <div class="debug-panel">
+            <h4>Debug Info</h4>
+            <div id="debugContent">
+                <?php
+                // Afficher les informations de débogage PHP
+                echo "<div class='debug-message'><span class='debug-time'>" . date('H:i:s') . "</span> PHP Debug:</div>";
+                echo "<div class='debug-message'>User ID: " . $user_id . "</div>";
+                echo "<div class='debug-message'>Date Filter: " . $date_filter . "</div>";
+                echo "<div class='debug-message'>Daily Goal: " . $daily_goal . "</div>";
+                echo "<div class='debug-message'>Exercise Calories: " . $exercise_calories . "</div>";
+                echo "<div class='debug-message'>Total Meals: " . count($meals) . "</div>";
+                ?>
+            </div>
+        </div>
+
         <!-- Stats globales -->
         <div class="global-stats">
             <div class="stats-grid">
                 <div class="stats-item">
-                    <div class="stats-value"><?php echo $daily_goal; ?></div>
+                    <div class="stats-value" id="daily-goal"><?php echo $daily_goal; ?></div>
                     <div class="stats-label">Objectif</div>
                 </div>
                 <div class="stats-item">
                     <div class="stats-operation">-</div>
                 </div>
                 <div class="stats-item">
-                    <div class="stats-value"><?php echo array_sum(array_column($meals, 'total_calories')); ?></div>
+                    <div class="stats-value" id="total-calories"><?php echo array_sum(array_column($meals, 'total_calories')); ?></div>
                     <div class="stats-label">Aliments</div>
                 </div>
                 <div class="stats-item">
                     <div class="stats-operation">+</div>
                 </div>
                 <div class="stats-item">
-                    <div class="stats-value"><?php echo $exercise_calories; ?></div>
+                    <div class="stats-value" id="exercise-calories"><?php echo $exercise_calories; ?></div>
                     <div class="stats-label">Exercice</div>
                 </div>
                 <div class="stats-item">
                     <div class="stats-operation">=</div>
                 </div>
                 <div class="stats-item">
-                    <div class="stats-value"><?php echo $daily_goal - array_sum(array_column($meals, 'total_calories')) + $exercise_calories; ?></div>
+                    <div class="stats-value" id="remaining-calories"><?php echo $daily_goal - array_sum(array_column($meals, 'total_calories')) + $exercise_calories; ?></div>
                     <div class="stats-label">Restants</div>
                 </div>
             </div>
             <div class="macros-grid">
                 <div class="macro-item">
-                    <div class="macro-value"><?php echo round(array_sum(array_column($meals, 'total_protein')), 1); ?></div>
+                    <div class="macro-value" id="total-protein"><?php echo round(array_sum(array_column($meals, 'total_protein')), 1); ?></div>
                     <div class="macro-label">Protéines (g)</div>
                 </div>
                 <div class="macro-item">
-                    <div class="macro-value"><?php echo round(array_sum(array_column($meals, 'total_carbs')), 1); ?></div>
+                    <div class="macro-value" id="total-carbs"><?php echo round(array_sum(array_column($meals, 'total_carbs')), 1); ?></div>
                     <div class="macro-label">Glucides (g)</div>
                 </div>
                 <div class="macro-item">
-                    <div class="macro-value"><?php echo round(array_sum(array_column($meals, 'total_fat')), 1); ?></div>
+                    <div class="macro-value" id="total-fat"><?php echo round(array_sum(array_column($meals, 'total_fat')), 1); ?></div>
                     <div class="macro-label">Lipides (g)</div>
                 </div>
             </div>
@@ -1205,7 +1216,7 @@ function updateDailyCalorieBalance($user_id) {
                 });
             }
 
-            // Fonction pour mettre à jour les stats
+            // Modifier la fonction updateStats pour inclure plus de débogage
             function updateStats() {
                 addDebugMessage("Début de la mise à jour des stats");
                 fetch('food-log.php?action=get_stats&date=<?php echo $date_filter; ?>')
@@ -1218,37 +1229,46 @@ function updateDailyCalorieBalance($user_id) {
                     })
                     .then(data => {
                         addDebugMessage(`Données stats reçues : ${JSON.stringify(data)}`);
-                        // Mise à jour des calories
-                        const statsValues = document.querySelectorAll('.stats-value');
-                        addDebugMessage("Nombre d'éléments stats-value trouvés : " + statsValues.length);
                         
-                        if (statsValues.length >= 7) {
-                            statsValues[0].textContent = data.daily_goal;
-                            statsValues[2].textContent = data.total_calories;
-                            statsValues[4].textContent = data.exercise_calories;
-                            statsValues[6].textContent = data.remaining_calories;
-                        } else {
-                            addDebugMessage("Pas assez d'éléments stats-value trouvés");
-                        }
+                        // Mise à jour des calories
+                        const dailyGoal = document.getElementById('daily-goal');
+                        const totalCalories = document.getElementById('total-calories');
+                        const exerciseCalories = document.getElementById('exercise-calories');
+                        const remainingCalories = document.getElementById('remaining-calories');
+                        
+                        if (dailyGoal) dailyGoal.textContent = data.daily_goal;
+                        if (totalCalories) totalCalories.textContent = data.total_calories;
+                        if (exerciseCalories) exerciseCalories.textContent = data.exercise_calories;
+                        if (remainingCalories) remainingCalories.textContent = data.remaining_calories;
                         
                         // Mise à jour des macronutriments
-                        const macroValues = document.querySelectorAll('.macro-value');
-                        addDebugMessage("Nombre d'éléments macro-value trouvés : " + macroValues.length);
+                        const totalProtein = document.getElementById('total-protein');
+                        const totalCarbs = document.getElementById('total-carbs');
+                        const totalFat = document.getElementById('total-fat');
                         
-                        if (macroValues.length >= 3) {
-                            macroValues[0].textContent = data.total_protein;
-                            macroValues[1].textContent = data.total_carbs;
-                            macroValues[2].textContent = data.total_fat;
-                        } else {
-                            addDebugMessage("Pas assez d'éléments macro-value trouvés");
-                        }
+                        if (totalProtein) totalProtein.textContent = data.total_protein;
+                        if (totalCarbs) totalCarbs.textContent = data.total_carbs;
+                        if (totalFat) totalFat.textContent = data.total_fat;
+                        
+                        addDebugMessage("Stats mises à jour avec succès");
                     })
                     .catch(error => {
-                        addDebugMessage(`Erreur stats : ${error.message}`);
+                        addDebugMessage(`Erreur stats : ${error.message}`, 'error');
                     });
             }
 
-            // Gestionnaire pour la suppression d'aliments et de repas
+            // Modifier la fonction addDebugMessage pour inclure des types de messages
+            function addDebugMessage(message, type = 'info') {
+                const content = document.getElementById('debugContent');
+                const time = new Date().toLocaleTimeString();
+                const messageElement = document.createElement('div');
+                messageElement.className = `debug-message debug-${type}`;
+                messageElement.innerHTML = `<span class="debug-time">[${time}]</span> ${message}`;
+                content.appendChild(messageElement);
+                content.scrollTop = content.scrollHeight;
+            }
+
+            // Modifier les gestionnaires d'événements pour la suppression
             document.querySelectorAll('form[action="food-log.php"]').forEach(form => {
                 form.addEventListener('submit', function(e) {
                     const action = this.querySelector('input[name="action"]').value;
@@ -1281,12 +1301,49 @@ function updateDailyCalorieBalance($user_id) {
                             if (data.success) {
                                 if (action === 'remove_food_from_meal') {
                                     const row = this.closest('tr');
-                                    addDebugMessage(`Ligne à supprimer trouvée : ${row ? 'Oui' : 'Non'}`);
-                                    row.remove();
+                                    if (row) {
+                                        row.remove();
+                                        addDebugMessage("Ligne supprimée avec succès", 'success');
+                                    }
                                 } else if (action === 'delete_meal') {
+                                    // Au lieu de supprimer la section, on met à jour son contenu
                                     const section = this.closest('.meal-section');
-                                    addDebugMessage(`Section à supprimer trouvée : ${section ? 'Oui' : 'Non'}`);
-                                    section.remove();
+                                    if (section) {
+                                        addDebugMessage("Section trouvée, mise à jour du contenu", 'info');
+                                        
+                                        // Récupérer le titre du repas
+                                        const mealTitle = section.querySelector('.meal-title').textContent;
+                                        addDebugMessage(`Titre du repas : ${mealTitle}`, 'info');
+                                        
+                                        // Récupérer le type de repas
+                                        const mealType = this.querySelector('input[name="meal_type"]').value;
+                                        addDebugMessage(`Type de repas : ${mealType}`, 'info');
+                                        
+                                        // Mettre à jour le contenu de la section
+                                        const mealContent = section.querySelector('.table-responsive');
+                                        if (mealContent) {
+                                            mealContent.innerHTML = `
+                                                <div class="alert alert-info">Aucun repas enregistré</div>
+                                            `;
+                                            addDebugMessage("Contenu de la section mis à jour", 'success');
+                                        }
+                                        
+                                        // Mettre à jour les boutons d'action
+                                        const mealActions = section.querySelector('.meal-actions');
+                                        if (mealActions) {
+                                            mealActions.innerHTML = `
+                                                <form action="food-log.php" method="POST">
+                                                    <input type="hidden" name="action" value="add_meal">
+                                                    <input type="hidden" name="meal_type" value="${mealType}">
+                                                    <input type="hidden" name="date" value="<?php echo $date_filter; ?>">
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="fas fa-plus me-1"></i>Créer le repas
+                                                    </button>
+                                                </form>
+                                            `;
+                                            addDebugMessage("Boutons d'action mis à jour", 'success');
+                                        }
+                                    }
                                 }
                                 addDebugMessage("Mise à jour des stats après suppression");
                                 updateStats();
@@ -1295,28 +1352,13 @@ function updateDailyCalorieBalance($user_id) {
                             }
                         })
                         .catch(error => {
-                            addDebugMessage(`Erreur : ${error.message}`);
+                            addDebugMessage(`Erreur : ${error.message}`, 'error');
                             alert(error.message || 'Une erreur est survenue lors de la suppression');
                         });
                     }
                 });
             });
         });
-
-        // Ajouter les fonctions de débogage
-        function toggleDebug() {
-            const panel = document.getElementById('debugPanel');
-            panel.classList.toggle('show');
-        }
-
-        function addDebugMessage(message) {
-            const content = document.getElementById('debugContent');
-            const time = new Date().toLocaleTimeString();
-            const messageElement = document.createElement('div');
-            messageElement.textContent = `[${time}] ${message}`;
-            content.appendChild(messageElement);
-            content.scrollTop = content.scrollHeight;
-        }
     </script>
 </body>
 </html>
