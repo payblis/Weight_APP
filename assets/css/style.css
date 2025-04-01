@@ -133,19 +133,14 @@ header .lead {
 
 /* Cartes */
 .card {
-    border-radius: 0.5rem;
-    overflow: hidden;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    height: 100%;
 }
 
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
-}
-
-.card-title {
-    font-weight: 600;
-    margin-bottom: 1rem;
+.card-body {
+    padding: 1.5rem;
 }
 
 /* Formulaires */
@@ -340,11 +335,9 @@ footer h5 {
 }
 
 .macro-circle {
-    width: 1rem;
-    height: 1rem;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 0.5rem;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto;
 }
 
 .protein-circle {
@@ -1382,4 +1375,30 @@ footer h5 {
     .main-content {
         padding: 0.5rem;
     }
+}
+
+.container {
+    max-width: 992px !important;
+}
+
+/* Styles pour les éléments du dashboard */
+.progress-circle {
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+}
+
+.water-drop {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto;
+}
+
+.info-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
 }
