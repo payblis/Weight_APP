@@ -1891,38 +1891,30 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
         }
 
         // Construire le prompt
-        $prompt = "En tant que coach nutritionnel, génère une suggestion de repas adaptée au profil suivant :
+        $prompt = "Tu es un nutritionniste expert. Donne-moi une suggestion de repas sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
+
+{
+  \"nom_du_repas\": \"...\",
+  \"ingredients\": [
+    {\"quantité\": \"...\", \"nom\": \"...\"},
+    ...
+  ],
+  \"valeurs_nutritionnelles\": {
+    \"calories\": ...,
+    \"proteines\": ...,
+    \"glucides\": ...,
+    \"lipides\": ...
+  }
+}
+
+Profil de l'utilisateur :
 - Poids : {$profile['weight']} kg
 - Taille : {$profile['height']} cm
 - Âge : {$profile['age']} ans
 - Niveau d'activité : {$profile['activity_level']}
 - Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
 
-La suggestion doit être :
-1. Adaptée aux besoins nutritionnels de l'utilisateur en fonction de son profil
-2. Respecter les objectifs du programme choisi
-3. Être équilibrée en macronutriments
-4. Être réaliste et facile à préparer
-
-Réponds uniquement avec un objet JSON contenant les champs suivants :
-{
-    \"nom_du_repas\": \"string\",
-    \"valeurs_nutritionnelles\": {
-        \"calories\": number,
-        \"proteines\": number,
-        \"glucides\": number,
-        \"lipides\": number
-    },
-    \"ingredients\": [
-        {
-            \"nom\": \"string\",
-            \"quantité\": \"string\"
-        }
-    ],
-    \"instructions\": [
-        \"string\"
-    ]
-}";
+N'ajoute rien d'autre que ce JSON dans ta réponse.";
 
         // Appeler l'API ChatGPT
         $response = callChatGPTAPI($prompt, $api_key);
@@ -1934,10 +1926,19 @@ Réponds uniquement avec un objet JSON contenant les champs suivants :
         // Vérifier que la réponse est un JSON valide
         $data = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return "La réponse de l'API n'est pas un JSON valide.";
+            error_log("Erreur de parsing JSON dans generateMealSuggestion: " . json_last_error_msg());
+            error_log("Réponse brute: " . $response);
+            return "Une erreur s'est produite lors du traitement de la suggestion.";
         }
 
-        // Formater la suggestion
+        // Vérifier que tous les champs requis sont présents
+        if (!isset($data['nom_du_repas']) || !isset($data['ingredients']) || 
+            !isset($data['valeurs_nutritionnelles'])) {
+            error_log("Données JSON incomplètes dans generateMealSuggestion");
+            return "La suggestion générée est incomplète.";
+        }
+
+        // Formater la suggestion pour l'affichage
         $suggestion = "SUGGESTION DE REPAS : {$data['nom_du_repas']}\n\n";
         $suggestion .= "Valeurs nutritionnelles :\n";
         $suggestion .= "- Calories : {$data['valeurs_nutritionnelles']['calories']} kcal\n";
@@ -1948,11 +1949,6 @@ Réponds uniquement avec un objet JSON contenant les champs suivants :
         $suggestion .= "Ingrédients :\n";
         foreach ($data['ingredients'] as $ingredient) {
             $suggestion .= "- {$ingredient['quantité']} {$ingredient['nom']}\n";
-        }
-        
-        $suggestion .= "\nInstructions :\n";
-        foreach ($data['instructions'] as $instruction) {
-            $suggestion .= "- {$instruction}\n";
         }
 
         return $suggestion;
@@ -1983,41 +1979,30 @@ function generateExerciseSuggestion($profile, $latest_weight, $current_goal, $ac
         }
 
         // Construire le prompt
-        $prompt = "Tu es un coach sportif professionnel expert en fitness et en musculation. Ta tâche est de générer un programme d'exercices adapté au profil suivant :
+        $prompt = "Tu es un coach sportif expert. Donne-moi une suggestion d'exercices sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
 
+{
+  \"nom_du_programme\": \"...\",
+  \"exercices\": [
+    {
+      \"nom\": \"...\",
+      \"duree\": \"...\",
+      \"intensite\": \"...\",
+      \"calories_brûlées\": ...,
+      \"description\": \"...\"
+    },
+    ...
+  ]
+}
+
+Profil de l'utilisateur :
 - Poids : {$profile['weight']} kg
 - Taille : {$profile['height']} cm
 - Âge : {$profile['age']} ans
 - Niveau d'activité : {$profile['activity_level']}
 - Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
 
-IMPORTANT : Tu dois répondre UNIQUEMENT avec un objet JSON contenant les champs suivants, sans aucun texte supplémentaire, sans aucune suggestion de repas ou de nutrition :
-
-{
-    \"nom_du_programme\": \"string\",
-    \"objectif\": \"string\",
-    \"exercices\": [
-        {
-            \"nom\": \"string\",
-            \"duree\": \"string\",
-            \"intensite\": \"string\",
-            \"calories_brûlées\": number,
-            \"description\": \"string\"
-        }
-    ],
-    \"conseils\": [
-        \"string\"
-    ]
-}
-
-Les exercices doivent être :
-1. Adaptés au niveau d'activité de l'utilisateur
-2. Respecter les objectifs du programme choisi
-3. Être réalistes et réalisables
-4. Inclure un mélange de cardio, renforcement musculaire et flexibilité
-5. Ne pas inclure de suggestions alimentaires ou nutritionnelles
-
-Ne fournis PAS de suggestions de repas ou d'autres informations non liées aux exercices. Tu es un coach sportif, pas un nutritionniste.";
+N'ajoute rien d'autre que ce JSON dans ta réponse. Ne pas inclure de suggestions de repas ou d'informations nutritionnelles.";
 
         // Appeler l'API ChatGPT
         $response = callChatGPTAPI($prompt, $api_key);
@@ -2035,15 +2020,23 @@ Ne fournis PAS de suggestions de repas ou d'autres informations non liées aux e
         }
 
         // Vérifier que tous les champs requis sont présents
-        if (!isset($data['nom_du_programme']) || !isset($data['objectif']) || 
-            !isset($data['exercices']) || !isset($data['conseils'])) {
+        if (!isset($data['nom_du_programme']) || !isset($data['exercices'])) {
             error_log("Données JSON incomplètes dans generateExerciseSuggestion");
             return "La suggestion générée est incomplète.";
         }
 
-        // Formater la suggestion
+        // Vérifier que la réponse ne contient pas de suggestions de repas
+        $response_lower = strtolower($response);
+        $food_keywords = ['calories', 'repas', 'aliment', 'nutrition', 'protéine', 'glucide', 'lipide', 'ingrédient'];
+        foreach ($food_keywords as $keyword) {
+            if (strpos($response_lower, $keyword) !== false) {
+                error_log("La réponse contient des suggestions de repas non autorisées");
+                return "La suggestion générée contient des informations non autorisées.";
+            }
+        }
+
+        // Formater la suggestion pour l'affichage
         $suggestion = "PROGRAMME D'EXERCICES : {$data['nom_du_programme']}\n\n";
-        $suggestion .= "Objectif : {$data['objectif']}\n\n";
         
         $suggestion .= "Exercices proposés :\n";
         foreach ($data['exercices'] as $exercice) {
@@ -2058,13 +2051,6 @@ Ne fournis PAS de suggestions de repas ou d'autres informations non liées aux e
             $suggestion .= "- Intensité : {$exercice['intensite']}\n";
             $suggestion .= "- Calories brûlées : {$exercice['calories_brûlées']} kcal\n";
             $suggestion .= "- Description : {$exercice['description']}\n";
-        }
-        
-        if (!empty($data['conseils'])) {
-            $suggestion .= "\nConseils :\n";
-            foreach ($data['conseils'] as $conseil) {
-                $suggestion .= "- {$conseil}\n";
-            }
         }
 
         return $suggestion;
