@@ -121,15 +121,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Erreur lors de la génération de la suggestion : " . $e->getMessage();
                 }
                 break;
-
-            case 'generate_shopping_list':
-                try {
-                    $shopping_list = generateShoppingListSuggestion($profile, $favorite_foods, $blacklisted_foods);
-                    $shopping_list_success = "Liste de courses générée avec succès !";
-                } catch (Exception $e) {
-                    $shopping_list_error = "Erreur lors de la génération de la liste de courses : " . $e->getMessage();
-                }
-                break;
         }
     }
 }
@@ -323,7 +314,6 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                                         <option value="dejeuner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'dejeuner' ? 'selected' : ''; ?>>Déjeuner</option>
                                         <option value="diner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'diner' ? 'selected' : ''; ?>>Dîner</option>
                                         <option value="collation" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'collation' ? 'selected' : ''; ?>>Collation</option>
-                                        <option value="liste_courses" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'liste_courses' ? 'selected' : ''; ?>>Liste de courses</option>
                                     </select>
                                 </div>
                                 <?php endif; ?>
@@ -563,62 +553,6 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                             <strong>Conseil :</strong> La clé API ChatGPT est gérée par l'administrateur de l'application.
                             Contactez-le si vous souhaitez utiliser les fonctionnalités d'IA.
                         </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section Liste de courses -->
-        <div class="row mt-4">
-            <div class="col-md-8 offset-md-2">
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="mb-0">Liste de courses personnalisée</h2>
-                    </div>
-                    <div class="card-body">
-                        <?php if (isset($shopping_list_error)): ?>
-                            <div class="alert alert-danger"><?php echo $shopping_list_error; ?></div>
-                        <?php endif; ?>
-                        
-                        <?php if (isset($shopping_list_success)): ?>
-                            <div class="alert alert-success"><?php echo $shopping_list_success; ?></div>
-                        <?php endif; ?>
-                        
-                        <form method="POST" action="">
-                            <input type="hidden" name="action" value="generate_shopping_list">
-                            <div class="mb-3">
-                                <p class="text-muted">
-                                    Cette liste de courses sera générée en fonction de :
-                                </p>
-                                <ul>
-                                    <li>Votre profil (âge, taille, poids, niveau d'activité)</li>
-                                    <li>Vos préférences alimentaires</li>
-                                    <li>Vos objectifs nutritionnels</li>
-                                    <li>Les aliments à éviter</li>
-                                </ul>
-                            </div>
-                            
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-shopping-cart"></i> Générer ma liste de courses
-                            </button>
-                        </form>
-                        
-                        <?php if (isset($shopping_list)): ?>
-                            <div class="mt-4">
-                                <h3>Votre liste de courses personnalisée</h3>
-                                <div class="card">
-                                    <div class="card-body">
-                                        <pre class="shopping-list"><?php echo htmlspecialchars($shopping_list); ?></pre>
-                                    </div>
-                                </div>
-                                
-                                <div class="mt-3">
-                                    <button class="btn btn-success" onclick="window.print()">
-                                        <i class="fas fa-print"></i> Imprimer la liste
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endif; ?>
                     </div>
                 </div>
             </div>
