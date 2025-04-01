@@ -328,13 +328,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Mettre à jour le bilan calorique quotidien
                         updateDailyCalorieBalance($user_id);
                         
-                        $success_message = "Aliment supprimé du repas avec succès";
+                        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                            header('Content-Type: application/json');
+                            echo json_encode(['success' => true]);
+                            exit;
+                        } else {
+                            $success_message = "Aliment supprimé du repas avec succès";
+                            redirect("food-log.php");
+                        }
                     } else {
-                        $errors[] = "Une erreur s'est produite lors de la suppression de l'aliment";
+                        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                            header('Content-Type: application/json');
+                            echo json_encode(['success' => false, 'error' => "Une erreur s'est produite lors de la suppression de l'aliment"]);
+                            exit;
+                        } else {
+                            $errors[] = "Une erreur s'est produite lors de la suppression de l'aliment";
+                        }
                     }
                 }
             } catch (Exception $e) {
-                $errors[] = "Erreur: " . $e->getMessage();
+                if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                    exit;
+                } else {
+                    $errors[] = "Erreur: " . $e->getMessage();
+                }
             }
         }
     }
