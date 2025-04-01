@@ -801,6 +801,56 @@ function updateDailyCalorieBalance($user_id) {
         return false;
     }
 }
+
+// Ajouter une fonction de débogage structurée
+function debugLog($category, $message, $data = null, $type = 'info') {
+    $timestamp = date('Y-m-d H:i:s');
+    $log = "[$timestamp] [$category] $message";
+    if ($data !== null) {
+        $log .= "\nData: " . print_r($data, true);
+    }
+    error_log($log);
+    
+    // Ajouter au panneau de débogage si on est dans le contexte web
+    if (isset($_SERVER['REQUEST_URI'])) {
+        echo "<div class='debug-message debug-{$type}'>";
+        echo "<span class='debug-time'>[$timestamp]</span>";
+        echo "<span class='debug-category'>[$category]</span> ";
+        echo htmlspecialchars($message);
+        if ($data !== null) {
+            echo "<pre class='debug-data'>" . htmlspecialchars(print_r($data, true)) . "</pre>";
+        }
+        echo "</div>";
+    }
+}
+
+// Fonction pour déboguer les requêtes SQL
+function debugQuery($sql, $params = [], $result = null) {
+    debugLog('SQL', "Query: $sql", [
+        'params' => $params,
+        'result' => $result
+    ]);
+}
+
+// Fonction pour déboguer les données utilisateur
+function debugUserData($user_id, $data) {
+    debugLog('USER', "User ID: $user_id", $data);
+}
+
+// Fonction pour déboguer les repas
+function debugMealData($meal_id, $data) {
+    debugLog('MEAL', "Meal ID: $meal_id", $data);
+}
+
+// Fonction pour déboguer les aliments
+function debugFoodData($food_id, $data) {
+    debugLog('FOOD', "Food ID: $food_id", $data);
+}
+
+// Fonction pour déboguer les stats
+function debugStats($data) {
+    debugLog('STATS', "Stats Update", $data);
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -824,16 +874,21 @@ function updateDailyCalorieBalance($user_id) {
             margin-bottom: 20px;
             font-family: monospace;
             font-size: 12px;
-            max-height: 200px;
+            max-height: 400px;
             overflow-y: auto;
         }
         .debug-panel h4 {
             margin-bottom: 10px;
             color: #495057;
         }
+        .debug-categories {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
         .debug-message {
             margin-bottom: 5px;
-            padding: 3px 0;
+            padding: 5px;
             border-bottom: 1px solid #dee2e6;
         }
         .debug-message:last-child {
@@ -843,11 +898,27 @@ function updateDailyCalorieBalance($user_id) {
             color: #6c757d;
             margin-right: 5px;
         }
+        .debug-category {
+            color: #0d6efd;
+            margin-right: 5px;
+            font-weight: bold;
+        }
         .debug-error {
             color: #dc3545;
+            background-color: #f8d7da;
         }
         .debug-success {
             color: #28a745;
+            background-color: #d4edda;
+        }
+        .debug-data {
+            margin-top: 5px;
+            padding: 5px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            font-size: 11px;
+            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -858,15 +929,32 @@ function updateDailyCalorieBalance($user_id) {
         <!-- Panneau de débogage -->
         <div class="debug-panel">
             <h4>Debug Info</h4>
+            <div class="debug-categories">
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="filterDebug('ALL')">All</button>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="filterDebug('SQL')">SQL</button>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="filterDebug('USER')">User</button>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="filterDebug('MEAL')">Meal</button>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="filterDebug('FOOD')">Food</button>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="filterDebug('STATS')">Stats</button>
+            </div>
             <div id="debugContent">
                 <?php
                 // Afficher les informations de débogage PHP
-                echo "<div class='debug-message'><span class='debug-time'>" . date('H:i:s') . "</span> PHP Debug:</div>";
-                echo "<div class='debug-message'>User ID: " . $user_id . "</div>";
-                echo "<div class='debug-message'>Date Filter: " . $date_filter . "</div>";
-                echo "<div class='debug-message'>Daily Goal: " . $daily_goal . "</div>";
-                echo "<div class='debug-message'>Exercise Calories: " . $exercise_calories . "</div>";
-                echo "<div class='debug-message'>Total Meals: " . count($meals) . "</div>";
+                debugUserData($user_id, [
+                    'date_filter' => $date_filter,
+                    'daily_goal' => $daily_goal,
+                    'exercise_calories' => $exercise_calories,
+                    'total_meals' => count($meals)
+                ]);
+
+                // Déboguer les repas
+                foreach ($meals as $meal) {
+                    debugMealData($meal['id'], [
+                        'type' => $meal['meal_type'],
+                        'total_calories' => $meal['total_calories'],
+                        'food_count' => $meal['food_count']
+                    ]);
+                }
                 ?>
             </div>
         </div>
@@ -1216,25 +1304,40 @@ function updateDailyCalorieBalance($user_id) {
                 });
             }
 
+            // Ajouter la fonction de filtrage du débogage
+            function filterDebug(category) {
+                const messages = document.querySelectorAll('.debug-message');
+                messages.forEach(message => {
+                    const messageCategory = message.querySelector('.debug-category').textContent.replace(/[\[\]]/g, '');
+                    if (category === 'ALL' || messageCategory === category) {
+                        message.style.display = 'block';
+                    } else {
+                        message.style.display = 'none';
+                    }
+                });
+            }
+
             // Modifier la fonction updateStats pour inclure plus de débogage
             function updateStats() {
-                addDebugMessage("Début de la mise à jour des stats");
+                addDebugMessage("Début de la mise à jour des stats", 'STATS');
                 fetch('food-log.php?action=get_stats&date=<?php echo $date_filter; ?>')
                     .then(response => {
-                        addDebugMessage(`Réponse stats reçue : ${response.status}`);
+                        addDebugMessage(`Réponse stats reçue : ${response.status}`, 'STATS');
                         if (!response.ok) {
                             throw new Error('Erreur réseau: ' + response.status);
                         }
                         return response.json();
                     })
                     .then(data => {
-                        addDebugMessage(`Données stats reçues : ${JSON.stringify(data)}`);
+                        addDebugMessage(`Données stats reçues : ${JSON.stringify(data)}`, 'STATS');
                         
                         // Mise à jour des calories
                         const dailyGoal = document.getElementById('daily-goal');
                         const totalCalories = document.getElementById('total-calories');
                         const exerciseCalories = document.getElementById('exercise-calories');
                         const remainingCalories = document.getElementById('remaining-calories');
+                        
+                        addDebugMessage(`Éléments trouvés : dailyGoal=${!!dailyGoal}, totalCalories=${!!totalCalories}, exerciseCalories=${!!exerciseCalories}, remainingCalories=${!!remainingCalories}`, 'STATS');
                         
                         if (dailyGoal) dailyGoal.textContent = data.daily_goal;
                         if (totalCalories) totalCalories.textContent = data.total_calories;
@@ -1246,24 +1349,30 @@ function updateDailyCalorieBalance($user_id) {
                         const totalCarbs = document.getElementById('total-carbs');
                         const totalFat = document.getElementById('total-fat');
                         
+                        addDebugMessage(`Éléments macros trouvés : protein=${!!totalProtein}, carbs=${!!totalCarbs}, fat=${!!totalFat}`, 'STATS');
+                        
                         if (totalProtein) totalProtein.textContent = data.total_protein;
                         if (totalCarbs) totalCarbs.textContent = data.total_carbs;
                         if (totalFat) totalFat.textContent = data.total_fat;
                         
-                        addDebugMessage("Stats mises à jour avec succès");
+                        addDebugMessage("Stats mises à jour avec succès", 'STATS', 'success');
                     })
                     .catch(error => {
-                        addDebugMessage(`Erreur stats : ${error.message}`, 'error');
+                        addDebugMessage(`Erreur stats : ${error.message}`, 'STATS', 'error');
                     });
             }
 
             // Modifier la fonction addDebugMessage pour inclure des types de messages
-            function addDebugMessage(message, type = 'info') {
+            function addDebugMessage(message, category = 'INFO', type = 'info') {
                 const content = document.getElementById('debugContent');
                 const time = new Date().toLocaleTimeString();
                 const messageElement = document.createElement('div');
                 messageElement.className = `debug-message debug-${type}`;
-                messageElement.innerHTML = `<span class="debug-time">[${time}]</span> ${message}`;
+                messageElement.innerHTML = `
+                    <span class="debug-time">[${time}]</span>
+                    <span class="debug-category">[${category}]</span>
+                    ${message}
+                `;
                 content.appendChild(messageElement);
                 content.scrollTop = content.scrollHeight;
             }
@@ -1274,13 +1383,15 @@ function updateDailyCalorieBalance($user_id) {
                     const action = this.querySelector('input[name="action"]').value;
                     if (action === 'remove_food_from_meal' || action === 'delete_meal') {
                         e.preventDefault();
-                        addDebugMessage(`Début de la suppression - Action : ${action}`);
+                        addDebugMessage(`Début de la suppression - Action : ${action}`, 'MEAL');
                         const formData = new FormData(this);
                         
                         // Afficher les données du formulaire
+                        const formDataObj = {};
                         for (let pair of formData.entries()) {
-                            addDebugMessage(`${pair[0]}: ${pair[1]}`);
+                            formDataObj[pair[0]] = pair[1];
                         }
+                        addDebugMessage("Données du formulaire", 'MEAL', formDataObj);
                         
                         fetch('food-log.php', {
                             method: 'POST',
@@ -1290,69 +1401,72 @@ function updateDailyCalorieBalance($user_id) {
                             }
                         })
                         .then(response => {
-                            addDebugMessage(`Réponse reçue : ${response.status}`);
+                            addDebugMessage(`Réponse reçue : ${response.status}`, 'MEAL');
                             if (!response.ok) {
                                 throw new Error('Erreur réseau: ' + response.status);
                             }
                             return response.json();
                         })
                         .then(data => {
-                            addDebugMessage(`Données reçues : ${JSON.stringify(data)}`);
+                            addDebugMessage(`Données reçues : ${JSON.stringify(data)}`, 'MEAL');
                             if (data.success) {
                                 if (action === 'remove_food_from_meal') {
                                     const row = this.closest('tr');
                                     if (row) {
                                         row.remove();
-                                        addDebugMessage("Ligne supprimée avec succès", 'success');
+                                        addDebugMessage("Ligne supprimée avec succès", 'FOOD', 'success');
                                     }
                                 } else if (action === 'delete_meal') {
-                                    // Au lieu de supprimer la section, on met à jour son contenu
                                     const section = this.closest('.meal-section');
                                     if (section) {
-                                        addDebugMessage("Section trouvée, mise à jour du contenu", 'info');
+                                        addDebugMessage("Section trouvée, mise à jour du contenu", 'MEAL');
                                         
-                                        // Récupérer le titre du repas
-                                        const mealTitle = section.querySelector('.meal-title').textContent;
-                                        addDebugMessage(`Titre du repas : ${mealTitle}`, 'info');
+                                        const mealTitle = section.querySelector('.meal-title');
+                                        if (mealTitle) {
+                                            addDebugMessage(`Titre du repas : ${mealTitle.textContent}`, 'MEAL');
+                                        } else {
+                                            addDebugMessage("Titre du repas non trouvé", 'MEAL', 'error');
+                                        }
                                         
-                                        // Récupérer le type de repas
-                                        const mealType = this.querySelector('input[name="meal_type"]').value;
-                                        addDebugMessage(`Type de repas : ${mealType}`, 'info');
+                                        const mealTypeInput = this.querySelector('input[name="meal_type"]');
+                                        if (mealTypeInput) {
+                                            addDebugMessage(`Type de repas : ${mealTypeInput.value}`, 'MEAL');
+                                        } else {
+                                            addDebugMessage("Type de repas non trouvé", 'MEAL', 'error');
+                                        }
                                         
-                                        // Mettre à jour le contenu de la section
                                         const mealContent = section.querySelector('.table-responsive');
                                         if (mealContent) {
                                             mealContent.innerHTML = `
                                                 <div class="alert alert-info">Aucun repas enregistré</div>
                                             `;
-                                            addDebugMessage("Contenu de la section mis à jour", 'success');
+                                            addDebugMessage("Contenu de la section mis à jour", 'MEAL', 'success');
                                         }
                                         
-                                        // Mettre à jour les boutons d'action
                                         const mealActions = section.querySelector('.meal-actions');
                                         if (mealActions) {
                                             mealActions.innerHTML = `
                                                 <form action="food-log.php" method="POST">
                                                     <input type="hidden" name="action" value="add_meal">
-                                                    <input type="hidden" name="meal_type" value="${mealType}">
+                                                    <input type="hidden" name="meal_type" value="${mealTypeInput ? mealTypeInput.value : ''}">
                                                     <input type="hidden" name="date" value="<?php echo $date_filter; ?>">
                                                     <button type="submit" class="btn btn-primary">
                                                         <i class="fas fa-plus me-1"></i>Créer le repas
                                                     </button>
                                                 </form>
                                             `;
-                                            addDebugMessage("Boutons d'action mis à jour", 'success');
+                                            addDebugMessage("Boutons d'action mis à jour", 'MEAL', 'success');
                                         }
                                     }
                                 }
-                                addDebugMessage("Mise à jour des stats après suppression");
+                                addDebugMessage("Mise à jour des stats après suppression", 'STATS');
                                 updateStats();
                             } else {
                                 throw new Error(data.error || 'Une erreur est survenue lors de la suppression');
                             }
                         })
                         .catch(error => {
-                            addDebugMessage(`Erreur : ${error.message}`, 'error');
+                            addDebugMessage(`Erreur : ${error.message}`, 'MEAL', 'error');
                             alert(error.message || 'Une erreur est survenue lors de la suppression');
                         });
                     }
