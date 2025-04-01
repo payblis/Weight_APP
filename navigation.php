@@ -73,7 +73,7 @@ foreach ($submenus as $menu => $items) {
             <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="nav-link text-uppercase <?php echo $current_page === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">
-                        <i class="fas fa-home me-1"></i>Mon Accueil
+                        <i class="fas fa-home me-1"></i>Ma Journée
                     </a>
                 </li>
                 <li class="nav-item">

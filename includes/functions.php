@@ -1931,6 +1931,25 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
             ]
         ];
 
+        // Récupérer les préférences alimentaires depuis la table user_food_preferences
+        $sql = "SELECT food_id, is_favorite FROM user_food_preferences WHERE user_id = ?";
+        $preferences = fetchAll($sql, [$profile['user_id']]);
+        
+        $favorite_foods = [];
+        $blacklisted_foods = [];
+        
+        foreach ($preferences as $pref) {
+            $food_sql = "SELECT name FROM foods WHERE id = ?";
+            $food = fetchOne($food_sql, [$pref['food_id']]);
+            if ($food) {
+                if ($pref['is_favorite']) {
+                    $favorite_foods[] = $food['name'];
+                } else {
+                    $blacklisted_foods[] = $food['name'];
+                }
+            }
+        }
+
         // Construire le prompt
         $prompt = "Tu es un nutritionniste expert. Donne-moi une suggestion de {$meal_rules[$meal_type]['description']} sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
 
@@ -1957,7 +1976,7 @@ IMPORTANT : Les valeurs nutritionnelles DOIVENT respecter strictement ces limite
 Profil de l'utilisateur :
 - Poids : {$profile['weight']} kg
 - Taille : {$profile['height']} cm
-- Âge : {$profile['age']} ans
+- Âge : " . (isset($profile['age']) ? $profile['age'] : 'Non spécifié') . " ans
 - Niveau d'activité : {$profile['activity_level']}
 - Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
 
@@ -2028,13 +2047,20 @@ N'ajoute rien d'autre que ce JSON dans ta réponse. Assure-toi que les valeurs n
         }
 
         // Formater la suggestion pour l'affichage
-        $suggestion = "SUGGESTION DE " . strtoupper(str_replace('_', ' ', $meal_type)) . " : {$data['nom_du_repas']}\n\n";
+        $meal_type_display = [
+            'petit_dejeuner' => 'Petit-Déjeuner',
+            'dejeuner' => 'Déjeuner',
+            'diner' => 'Dîner',
+            'collation' => 'Collation'
+        ];
+
+        $suggestion = "SUGGESTION DE " . $meal_type_display[$meal_type] . " : {$data['nom_du_repas']}\n\n";
         
         // Ajouter les informations utilisées pour la génération
         $suggestion .= "Informations utilisées pour la génération :\n";
         $suggestion .= "Profil :\n";
         $suggestion .= "Genre : " . ucfirst($profile['gender']) . "\n";
-        $suggestion .= "Âge : {$profile['age']} ans\n";
+        $suggestion .= "Âge : " . (isset($profile['age']) ? $profile['age'] : 'Non spécifié') . " ans\n";
         $suggestion .= "Taille : {$profile['height']} cm\n";
         $suggestion .= "Niveau d'activité : " . ucfirst($profile['activity_level']) . "\n";
         $suggestion .= "Poids actuel : {$profile['weight']} kg\n";
@@ -2043,7 +2069,7 @@ N'ajoute rien d'autre que ce JSON dans ta réponse. Assure-toi que les valeurs n
         $suggestion .= "Préférences alimentaires :\n";
         $suggestion .= "Aliments préférés : " . count($favorite_foods) . " configurés\n";
         $suggestion .= "Aliments à éviter : " . count($blacklisted_foods) . " configurés\n";
-        $suggestion .= "Limites nutritionnelles pour " . ucfirst(str_replace('_', ' ', $meal_type)) . " :\n";
+        $suggestion .= "Limites nutritionnelles pour " . $meal_type_display[$meal_type] . " :\n";
         $suggestion .= "Calories maximales : {$max_calories} kcal\n";
         $suggestion .= "Protéines maximales : {$max_protein} g\n";
         $suggestion .= "Glucides maximaux : {$max_carbs} g\n";
@@ -2063,122 +2089,6 @@ N'ajoute rien d'autre que ce JSON dans ta réponse. Assure-toi que les valeurs n
         return $suggestion;
     } catch (Exception $e) {
         error_log("Erreur lors de la génération de la suggestion de repas : " . $e->getMessage());
-        return "Une erreur s'est produite lors de la génération de la suggestion.";
-    }
-}
-
-/**
- * Génère une suggestion d'exercice personnalisée
- * 
- * @param array $profile Profil de l'utilisateur
- * @param array $latest_weight Dernier poids enregistré
- * @param array $current_goal Objectif actuel
- * @param array $active_program Programme actif
- * @return string Suggestion d'exercice
- */
-function generateExerciseSuggestion($profile, $latest_weight, $current_goal, $active_program) {
-    try {
-        // Récupérer la clé API ChatGPT
-        $sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
-        $api_key_setting = fetchOne($sql, []);
-        $api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
-
-        if (empty($api_key)) {
-            return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
-        }
-
-        // Construire le prompt
-        $prompt = "Tu es un coach sportif expert. Donne-moi une suggestion d'exercices sous forme de **JSON strict**, sans aucun texte en dehors du JSON. Voici le format exact à respecter :
-
-{
-  \"nom_du_programme\": \"...\",
-  \"exercices\": [
-    {
-      \"nom\": \"...\",
-      \"duree\": \"...\",
-      \"intensite\": \"...\",
-      \"calories_brûlées\": ...,
-      \"description\": \"...\"
-    },
-    ...
-  ]
-}
-
-Profil de l'utilisateur :
-- Poids : {$profile['weight']} kg
-- Taille : {$profile['height']} cm
-- Âge : {$profile['age']} ans
-- Niveau d'activité : {$profile['activity_level']}
-- Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
-
-N'ajoute rien d'autre que ce JSON dans ta réponse. Ne pas inclure de suggestions de repas ou d'informations nutritionnelles.";
-
-        // Logger le prompt
-        error_log("=== Prompt envoyé à l'API pour generateExerciseSuggestion ===");
-        error_log($prompt);
-        error_log("=== Fin du prompt ===");
-
-        // Appeler l'API ChatGPT
-        $response = callChatGPTAPI($prompt, $api_key);
-        
-        if (empty($response)) {
-            return "Une erreur s'est produite lors de la génération de la suggestion.";
-        }
-
-        // Logger la réponse
-        error_log("=== Réponse reçue de l'API pour generateExerciseSuggestion ===");
-        error_log($response);
-        error_log("=== Fin de la réponse ===");
-
-        // Vérifier que la réponse est un JSON valide
-        $data = json_decode($response, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log("Erreur de parsing JSON dans generateExerciseSuggestion: " . json_last_error_msg());
-            error_log("Réponse brute: " . $response);
-            return "Une erreur s'est produite lors du traitement de la suggestion.";
-        }
-
-        // Vérifier que tous les champs requis sont présents
-        if (!isset($data['nom_du_programme']) || !isset($data['exercices'])) {
-            error_log("Données JSON incomplètes dans generateExerciseSuggestion");
-            return "La suggestion générée est incomplète.";
-        }
-
-        // Vérifier que la réponse ne contient pas de suggestions de repas
-        $response_lower = strtolower($response);
-        $food_keywords = [
-            'repas', 'aliment', 'nutrition', 'protéine', 'glucide', 'lipide', 'ingrédient',
-            'menu', 'cuisine', 'recette', 'manger', 'boire', 'déjeuner', 'dîner', 'collation'
-        ];
-        
-        foreach ($food_keywords as $keyword) {
-            if (strpos($response_lower, $keyword) !== false) {
-                error_log("La réponse contient des suggestions de repas non autorisées (mot-clé trouvé: $keyword)");
-                return "La suggestion générée contient des informations non autorisées.";
-            }
-        }
-
-        // Formater la suggestion pour l'affichage
-        $suggestion = "PROGRAMME D'EXERCICES : {$data['nom_du_programme']}\n\n";
-        
-        $suggestion .= "Exercices proposés :\n";
-        foreach ($data['exercices'] as $exercice) {
-            if (!isset($exercice['nom']) || !isset($exercice['duree']) || 
-                !isset($exercice['intensite']) || !isset($exercice['calories_brûlées']) || 
-                !isset($exercice['description'])) {
-                continue; // Ignorer les exercices incomplets
-            }
-            
-            $suggestion .= "\n{$exercice['nom']} :\n";
-            $suggestion .= "- Durée : {$exercice['duree']}\n";
-            $suggestion .= "- Intensité : {$exercice['intensite']}\n";
-            $suggestion .= "- Calories brûlées : {$exercice['calories_brûlées']} kcal\n";
-            $suggestion .= "- Description : {$exercice['description']}\n";
-        }
-
-        return $suggestion;
-    } catch (Exception $e) {
-        error_log("Erreur lors de la génération de la suggestion d'exercice : " . $e->getMessage());
         return "Une erreur s'est produite lors de la génération de la suggestion.";
     }
 }
