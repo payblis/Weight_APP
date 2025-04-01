@@ -1888,10 +1888,10 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
 
         // Calculer les limites nutritionnelles en fonction du type de repas
         $meal_ratios = [
-            'breakfast' => 0.25,
-            'lunch' => 0.35,
-            'dinner' => 0.30,
-            'snack' => 0.10
+            'petit_dejeuner' => 0.25,
+            'dejeuner' => 0.35,
+            'diner' => 0.30,
+            'collation' => 0.10
         ];
 
         $ratio = $meal_ratios[$meal_type] ?? 0.35; // Par défaut 35% pour le déjeuner
@@ -1904,29 +1904,29 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
 
         // Règles spécifiques pour chaque type de repas
         $meal_rules = [
-            'breakfast' => [
+            'petit_dejeuner' => [
                 'description' => 'Le petit-déjeuner doit être énergétique et équilibré',
                 'typical_foods' => 'Céréales, fruits, produits laitiers, œufs, pain complet',
                 'advice' => 'Privilégier les glucides complexes et les protéines maigres'
             ],
-            'lunch' => [
+            'dejeuner' => [
                 'description' => 'Le déjeuner doit être le repas principal de la journée',
                 'typical_foods' => 'Viandes maigres, légumes, féculents complets',
                 'advice' => 'Inclure une source de protéines, des légumes et des féculents'
             ],
-            'dinner' => [
+            'diner' => [
                 'description' => 'Le dîner doit être plus léger que le déjeuner',
                 'typical_foods' => 'Poissons, légumes, soupes, salades',
                 'advice' => 'Privilégier les protéines légères et les légumes'
             ],
-            'snack' => [
+            'collation' => [
                 'description' => 'La collation doit être légère et nutritive',
                 'typical_foods' => 'Fruits, yaourts, noix, barres de céréales',
                 'advice' => 'Choisir des aliments riches en nutriments et faibles en calories'
             ]
         ];
 
-        $meal_rule = $meal_rules[$meal_type] ?? $meal_rules['lunch'];
+        $meal_rule = $meal_rules[$meal_type] ?? $meal_rules['dejeuner'];
 
         // Construire le prompt
         $prompt = "Tu es un expert en nutrition et en planification de repas. Je vais te donner les informations nécessaires pour générer une suggestion de repas adaptée au profil de l'utilisateur.
@@ -1976,10 +1976,7 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
         {
             \"name\": \"Nom de l'ingrédient\",
             \"quantity\": \"Quantité\",
-            \"calories\": X,
-            \"proteins\": X,
-            \"carbs\": X,
-            \"fats\": X
+            \"unit\": \"Unité de mesure\"
         }
     ],
     \"instructions\": [\"étape 1\", \"étape 2\", ...]
@@ -1996,6 +1993,7 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
         // Vérifier que la réponse est un JSON valide
         $suggestion = json_decode($response, true);
         if (!$suggestion || !isset($suggestion['name'])) {
+            error_log("Réponse invalide de l'API : " . $response);
             throw new Exception("Réponse invalide de l'API");
         }
 
@@ -2018,7 +2016,7 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
         $suggestion_text .= "- Lipides : {$suggestion['fats']}g\n\n";
         $suggestion_text .= "Ingrédients :\n";
         foreach ($suggestion['ingredients'] as $ingredient) {
-            $suggestion_text .= "- {$ingredient['quantity']} {$ingredient['name']}\n";
+            $suggestion_text .= "- {$ingredient['quantity']} {$ingredient['unit']} {$ingredient['name']}\n";
         }
         $suggestion_text .= "\nInstructions :\n";
         foreach ($suggestion['instructions'] as $index => $instruction) {
@@ -2093,6 +2091,7 @@ Génère une liste de courses au format JSON avec la structure suivante :
         // Vérifier que la réponse est un JSON valide
         $shopping_list = json_decode($response, true);
         if (!$shopping_list || !isset($shopping_list['categories'])) {
+            error_log("Réponse invalide de l'API : " . $response);
             throw new Exception("Réponse invalide de l'API");
         }
 
