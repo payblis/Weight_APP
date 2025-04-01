@@ -283,6 +283,17 @@ if (!empty($pending_invitations)):
             }
             .swiper-slide {
                 width: 85%;
+                height: auto;
+            }
+            .card {
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+            }
+            .card-body {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
             }
         }
         .card {
@@ -293,12 +304,22 @@ if (!empty($pending_invitations)):
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             margin-bottom: 1rem;
         }
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        .exercise-swiper .swiper-slide {
+            width: 45%;
         }
-        .card-body {
+        @media (min-width: 768px) {
+            .exercise-swiper .swiper-slide {
+                width: 23%;
+            }
+        }
+        .exercise-card {
+            background: #f8f9fa;
+            border-radius: 12px;
             padding: 1.5rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .progress-circle {
             width: 200px;
@@ -369,6 +390,7 @@ if (!empty($pending_invitations)):
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div class="d-flex align-items-center">
                     <img src="assets/img/logo.png" alt="Logo" class="me-2" style="height: 40px;">
+                    <h4 class="mb-0">Aujourd'hui</h4>
                 </div>
                 <button class="premium-button">
                     Passez à Premium <i class="fas fa-crown ms-1"></i>
@@ -380,17 +402,20 @@ if (!empty($pending_invitations)):
                 <div class="swiper-wrapper">
                     <!-- Slide Calories -->
                     <div class="swiper-slide">
-                        <div class="card">
-                            <div class="card-body">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
                                 <h5 class="card-title mb-3">Calories</h5>
                                 <p class="text-muted small mb-3">Reste = Objectif - Aliments + Exercices</p>
                                 
-                                <div class="text-center mb-4">
+                                <div class="text-center mb-4 flex-grow-1 d-flex flex-column justify-content-center">
                                     <div class="progress-circle position-relative">
                                         <svg width="200" height="200" viewBox="0 0 200 200">
                                             <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="12"/>
                                             <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="12"
-                                                stroke-dasharray="<?php echo min(100, ($remaining_calories / $calorie_goal) * 100) * 5.65; ?> 565"
+                                                stroke-dasharray="<?php 
+                                                    $percentage = ($calorie_goal - $remaining_calories) / $calorie_goal * 100;
+                                                    echo min(100, $percentage) * 5.65;
+                                                ?> 565"
                                                 transform="rotate(-90 100 100)"/>
                                         </svg>
                                         <div class="position-absolute top-50 start-50 translate-middle text-center">
@@ -429,8 +454,8 @@ if (!empty($pending_invitations)):
 
                     <!-- Slide Macronutriments -->
                     <div class="swiper-slide">
-                        <div class="card">
-                            <div class="card-body">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
                                 <h5 class="card-title mb-4">Macronutriments</h5>
                                 
                                 <div class="row g-4">
@@ -503,8 +528,8 @@ if (!empty($pending_invitations)):
 
                     <!-- Slide Hydratation -->
                     <div class="swiper-slide">
-                        <div class="card">
-                            <div class="card-body">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
                                 <h5 class="card-title mb-4">Hydratation</h5>
                                 
                                 <div class="text-center mb-4">
@@ -543,8 +568,8 @@ if (!empty($pending_invitations)):
 
                     <!-- Slide Informations personnelles -->
                     <div class="swiper-slide">
-                        <div class="card">
-                            <div class="card-body">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
                                 <h5 class="card-title mb-4">Informations personnelles</h5>
 
                                 <div class="row g-4">
@@ -653,6 +678,53 @@ if (!empty($pending_invitations)):
                                     <a href="goals.php" class="btn btn-outline-success btn-sm flex-grow-1">
                                         <i class="fas fa-bullseye me-1"></i>Gérer les objectifs
                                     </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="swiper-pagination"></div>
+            </div>
+
+            <!-- Slider pour les exercices -->
+            <div class="swiper exercise-swiper mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Activité physique</h5>
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus"></i>
+                    </a>
+                </div>
+                <div class="swiper-wrapper">
+                    <!-- Durée d'exercice -->
+                    <div class="swiper-slide">
+                        <div class="exercise-card">
+                            <div class="d-flex align-items-center">
+                                <div class="exercise-icon">
+                                    <i class="fas fa-clock text-info"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold"><?php 
+                                        $sql = "SELECT SEC_TO_TIME(SUM(TIME_TO_SEC(duration))) as total_duration 
+                                               FROM exercise_logs 
+                                               WHERE user_id = ? AND log_date = CURDATE()";
+                                        $duration = fetchOne($sql, [$user_id]);
+                                        echo $duration['total_duration'] ?? '00:00';
+                                    ?></div>
+                                    <small class="text-muted">Durée d'exercice</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Calories brûlées -->
+                    <div class="swiper-slide">
+                        <div class="exercise-card">
+                            <div class="d-flex align-items-center">
+                                <div class="exercise-icon">
+                                    <i class="fas fa-fire text-danger"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold"><?php echo number_format($calories_out); ?></div>
+                                    <small class="text-muted">kcal brûlées</small>
                                 </div>
                             </div>
                         </div>
@@ -946,79 +1018,35 @@ if (!empty($pending_invitations)):
                     </div>
                 </div>
             </div>
-
-            <!-- Section Exercices -->
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">Activité physique</h5>
-                        <a href="#" class="btn btn-sm btn-outline-primary">
-                            <i class="fas fa-plus"></i>
-                        </a>
-                    </div>
-                    <div class="row g-3">
-                        <!-- Bloc Pas -->
-                        <div class="col-6 col-md-3">
-                            <div class="exercise-card">
-                                <div class="d-flex align-items-center">
-                                    <div class="exercise-icon">
-                                        <i class="fas fa-shoe-prints text-primary"></i>
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold">440</div>
-                                        <small class="text-muted">Pas</small>
-                                    </div>
-                                </div>
-                                <div class="text-muted small mt-2">Objectif : 10 000 pas</div>
-                            </div>
-                        </div>
-                        <!-- Bloc Calories -->
-                        <div class="col-6 col-md-3">
-                            <div class="exercise-card">
-                                <div class="d-flex align-items-center">
-                                    <div class="exercise-icon">
-                                        <i class="fas fa-fire text-danger"></i>
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold">8</div>
-                                        <small class="text-muted">kcal</small>
-                                    </div>
-                                </div>
-                                <div class="text-muted small mt-2">Calories brûlées</div>
-                            </div>
-                        </div>
-                        <!-- Bloc Durée -->
-                        <div class="col-6 col-md-3">
-                            <div class="exercise-card">
-                                <div class="d-flex align-items-center">
-                                    <div class="exercise-icon">
-                                        <i class="fas fa-clock text-info"></i>
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold">00:00</div>
-                                        <small class="text-muted">heure(s)</small>
-                                    </div>
-                                </div>
-                                <div class="text-muted small mt-2">Durée d'exercice</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
     <!-- Scripts JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Initialisation du slider
-        const swiper = new Swiper('.dashboard-swiper', {
+        // Initialisation des sliders
+        const dashboardSwiper = new Swiper('.dashboard-swiper', {
             slidesPerView: 'auto',
             spaceBetween: 20,
             centeredSlides: true,
             pagination: {
                 el: '.swiper-pagination',
                 clickable: true
+            }
+        });
+
+        const exerciseSwiper = new Swiper('.exercise-swiper', {
+            slidesPerView: 'auto',
+            spaceBetween: 15,
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true
+            },
+            breakpoints: {
+                768: {
+                    slidesPerView: 4,
+                    spaceBetween: 20
+                }
             }
         });
 
