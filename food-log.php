@@ -383,17 +383,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Mettre à jour le bilan calorique quotidien
                         updateDailyCalorieBalance($user_id);
                         
-                        error_log("Suppression réussie, redirection vers food-log.php");
-                        $success_message = "Repas supprimé avec succès";
-                        redirect("food-log.php");
+                        error_log("Suppression réussie");
+                        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                            // Si c'est une requête AJAX, retourner une réponse JSON
+                            header('Content-Type: application/json');
+                            echo json_encode(['success' => true]);
+                            exit;
+                        } else {
+                            // Sinon, rediriger
+                            $success_message = "Repas supprimé avec succès";
+                            redirect("food-log.php");
+                        }
                     } else {
                         error_log("Erreur lors de la suppression du repas");
-                        $errors[] = "Une erreur s'est produite lors de la suppression du repas";
+                        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                            header('Content-Type: application/json');
+                            echo json_encode(['success' => false, 'error' => "Une erreur s'est produite lors de la suppression du repas"]);
+                            exit;
+                        } else {
+                            $errors[] = "Une erreur s'est produite lors de la suppression du repas";
+                        }
                     }
                 }
             } catch (Exception $e) {
                 error_log("Exception lors de la suppression : " . $e->getMessage());
-                $errors[] = "Erreur: " . $e->getMessage();
+                if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+                    exit;
+                } else {
+                    $errors[] = "Erreur: " . $e->getMessage();
+                }
             }
         }
         error_log("=== FIN DE LA SUPPRESSION DE REPAS ===");
@@ -1068,25 +1088,40 @@ function updateMealTotals($meal_id) {
                     });
             }
 
-            // Gestionnaire pour la suppression d'aliments
+            // Gestionnaire pour la suppression d'aliments et de repas
             document.querySelectorAll('form[action="food-log.php"]').forEach(form => {
                 form.addEventListener('submit', function(e) {
-                    if (this.querySelector('input[name="action"]').value === 'remove_food_from_meal') {
+                    const action = this.querySelector('input[name="action"]').value;
+                    if (action === 'remove_food_from_meal' || action === 'delete_meal') {
                         e.preventDefault();
                         const formData = new FormData(this);
                         
                         fetch('food-log.php', {
                             method: 'POST',
-                            body: formData
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
                         })
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                // Supprimer la ligne du tableau
-                                this.closest('tr').remove();
+                                if (action === 'remove_food_from_meal') {
+                                    // Supprimer la ligne du tableau
+                                    this.closest('tr').remove();
+                                } else if (action === 'delete_meal') {
+                                    // Supprimer la section du repas
+                                    this.closest('.meal-section').remove();
+                                }
                                 // Mettre à jour les stats
                                 updateStats();
+                            } else {
+                                alert(data.error || 'Une erreur est survenue');
                             }
+                        })
+                        .catch(error => {
+                            console.error('Erreur:', error);
+                            alert('Une erreur est survenue lors de la suppression');
                         });
                     }
                 });
