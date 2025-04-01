@@ -1916,12 +1916,22 @@ Profil de l'utilisateur :
 
 N'ajoute rien d'autre que ce JSON dans ta réponse.";
 
+        // Logger le prompt
+        error_log("=== Prompt envoyé à l'API pour generateMealSuggestion ===");
+        error_log($prompt);
+        error_log("=== Fin du prompt ===");
+
         // Appeler l'API ChatGPT
         $response = callChatGPTAPI($prompt, $api_key);
         
         if (empty($response)) {
             return "Une erreur s'est produite lors de la génération de la suggestion.";
         }
+
+        // Logger la réponse
+        error_log("=== Réponse reçue de l'API pour generateMealSuggestion ===");
+        error_log($response);
+        error_log("=== Fin de la réponse ===");
 
         // Vérifier que la réponse est un JSON valide
         $data = json_decode($response, true);
@@ -2004,12 +2014,22 @@ Profil de l'utilisateur :
 
 N'ajoute rien d'autre que ce JSON dans ta réponse. Ne pas inclure de suggestions de repas ou d'informations nutritionnelles.";
 
+        // Logger le prompt
+        error_log("=== Prompt envoyé à l'API pour generateExerciseSuggestion ===");
+        error_log($prompt);
+        error_log("=== Fin du prompt ===");
+
         // Appeler l'API ChatGPT
         $response = callChatGPTAPI($prompt, $api_key);
         
         if (empty($response)) {
             return "Une erreur s'est produite lors de la génération de la suggestion.";
         }
+
+        // Logger la réponse
+        error_log("=== Réponse reçue de l'API pour generateExerciseSuggestion ===");
+        error_log($response);
+        error_log("=== Fin de la réponse ===");
 
         // Vérifier que la réponse est un JSON valide
         $data = json_decode($response, true);
