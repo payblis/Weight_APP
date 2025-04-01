@@ -65,40 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $meal_id = insert($sql, [$user_id, $meal_type, $log_date, $notes]);
                 
                 if ($meal_id) {
-                    // Si c'est une suggestion d'IA, ajouter les valeurs nutritionnelles
-                    if ($suggestion_id > 0) {
-                        $sql = "SELECT content FROM ai_suggestions WHERE id = ? AND user_id = ?";
-                        $suggestion = fetchOne($sql, [$suggestion_id, $user_id]);
-                        
-                        if ($suggestion) {
-                            // Extraire les valeurs nutritionnelles
-                            preg_match('/calories?\s*:?\s*(\d+)\s*kcal/i', $suggestion['content'], $calories_match);
-                            preg_match('/prot[ée]ines?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $suggestion['content'], $protein_match);
-                            preg_match('/glucides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $suggestion['content'], $carbs_match);
-                            preg_match('/lipides?\s*:?\s*(\d+(?:\.\d+)?)\s*g/i', $suggestion['content'], $fat_match);
-                            
-                            // Ajouter l'aliment avec les valeurs nutritionnelles
-                            $sql = "INSERT INTO food_logs (user_id, custom_food_name, quantity, custom_calories, custom_protein, custom_carbs, custom_fat, log_date, meal_id, is_part_of_meal, created_at) 
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())";
-                            insert($sql, [
-                                $user_id,
-                                "Suggestion IA #" . $suggestion_id,
-                                100, // Quantité par défaut
-                                isset($calories_match[1]) ? intval($calories_match[1]) : 0,
-                                isset($protein_match[1]) ? floatval($protein_match[1]) : 0,
-                                isset($carbs_match[1]) ? floatval($carbs_match[1]) : 0,
-                                isset($fat_match[1]) ? floatval($fat_match[1]) : 0,
-                                $log_date,
-                                $meal_id
-                            ]);
-                            
-                            // Mettre à jour les totaux du repas
-                            updateMealTotals($meal_id);
-                        }
-                    }
-                    
-                    $success_message = "Repas ajouté avec succès";
-                    redirect("food-log.php");
+                    $success_message = "Repas ajouté avec succès. Vous pouvez maintenant ajouter des aliments à ce repas.";
+                    redirect("food-log.php?action=edit_meal&meal_id={$meal_id}");
                 } else {
                     $errors[] = "Une erreur s'est produite lors de l'ajout du repas";
                 }
@@ -423,41 +391,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         error_log("=== FIN DE LA SUPPRESSION DE REPAS ===");
     }
-    
-    // Supprimer une suggestion
-    elseif ($post_action === 'delete_suggestion') {
-        $suggestion_id = intval($_POST['suggestion_id'] ?? 0);
-        
-        // Validation
-        if ($suggestion_id <= 0) {
-            $errors[] = "ID de suggestion invalide";
-        }
-        
-        if (empty($errors)) {
-            try {
-                // Vérifier si la suggestion existe et appartient à l'utilisateur
-                $sql = "SELECT id FROM ai_suggestions WHERE id = ? AND user_id = ?";
-                $suggestion = fetchOne($sql, [$suggestion_id, $user_id]);
-                
-                if (!$suggestion) {
-                    $errors[] = "Suggestion introuvable ou vous n'avez pas les droits pour la supprimer";
-                } else {
-                    // Supprimer la suggestion
-                    $sql = "DELETE FROM ai_suggestions WHERE id = ?";
-                    $result = update($sql, [$suggestion_id]);
-                    
-                    if ($result) {
-                        $success_message = "Suggestion supprimée avec succès";
-                        redirect("food-log.php");
-                    } else {
-                        $errors[] = "Une erreur s'est produite lors de la suppression de la suggestion";
-                    }
-                }
-            } catch (Exception $e) {
-                $errors[] = "Erreur: " . $e->getMessage();
-            }
-        }
-    }
 }
 
 // Traitement des actions GET
@@ -512,597 +445,1225 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 }
 
-// Récupérer la date sélectionnée ou utiliser la date du jour
-$selected_date = isset($_GET['date']) ? sanitizeInput($_GET['date']) : date('Y-m-d');
-$previous_date = date('Y-m-d', strtotime($selected_date . ' -1 day'));
-$next_date = date('Y-m-d', strtotime($selected_date . ' +1 day'));
+// Récupérer les repas de l'utilisateur
+$date_filter = isset($_GET['date']) ? sanitizeInput($_GET['date']) : date('Y-m-d');
+error_log("=== RÉCUPÉRATION DES REPAS ===");
+error_log("Date filtrée : " . $date_filter);
+error_log("User ID : " . $user_id);
 
-// Récupérer les objectifs quotidiens de l'utilisateur
-$sql = "SHOW TABLES LIKE 'user_goals'";
-$table_exists = fetchOne($sql);
-
-if (!$table_exists) {
-    // Créer la table user_goals si elle n'existe pas
-    $sql = "CREATE TABLE IF NOT EXISTS user_goals (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        daily_calories INT DEFAULT 2000,
-        daily_protein INT DEFAULT 50,
-        daily_carbs INT DEFAULT 250,
-        daily_fat INT DEFAULT 70,
-        daily_sodium INT DEFAULT 2300,
-        daily_sugar INT DEFAULT 50,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )";
-    try {
-        $pdo->exec($sql);
-        // Insérer les objectifs par défaut pour l'utilisateur
-        $sql = "INSERT INTO user_goals (user_id) VALUES (?)";
-        insert($sql, [$user_id]);
-    } catch (Exception $e) {
-        error_log("Erreur lors de la création de la table user_goals : " . $e->getMessage());
-    }
-}
-
-// Récupérer les objectifs quotidiens de l'utilisateur
-$sql = "SELECT daily_calories, daily_protein, daily_carbs, daily_fat, daily_sodium, daily_sugar FROM user_goals WHERE user_id = ?";
-$goals = fetchOne($sql, [$user_id]) ?? [
-    'daily_calories' => 2000,
-    'daily_protein' => 50,
-    'daily_carbs' => 250,
-    'daily_fat' => 70,
-    'daily_sodium' => 2300,
-    'daily_sugar' => 50
-];
-
-// Fonction pour obtenir les repas d'un type spécifique pour la date sélectionnée
-function getMealsByType($user_id, $date, $meal_type) {
-    $sql = "SELECT m.*, 
-            SUM(fl.custom_calories) as total_calories,
-            SUM(fl.custom_protein) as total_protein,
-            SUM(fl.custom_carbs) as total_carbs,
-            SUM(fl.custom_fat) as total_fat
-            FROM meals m 
-            LEFT JOIN food_logs fl ON m.id = fl.meal_id
-            WHERE m.user_id = ? AND m.log_date = ? AND m.meal_type = ?
-            GROUP BY m.id";
-    return fetchAll($sql, [$user_id, $date, $meal_type]);
-}
-
-// Récupérer les totaux de la journée
-$sql = "SELECT 
-        SUM(fl.custom_calories) as total_calories,
-        SUM(fl.custom_protein) as total_protein,
-        SUM(fl.custom_carbs) as total_carbs,
-        SUM(fl.custom_fat) as total_fat
-        FROM meals m 
-        LEFT JOIN food_logs fl ON m.id = fl.meal_id
-        WHERE m.user_id = ? AND m.log_date = ?";
-$daily_totals = fetchOne($sql, [$user_id, $selected_date]) ?? [
-    'total_calories' => 0,
-    'total_protein' => 0,
-    'total_carbs' => 0,
-    'total_fat' => 0,
-    'total_sodium' => 0,
-    'total_sugar' => 0
-];
-
-// Récupérer les repas de la journée
 $sql = "SELECT m.*, 
-        COUNT(fl.id) as food_count,
-        SUM(fl.custom_calories) as total_calories,
-        SUM(fl.custom_protein) as total_protein,
-        SUM(fl.custom_carbs) as total_carbs,
-        SUM(fl.custom_fat) as total_fat
+        (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count
         FROM meals m 
-        LEFT JOIN food_logs fl ON m.id = fl.meal_id
-        WHERE m.user_id = ? AND m.log_date = ?
-        GROUP BY m.id
-        ORDER BY m.meal_type, m.created_at";
-$meals = fetchAll($sql, [$user_id, $selected_date]);
+        WHERE m.user_id = ? AND m.log_date = ? 
+        ORDER BY FIELD(m.meal_type, 'petit_dejeuner', 'dejeuner', 'diner', 'collation', 'autre')";
+error_log("SQL de récupération des repas : " . $sql);
+error_log("Paramètres : user_id=" . $user_id . ", date=" . $date_filter);
+$meals = fetchAll($sql, [$user_id, $date_filter]);
+error_log("Nombre de repas trouvés : " . count($meals));
+error_log("=== FIN DE LA RÉCUPÉRATION DES REPAS ===");
 
 // Récupérer les repas prédéfinis
 $sql = "SELECT * FROM predefined_meals 
-        WHERE user_id = ? OR is_public = 1 OR created_by_admin = 1
-        ORDER BY created_by_admin DESC, is_public DESC, created_at DESC";
+        WHERE user_id = ? OR is_public = 1 
+        ORDER BY name";
 $predefined_meals = fetchAll($sql, [$user_id]);
+
+// Récupérer les aliments disponibles
+$sql = "SELECT * FROM foods ORDER BY name";
+$foods = fetchAll($sql, []);
+
+// Récupérer les détails d'un repas spécifique si demandé
+$meal_details = null;
+$meal_foods = [];
+
+if ($action === 'edit_meal' && $meal_id > 0) {
+    $sql = "SELECT * FROM meals WHERE id = ? AND user_id = ?";
+    $meal_details = fetchOne($sql, [$meal_id, $user_id]);
+    
+    if ($meal_details) {
+        $sql = "SELECT fl.*, 
+                f.name as food_name, 
+                f.calories as food_calories, 
+                f.protein as food_protein, 
+                f.carbs as food_carbs, 
+                f.fat as food_fat
+                FROM food_logs fl 
+                LEFT JOIN foods f ON fl.food_id = f.id 
+                WHERE fl.meal_id = ? 
+                ORDER BY fl.created_at";
+        $meal_foods = fetchAll($sql, [$meal_id]);
+    }
+}
+
+// Récupérer les détails d'un repas prédéfini si demandé
+$predefined_meal_details = null;
+$predefined_meal_foods = [];
+
+if ($action === 'view_predefined_meal' && $predefined_meal_id > 0) {
+    $sql = "SELECT * FROM predefined_meals WHERE id = ? AND (user_id = ? OR is_public = 1 OR created_by_admin = 1)";
+    $predefined_meal_details = fetchOne($sql, [$predefined_meal_id, $user_id]);
+    
+    if ($predefined_meal_details) {
+        $sql = "SELECT pmf.*, 
+                f.name as food_name, 
+                f.calories as food_calories, 
+                f.protein as food_protein, 
+                f.carbs as food_carbs, 
+                f.fat as food_fat
+                FROM predefined_meal_items pmf 
+                LEFT JOIN foods f ON pmf.food_id = f.id 
+                WHERE pmf.predefined_meal_id = ? 
+                ORDER BY pmf.created_at";
+        $predefined_meal_foods = fetchAll($sql, [$predefined_meal_id]);
+    }
+}
 
 // Récupérer l'historique des repas
 $sql = "SELECT m.*, 
-        COUNT(fl.id) as food_count,
-        SUM(fl.custom_calories) as total_calories
+        DATE_FORMAT(m.log_date, '%d/%m/%Y') as formatted_date,
+        (SELECT COUNT(*) FROM food_logs fl WHERE fl.meal_id = m.id) as food_count
         FROM meals m 
-        LEFT JOIN food_logs fl ON m.id = fl.meal_id
-        WHERE m.user_id = ?
-        GROUP BY m.id
-        ORDER BY m.log_date DESC, m.meal_type
-        LIMIT 10";
+        WHERE m.user_id = ? 
+        ORDER BY m.log_date DESC, FIELD(m.meal_type, 'petit_dejeuner', 'dejeuner', 'diner', 'collation', 'autre')
+        LIMIT 50";
 $meal_history = fetchAll($sql, [$user_id]);
 
-// Inclure l'en-tête
-include 'header.php';
-?>
-
-<div class="container mx-auto px-4 py-8">
-    <!-- En-tête du journal -->
-    <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold">Votre journal alimentaire pour:</h1>
-        <div class="flex items-center space-x-4">
-            <a href="?date=<?= $previous_date ?>" class="btn btn-secondary">
-                <i class="fas fa-chevron-left"></i>
-            </a>
-            <div class="text-xl font-semibold">
-                <?= date('d/m/Y', strtotime($selected_date)) ?>
-            </div>
-            <a href="?date=<?= $next_date ?>" class="btn btn-secondary">
-                <i class="fas fa-chevron-right"></i>
-            </a>
-            <button class="btn btn-primary" onclick="showDatePicker()">
-                <i class="fas fa-calendar"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- En-tête des colonnes nutritionnelles -->
-    <div class="grid grid-cols-6 gap-4 bg-blue-900 text-white p-3 rounded-t-lg">
-        <div>Calories<br>kcal</div>
-        <div>Glucides<br>g</div>
-        <div>Lipides<br>g</div>
-        <div>Protéines<br>g</div>
-        <div>Sodium<br>mg</div>
-        <div>Sucres<br>g</div>
-    </div>
-
-    <!-- Section Petit Déjeuner -->
-    <div class="mb-8">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">Petit Déjeuner</h2>
-            <button onclick="showAddFoodModal('petit_dejeuner')" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Ajouter un aliment
-            </button>
-        </div>
-        <?php
-        $breakfast_meals = getMealsByType($user_id, $selected_date, 'petit_dejeuner');
-        if (empty($breakfast_meals)): ?>
-            <p class="text-gray-500 italic">Aucun aliment enregistré</p>
-        <?php else:
-            foreach ($breakfast_meals as $meal):
-                // Récupérer les aliments du repas
-                $sql = "SELECT fl.*, f.name as food_name 
-                        FROM food_logs fl 
-                        LEFT JOIN foods f ON fl.food_id = f.id 
-                        WHERE fl.meal_id = ?";
-                $foods = fetchAll($sql, [$meal['id']]);
-                ?>
-                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-                    <div class="grid grid-cols-6 gap-4">
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_calories']) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_carbs'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_fat'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_protein'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_sodium'] ?? 0) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_sugar'] ?? 0, 1) ?></div>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <?php foreach ($foods as $food): ?>
-                            <div class="flex justify-between items-center py-2 border-b">
-                                <div>
-                                    <?= $food['food_name'] ?: $food['custom_food_name'] ?>
-                                    <span class="text-sm text-gray-500">(<?= $food['quantity'] ?>g)</span>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button onclick="editFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="deleteFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endforeach;
-        endif;
-        ?>
-    </div>
-
-    <!-- Section Déjeuner -->
-    <div class="mb-8">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">Déjeuner</h2>
-            <button onclick="showAddFoodModal('dejeuner')" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Ajouter un aliment
-            </button>
-        </div>
-        <?php
-        $lunch_meals = getMealsByType($user_id, $selected_date, 'dejeuner');
-        if (empty($lunch_meals)): ?>
-            <p class="text-gray-500 italic">Aucun aliment enregistré</p>
-        <?php else:
-            foreach ($lunch_meals as $meal):
-                // Récupérer les aliments du repas
-                $sql = "SELECT fl.*, f.name as food_name 
-                        FROM food_logs fl 
-                        LEFT JOIN foods f ON fl.food_id = f.id 
-                        WHERE fl.meal_id = ?";
-                $foods = fetchAll($sql, [$meal['id']]);
-                ?>
-                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-                    <div class="grid grid-cols-6 gap-4">
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_calories']) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_carbs'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_fat'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_protein'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_sodium'] ?? 0) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_sugar'] ?? 0, 1) ?></div>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <?php foreach ($foods as $food): ?>
-                            <div class="flex justify-between items-center py-2 border-b">
-                                <div>
-                                    <?= $food['food_name'] ?: $food['custom_food_name'] ?>
-                                    <span class="text-sm text-gray-500">(<?= $food['quantity'] ?>g)</span>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button onclick="editFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="deleteFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endforeach;
-        endif;
-        ?>
-    </div>
-
-    <!-- Section Dîner -->
-    <div class="mb-8">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">Dîner</h2>
-            <button onclick="showAddFoodModal('diner')" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Ajouter un aliment
-            </button>
-        </div>
-        <?php
-        $dinner_meals = getMealsByType($user_id, $selected_date, 'diner');
-        if (empty($dinner_meals)): ?>
-            <p class="text-gray-500 italic">Aucun aliment enregistré</p>
-        <?php else:
-            foreach ($dinner_meals as $meal):
-                // Récupérer les aliments du repas
-                $sql = "SELECT fl.*, f.name as food_name 
-                        FROM food_logs fl 
-                        LEFT JOIN foods f ON fl.food_id = f.id 
-                        WHERE fl.meal_id = ?";
-                $foods = fetchAll($sql, [$meal['id']]);
-                ?>
-                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-                    <div class="grid grid-cols-6 gap-4">
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_calories']) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_carbs'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_fat'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_protein'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_sodium'] ?? 0) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_sugar'] ?? 0, 1) ?></div>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <?php foreach ($foods as $food): ?>
-                            <div class="flex justify-between items-center py-2 border-b">
-                                <div>
-                                    <?= $food['food_name'] ?: $food['custom_food_name'] ?>
-                                    <span class="text-sm text-gray-500">(<?= $food['quantity'] ?>g)</span>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button onclick="editFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="deleteFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endforeach;
-        endif;
-        ?>
-    </div>
-
-    <!-- Section Snacks -->
-    <div class="mb-8">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold">Snacks</h2>
-            <button onclick="showAddFoodModal('snack')" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Ajouter un aliment
-            </button>
-        </div>
-        <?php
-        $snack_meals = getMealsByType($user_id, $selected_date, 'snack');
-        if (empty($snack_meals)): ?>
-            <p class="text-gray-500 italic">Aucun aliment enregistré</p>
-        <?php else:
-            foreach ($snack_meals as $meal):
-                // Récupérer les aliments du repas
-                $sql = "SELECT fl.*, f.name as food_name 
-                        FROM food_logs fl 
-                        LEFT JOIN foods f ON fl.food_id = f.id 
-                        WHERE fl.meal_id = ?";
-                $foods = fetchAll($sql, [$meal['id']]);
-                ?>
-                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
-                    <div class="grid grid-cols-6 gap-4">
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_calories']) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_carbs'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_fat'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_protein'], 1) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_sodium'] ?? 0) ?></div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold"><?= number_format($meal['total_sugar'] ?? 0, 1) ?></div>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <?php foreach ($foods as $food): ?>
-                            <div class="flex justify-between items-center py-2 border-b">
-                                <div>
-                                    <?= $food['food_name'] ?: $food['custom_food_name'] ?>
-                                    <span class="text-sm text-gray-500">(<?= $food['quantity'] ?>g)</span>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button onclick="editFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="deleteFood(<?= $food['id'] ?>)" class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endforeach;
-        endif;
-        ?>
-    </div>
-
-    <!-- Totaux de la journée -->
-    <div class="mt-8">
-        <div class="grid grid-cols-6 gap-4 bg-gray-100 p-4 rounded-lg">
-            <div class="text-center">
-                <div class="font-bold"><?= number_format($daily_totals['total_calories']) ?></div>
-                <div class="text-sm text-gray-600">/ <?= number_format($goals['daily_calories']) ?></div>
-            </div>
-            <div class="text-center">
-                <div class="font-bold"><?= number_format($daily_totals['total_carbs'], 1) ?></div>
-                <div class="text-sm text-gray-600">/ <?= number_format($goals['daily_carbs']) ?></div>
-            </div>
-            <div class="text-center">
-                <div class="font-bold"><?= number_format($daily_totals['total_fat'], 1) ?></div>
-                <div class="text-sm text-gray-600">/ <?= number_format($goals['daily_fat']) ?></div>
-            </div>
-            <div class="text-center">
-                <div class="font-bold"><?= number_format($daily_totals['total_protein'], 1) ?></div>
-                <div class="text-sm text-gray-600">/ <?= number_format($goals['daily_protein']) ?></div>
-            </div>
-            <div class="text-center">
-                <div class="font-bold"><?= number_format($daily_totals['total_sodium'] ?? 0) ?></div>
-                <div class="text-sm text-gray-600">/ <?= number_format($goals['daily_sodium']) ?></div>
-            </div>
-            <div class="text-center">
-                <div class="font-bold"><?= number_format($daily_totals['total_sugar'] ?? 0, 1) ?></div>
-                <div class="text-sm text-gray-600">/ <?= number_format($goals['daily_sugar']) ?></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal pour ajouter un aliment -->
-<div id="addFoodModal" class="modal">
-    <div class="modal-content">
-        <h2>Ajouter un aliment</h2>
-        <form id="addFoodForm" method="POST">
-            <input type="hidden" name="action" value="add_food_to_meal">
-            <input type="hidden" name="meal_type" id="meal_type">
-            
-            <div class="mb-4">
-                <label for="food_id">Sélectionner un aliment:</label>
-                <select name="food_id" id="food_id" class="form-select" required>
-                    <option value="">Sélectionnez un aliment</option>
-                    <?php
-                    $sql = "SELECT * FROM foods ORDER BY name";
-                    $foods = fetchAll($sql);
-                    foreach ($foods as $food): ?>
-                        <option value="<?= $food['id'] ?>" 
-                                data-calories="<?= $food['calories'] ?>"
-                                data-protein="<?= $food['protein'] ?>"
-                                data-carbs="<?= $food['carbs'] ?>"
-                                data-fat="<?= $food['fat'] ?>">
-                            <?= htmlspecialchars($food['name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="mb-4">
-                <label for="custom_food_name">Ou saisir un aliment personnalisé:</label>
-                <input type="text" name="custom_food_name" id="custom_food_name" class="form-input">
-            </div>
-
-            <div class="mb-4">
-                <label for="quantity">Quantité (g):</label>
-                <input type="number" name="quantity" id="quantity" class="form-input" value="100" required>
-            </div>
-
-            <div class="mb-4">
-                <label for="custom_calories">Calories:</label>
-                <input type="number" name="custom_calories" id="custom_calories" class="form-input" value="0">
-            </div>
-
-            <div class="mb-4">
-                <label for="custom_protein">Protéines (g):</label>
-                <input type="number" step="0.1" name="custom_protein" id="custom_protein" class="form-input" value="0">
-            </div>
-
-            <div class="mb-4">
-                <label for="custom_carbs">Glucides (g):</label>
-                <input type="number" step="0.1" name="custom_carbs" id="custom_carbs" class="form-input" value="0">
-            </div>
-
-            <div class="mb-4">
-                <label for="custom_fat">Lipides (g):</label>
-                <input type="number" step="0.1" name="custom_fat" id="custom_fat" class="form-input" value="0">
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <button type="submit" class="btn btn-primary">Ajouter</button>
-                <button type="button" onclick="closeAddFoodModal()" class="btn btn-secondary">Annuler</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-function showAddFoodModal(mealType) {
-    document.getElementById('meal_type').value = mealType;
-    document.getElementById('addFoodModal').style.display = 'block';
-}
-
-function closeAddFoodModal() {
-    document.getElementById('addFoodModal').style.display = 'none';
-}
-
-function showDatePicker() {
-    // Implémenter l'ouverture du sélecteur de date
-}
-
-// Fermer le modal si on clique en dehors
-window.onclick = function(event) {
-    if (event.target == document.getElementById('addFoodModal')) {
-        closeAddFoodModal();
-    }
-}
-
-// Gestionnaire pour le sélecteur d'aliments
-document.getElementById('food_id').addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    const quantity = document.getElementById('quantity').value;
+// Fonction pour obtenir le nom du type de repas
+function getMealTypeName($type) {
+    $types = [
+        'petit_dejeuner' => 'Petit déjeuner',
+        'dejeuner' => 'Déjeuner',
+        'diner' => 'Dîner',
+        'collation' => 'Collation',
+        'autre' => 'Autre'
+    ];
     
-    if (this.value) {
-        // Récupérer les valeurs nutritionnelles de l'option sélectionnée
-        const calories = selectedOption.dataset.calories;
-        const protein = selectedOption.dataset.protein;
-        const carbs = selectedOption.dataset.carbs;
-        const fat = selectedOption.dataset.fat;
-        
-        // Calculer les valeurs en fonction de la quantité
-        const ratio = quantity / 100;
-        document.getElementById('custom_calories').value = Math.round(calories * ratio);
-        document.getElementById('custom_protein').value = (protein * ratio).toFixed(1);
-        document.getElementById('custom_carbs').value = (carbs * ratio).toFixed(1);
-        document.getElementById('custom_fat').value = (fat * ratio).toFixed(1);
-        
-        // Vider le champ de nom personnalisé
-        document.getElementById('custom_food_name').value = '';
+    return $types[$type] ?? $type;
+}
+
+// Fonction pour calculer les macronutriments d'un aliment
+function calculateNutrients($food) {
+    $calories = 0;
+    $protein = 0;
+    $carbs = 0;
+    $fat = 0;
+    
+    if (isset($food['food_id']) && $food['food_id'] > 0 && isset($food['food_calories'])) {
+        // Aliment de la base de données
+        $calories = ($food['food_calories'] * $food['quantity']) / 100;
+        $protein = ($food['food_protein'] * $food['quantity']) / 100;
+        $carbs = ($food['food_carbs'] * $food['quantity']) / 100;
+        $fat = ($food['food_fat'] * $food['quantity']) / 100;
     } else {
-        // Réinitialiser les champs si aucun aliment n'est sélectionné
-        document.getElementById('custom_calories').value = '0';
-        document.getElementById('custom_protein').value = '0';
-        document.getElementById('custom_carbs').value = '0';
-        document.getElementById('custom_fat').value = '0';
+        // Aliment personnalisé
+        $calories = $food['custom_calories'];
+        $protein = $food['custom_protein'];
+        $carbs = $food['custom_carbs'];
+        $fat = $food['custom_fat'];
     }
-});
-
-// Gestionnaire pour le champ de quantité
-document.getElementById('quantity').addEventListener('input', function() {
-    const foodSelect = document.getElementById('food_id');
-    const selectedOption = foodSelect.options[foodSelect.selectedIndex];
     
-    if (foodSelect.value) {
-        const quantity = this.value;
-        const calories = selectedOption.dataset.calories;
-        const protein = selectedOption.dataset.protein;
-        const carbs = selectedOption.dataset.carbs;
-        const fat = selectedOption.dataset.fat;
-        
-        // Calculer les valeurs en fonction de la quantité
-        const ratio = quantity / 100;
-        document.getElementById('custom_calories').value = Math.round(calories * ratio);
-        document.getElementById('custom_protein').value = (protein * ratio).toFixed(1);
-        document.getElementById('custom_carbs').value = (carbs * ratio).toFixed(1);
-        document.getElementById('custom_fat').value = (fat * ratio).toFixed(1);
-    }
-});
-
-function editFood(foodId) {
-    // Implémenter la modification d'un aliment
+    return [
+        'calories' => round($calories),
+        'protein' => round($protein, 1),
+        'carbs' => round($carbs, 1),
+        'fat' => round($fat, 1)
+    ];
 }
 
-function deleteFood(foodId) {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.innerHTML = `
-            <input type="hidden" name="action" value="remove_food_from_meal">
-            <input type="hidden" name="food_log_id" value="${foodId}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
+// Fonction pour mettre à jour les totaux d'un repas
+function updateMealTotals($meal_id) {
+    global $db;
+    
+    // Debug: Afficher l'ID du repas
+    error_log("Mise à jour des totaux pour le repas ID: " . $meal_id);
+    
+    // Debug: Vérifier les aliments du repas avant la mise à jour
+    $sql = "SELECT fl.*, f.name as food_name, f.calories as food_calories, f.protein as food_protein, f.carbs as food_carbs, f.fat as food_fat
+            FROM food_logs fl 
+            LEFT JOIN foods f ON fl.food_id = f.id 
+            WHERE fl.meal_id = ?";
+    $foods = fetchAll($sql, [$meal_id]);
+    error_log("Aliments dans le repas avant mise à jour: " . print_r($foods, true));
+    
+    // Calculer les totaux
+    $total_calories = 0;
+    $total_protein = 0;
+    $total_carbs = 0;
+    $total_fat = 0;
+    
+    foreach ($foods as $food) {
+        if ($food['food_id'] > 0) {
+            // Aliment de la base de données
+            $total_calories += ($food['food_calories'] * $food['quantity']) / 100;
+            $total_protein += ($food['food_protein'] * $food['quantity']) / 100;
+            $total_carbs += ($food['food_carbs'] * $food['quantity']) / 100;
+            $total_fat += ($food['food_fat'] * $food['quantity']) / 100;
+        } else {
+            // Aliment personnalisé
+            $total_calories += $food['custom_calories'];
+            $total_protein += $food['custom_protein'];
+            $total_carbs += $food['custom_carbs'];
+            $total_fat += $food['custom_fat'];
+        }
     }
+    
+    // Mettre à jour les totaux dans la table meals
+    $sql = "UPDATE meals 
+            SET total_calories = ?, 
+                total_protein = ?, 
+                total_carbs = ?, 
+                total_fat = ?
+            WHERE id = ?";
+            
+    $result = update($sql, [
+        round($total_calories),
+        round($total_protein, 1),
+        round($total_carbs, 1),
+        round($total_fat, 1),
+        $meal_id
+    ]);
+    
+    // Debug: Vérifier les totaux après la mise à jour
+    $sql = "SELECT total_calories, total_protein, total_carbs, total_fat FROM meals WHERE id = ?";
+    $totals = fetchOne($sql, [$meal_id]);
+    error_log("Totaux après mise à jour: " . print_r($totals, true));
+    
+    return $result;
 }
-</script>
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journal alimentaire - Weight Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <?php include 'navigation.php'; ?>
 
-<?php include 'footer.php'; ?>
+    <!-- Contenu principal -->
+    <div class="container py-4">
+        <!-- En-tête de la page -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h1 class="mb-0">Journal alimentaire</h1>
+                <p class="text-muted">Suivez vos repas et votre consommation de calories</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="btn-group">
+                    <a href="food-log.php" class="btn btn-outline-primary">
+                        <i class="fas fa-calendar-day me-1"></i>Aujourd'hui
+                    </a>
+                    <a href="food-log.php?action=add_meal" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Ajouter un repas
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <?php if (!empty($success_message)): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <?php echo $success_message; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($errors)): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <ul class="mb-0">
+                    <?php foreach ($errors as $error): ?>
+                        <li><?php echo $error; ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($action === 'add_meal'): ?>
+            <!-- Formulaire d'ajout de repas -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Ajouter un nouveau repas</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="food-log.php" class="needs-validation" novalidate>
+                        <input type="hidden" name="action" value="add_meal">
+                        
+                        <div class="mb-3">
+                            <label for="meal_type" class="form-label">Type de repas</label>
+                            <select class="form-select" id="meal_type" name="meal_type" required>
+                                <option value="">Sélectionnez un type de repas</option>
+                                <option value="petit_dejeuner">Petit déjeuner</option>
+                                <option value="dejeuner">Déjeuner</option>
+                                <option value="diner">Dîner</option>
+                                <option value="collation">Collation</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Veuillez sélectionner un type de repas.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="log_date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="log_date" name="log_date" value="<?php echo date('Y-m-d'); ?>" required>
+                            <div class="invalid-feedback">
+                                Veuillez sélectionner une date valide.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (optionnel)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>Ajouter le repas
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Utiliser un repas prédéfini -->
+            <?php if (!empty($predefined_meals)): ?>
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">Ou utiliser un repas prédéfini</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="food-log.php" method="POST" novalidate>
+                            <input type="hidden" name="action" value="use_predefined_meal">
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="predefined_meal_id" class="form-label">Repas prédéfini</label>
+                                    <select class="form-select" id="predefined_meal_id" name="predefined_meal_id" required>
+                                        <option value="">Sélectionnez un repas</option>
+                                        <?php foreach ($predefined_meals as $pm): ?>
+                                            <option value="<?php echo $pm['id']; ?>">
+                                                <?php echo htmlspecialchars($pm['name']); ?>
+                                                <?php if ($pm['created_by_admin']): ?> (Admin)<?php endif; ?>
+                                                <?php if ($pm['is_public'] && $pm['user_id'] != $user_id): ?> (Public)<?php endif; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="meal_type_predefined" class="form-label">Type de repas</label>
+                                    <select class="form-select" id="meal_type_predefined" name="meal_type" required>
+                                        <option value="">Sélectionnez</option>
+                                        <option value="petit_dejeuner">Petit déjeuner</option>
+                                        <option value="dejeuner">Déjeuner</option>
+                                        <option value="diner">Dîner</option>
+                                        <option value="collation">Collation</option>
+                                        <option value="autre">Autre</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-3 mb-3">
+                                    <label for="log_date_predefined" class="form-label">Date</label>
+                                    <input type="date" class="form-control" id="log_date_predefined" name="log_date" value="<?php echo date('Y-m-d'); ?>" required>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="#" class="btn btn-link" data-bs-toggle="modal" data-bs-target="#viewPredefinedMealsModal">
+                                    <i class="fas fa-eye me-1"></i>Voir les détails des repas prédéfinis
+                                </a>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-utensils me-1"></i>Utiliser ce repas
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+        <?php elseif ($action === 'edit_meal' && $meal_details): ?>
+            <!-- Édition d'un repas -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        Éditer le repas: <?php echo htmlspecialchars($meal_details['name']); ?>
+                        <span class="badge bg-primary ms-2"><?php echo getMealTypeName($meal_details['meal_type']); ?></span>
+                    </h5>
+                    <div>
+                        <form action="food-log.php" method="POST" class="d-inline">
+                            <input type="hidden" name="action" value="delete_meal">
+                            <input type="hidden" name="meal_id" value="<?php echo $meal_details['id']; ?>">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
+                                <i class="fas fa-trash me-1"></i>Supprimer
+                            </button>
+                        </form>
+                        <button class="btn btn-sm btn-outline-success ms-2" data-bs-toggle="modal" data-bs-target="#savePredefinedMealModal">
+                            <i class="fas fa-save me-1"></i>Enregistrer comme modèle
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <p><strong>Date:</strong> <?php echo date('d/m/Y', strtotime($meal_details['log_date'])); ?></p>
+                            <?php if (!empty($meal_details['notes'])): ?>
+                                <p><strong>Notes:</strong> <?php echo htmlspecialchars($meal_details['notes']); ?></p>
+                            <?php endif; ?>
+                        </div>
+                        <div class="col-md-6">
+                            <?php
+                            $total_calories = 0;
+                            $total_protein = 0;
+                            $total_carbs = 0;
+                            $total_fat = 0;
+                            
+                            foreach ($meal_foods as $food) {
+                                $nutrients = calculateNutrients($food);
+                                $total_calories += $nutrients['calories'];
+                                $total_protein += $nutrients['protein'];
+                                $total_carbs += $nutrients['carbs'];
+                                $total_fat += $nutrients['fat'];
+                            }
+                            ?>
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="mb-1"><strong>Total calories:</strong> <?php echo $total_calories; ?> kcal</p>
+                                    <p class="mb-1"><strong>Protéines:</strong> <?php echo $total_protein; ?> g</p>
+                                </div>
+                                <div>
+                                    <p class="mb-1"><strong>Glucides:</strong> <?php echo $total_carbs; ?> g</p>
+                                    <p class="mb-1"><strong>Lipides:</strong> <?php echo $total_fat; ?> g</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Liste des aliments du repas -->
+                    <?php if (!empty($meal_foods)): ?>
+                        <h6 class="mb-3">Aliments dans ce repas:</h6>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Aliment</th>
+                                        <th>Quantité (g)</th>
+                                        <th>Calories</th>
+                                        <th>Protéines (g)</th>
+                                        <th>Glucides (g)</th>
+                                        <th>Lipides (g)</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($meal_foods as $food): ?>
+                                        <?php $nutrients = calculateNutrients($food); ?>
+                                        <tr>
+                                            <td>
+                                                <?php if ($food['food_id']): ?>
+                                                    <?php echo htmlspecialchars($food['food_name']); ?>
+                                                <?php else: ?>
+                                                    <?php echo htmlspecialchars($food['custom_food_name']); ?> <span class="badge bg-secondary">Personnalisé</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?php echo $food['quantity']; ?></td>
+                                            <td><?php echo $nutrients['calories']; ?></td>
+                                            <td><?php echo $nutrients['protein']; ?></td>
+                                            <td><?php echo $nutrients['carbs']; ?></td>
+                                            <td><?php echo $nutrients['fat']; ?></td>
+                                            <td>
+                                                <form action="food-log.php?action=edit_meal&meal_id=<?php echo $meal_details['id']; ?>" method="POST">
+                                                    <input type="hidden" name="action" value="remove_food_from_meal">
+                                                    <input type="hidden" name="food_log_id" value="<?php echo $food['id']; ?>">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-info">
+                            Ce repas ne contient pas encore d'aliments. Ajoutez-en ci-dessous.
+                        </div>
+                    <?php endif; ?>
+                    
+                    <!-- Formulaire d'ajout d'aliment -->
+                    <h6 class="mb-3">Ajouter un aliment à ce repas:</h6>
+                    <form action="food-log.php?action=edit_meal&meal_id=<?php echo $meal_details['id']; ?>" method="POST" novalidate>
+                        <input type="hidden" name="action" value="add_food_to_meal">
+                        <input type="hidden" name="meal_id" value="<?php echo $meal_details['id']; ?>">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="food_id" class="form-label">Aliment</label>
+                                <select class="form-select" id="food_id" name="food_id">
+                                    <option value="">Sélectionnez un aliment ou saisissez un nom personnalisé</option>
+                                    <?php foreach ($foods as $food): ?>
+                                        <option value="<?php echo $food['id']; ?>" 
+                                                data-calories="<?php echo $food['calories']; ?>"
+                                                data-protein="<?php echo $food['protein']; ?>"
+                                                data-carbs="<?php echo $food['carbs']; ?>"
+                                                data-fat="<?php echo $food['fat']; ?>">
+                                            <?php echo htmlspecialchars($food['name']); ?> 
+                                            (<?php echo $food['calories']; ?> kcal/100g)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="custom_food_name" class="form-label">Nom d'aliment personnalisé (si non listé)</label>
+                                <input type="text" class="form-control" id="custom_food_name" name="custom_food_name">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="quantity" class="form-label">Quantité (g)</label>
+                                <input type="number" class="form-control" id="quantity" name="quantity" value="100" min="1" required>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <label for="custom_calories" class="form-label">Calories</label>
+                                <input type="number" class="form-control" id="custom_calories" name="custom_calories" value="0" min="0" required>
+                            </div>
+                            
+                            <div class="col-md-2 mb-3">
+                                <label for="custom_protein" class="form-label">Protéines (g)</label>
+                                <input type="number" class="form-control" id="custom_protein" name="custom_protein" value="0" min="0" step="0.1">
+                            </div>
+                            
+                            <div class="col-md-2 mb-3">
+                                <label for="custom_carbs" class="form-label">Glucides (g)</label>
+                                <input type="number" class="form-control" id="custom_carbs" name="custom_carbs" value="0" min="0" step="0.1">
+                            </div>
+                            
+                            <div class="col-md-2 mb-3">
+                                <label for="custom_fat" class="form-label">Lipides (g)</label>
+                                <input type="number" class="form-control" id="custom_fat" name="custom_fat" value="0" min="0" step="0.1">
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="food-log.php" class="btn btn-outline-secondary">Retour au journal</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>Ajouter l'aliment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Modal pour enregistrer comme repas prédéfini -->
+            <div class="modal fade" id="savePredefinedMealModal" tabindex="-1" aria-labelledby="savePredefinedMealModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="savePredefinedMealModalLabel">Enregistrer comme repas prédéfini</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="food-log.php?action=edit_meal&meal_id=<?php echo $meal_details['id']; ?>" method="POST">
+                            <input type="hidden" name="action" value="save_predefined_meal">
+                            <input type="hidden" name="meal_id" value="<?php echo $meal_details['id']; ?>">
+                            
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="predefined_name" class="form-label">Nom du repas prédéfini</label>
+                                    <input type="text" class="form-control" id="predefined_name" name="predefined_name" value="<?php echo htmlspecialchars($meal_details['name']); ?>" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="predefined_description" class="form-label">Description (optionnel)</label>
+                                    <textarea class="form-control" id="predefined_description" name="predefined_description" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="is_public" name="is_public">
+                                    <label class="form-check-label" for="is_public">
+                                        Rendre ce repas prédéfini public (visible par tous les utilisateurs)
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                <button type="submit" class="btn btn-success">Enregistrer</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+        <?php elseif ($action === 'view_predefined_meal' && $predefined_meal_details): ?>
+            <!-- Affichage d'un repas prédéfini -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        Repas prédéfini: <?php echo htmlspecialchars($predefined_meal_details['name']); ?>
+                        <?php if ($predefined_meal_details['created_by_admin']): ?>
+                            <span class="badge bg-danger ms-2">Admin</span>
+                        <?php endif; ?>
+                        <?php if ($predefined_meal_details['is_public']): ?>
+                            <span class="badge bg-success ms-2">Public</span>
+                        <?php endif; ?>
+                    </h5>
+                    <form action="food-log.php" method="POST">
+                        <input type="hidden" name="action" value="use_predefined_meal">
+                        <input type="hidden" name="predefined_meal_id" value="<?php echo $predefined_meal_details['id']; ?>">
+                        <input type="hidden" name="log_date" value="<?php echo date('Y-m-d'); ?>">
+                        <div class="input-group">
+                            <select class="form-select" name="meal_type" required>
+                                <option value="">Type de repas</option>
+                                <option value="petit_dejeuner">Petit déjeuner</option>
+                                <option value="dejeuner">Déjeuner</option>
+                                <option value="diner">Dîner</option>
+                                <option value="collation">Collation</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-utensils me-1"></i>Utiliser ce repas
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($predefined_meal_details['description'])): ?>
+                        <p><strong>Description:</strong> <?php echo htmlspecialchars($predefined_meal_details['description']); ?></p>
+                    <?php endif; ?>
+                    
+                    <?php
+                    $total_calories = 0;
+                    $total_protein = 0;
+                    $total_carbs = 0;
+                    $total_fat = 0;
+                    
+                    foreach ($predefined_meal_foods as $food): ?>
+                        <?php 
+                        $custom_data = json_decode($food['notes'], true) ?? [];
+                        $nutrients = calculateNutrients([
+                            'food_id' => $food['food_id'],
+                            'food_name' => $food['food_name'],
+                            'food_calories' => $food['food_calories'],
+                            'food_protein' => $food['food_protein'],
+                            'food_carbs' => $food['food_carbs'],
+                            'food_fat' => $food['food_fat'],
+                            'quantity' => $food['quantity'],
+                            'custom_food_name' => $custom_data['custom_food_name'] ?? '',
+                            'custom_calories' => $custom_data['custom_calories'] ?? 0,
+                            'custom_protein' => $custom_data['custom_protein'] ?? 0,
+                            'custom_carbs' => $custom_data['custom_carbs'] ?? 0,
+                            'custom_fat' => $custom_data['custom_fat'] ?? 0
+                        ]); 
+                        ?>
+                        <tr>
+                            <td>
+                                <?php if ($food['food_id']): ?>
+                                    <?php echo htmlspecialchars($food['food_name']); ?>
+                                <?php else: ?>
+                                    <?php echo htmlspecialchars($custom_data['custom_food_name'] ?? ''); ?> <span class="badge bg-secondary">Personnalisé</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo $food['quantity']; ?></td>
+                            <td><?php echo $nutrients['calories']; ?></td>
+                            <td><?php echo $nutrients['protein']; ?></td>
+                            <td><?php echo $nutrients['carbs']; ?></td>
+                            <td><?php echo $nutrients['fat']; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="mb-1"><strong>Total calories:</strong> <?php echo $total_calories; ?> kcal</p>
+                                    <p class="mb-1"><strong>Protéines:</strong> <?php echo $total_protein; ?> g</p>
+                                </div>
+                                <div>
+                                    <p class="mb-1"><strong>Glucides:</strong> <?php echo $total_carbs; ?> g</p>
+                                    <p class="mb-1"><strong>Lipides:</strong> <?php echo $total_fat; ?> g</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Liste des aliments du repas prédéfini -->
+                    <?php if (!empty($predefined_meal_foods)): ?>
+                        <h6 class="mb-3">Aliments dans ce repas:</h6>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Aliment</th>
+                                        <th>Quantité (g)</th>
+                                        <th>Calories</th>
+                                        <th>Protéines (g)</th>
+                                        <th>Glucides (g)</th>
+                                        <th>Lipides (g)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($predefined_meal_foods as $food): ?>
+                                        <?php 
+                                        $custom_data = json_decode($food['notes'], true) ?? [];
+                                        $nutrients = calculateNutrients([
+                                            'food_id' => $food['food_id'],
+                                            'food_name' => $food['food_name'],
+                                            'food_calories' => $food['food_calories'],
+                                            'food_protein' => $food['food_protein'],
+                                            'food_carbs' => $food['food_carbs'],
+                                            'food_fat' => $food['food_fat'],
+                                            'quantity' => $food['quantity'],
+                                            'custom_food_name' => $custom_data['custom_food_name'] ?? '',
+                                            'custom_calories' => $custom_data['custom_calories'] ?? 0,
+                                            'custom_protein' => $custom_data['custom_protein'] ?? 0,
+                                            'custom_carbs' => $custom_data['custom_carbs'] ?? 0,
+                                            'custom_fat' => $custom_data['custom_fat'] ?? 0
+                                        ]); 
+                                        ?>
+                                        <tr>
+                                            <td>
+                                                <?php if ($food['food_id']): ?>
+                                                    <?php echo htmlspecialchars($food['food_name']); ?>
+                                                <?php else: ?>
+                                                    <?php echo htmlspecialchars($custom_data['custom_food_name'] ?? ''); ?> <span class="badge bg-secondary">Personnalisé</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?php echo $food['quantity']; ?></td>
+                                            <td><?php echo $nutrients['calories']; ?></td>
+                                            <td><?php echo $nutrients['protein']; ?></td>
+                                            <td><?php echo $nutrients['carbs']; ?></td>
+                                            <td><?php echo $nutrients['fat']; ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-info">
+                            Ce repas prédéfini ne contient pas d'aliments.
+                        </div>
+                    <?php endif; ?>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="food-log.php" class="btn btn-outline-secondary">Retour au journal</a>
+                    </div>
+                </div>
+            </div>
+            
+        <?php else: ?>
+            <!-- Journal alimentaire principal -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Repas du jour</h5>
+                            <form class="d-flex">
+                                <input type="date" class="form-control me-2" name="date" value="<?php echo $date_filter; ?>" onchange="this.form.submit()">
+                            </form>
+                        </div>
+                        <div class="card-body">
+                            <?php if (empty($meals)): ?>
+                                <div class="text-center py-4">
+                                    <p class="mb-3">Aucun repas enregistré pour cette date.</p>
+                                    <a href="food-log.php?action=add_meal" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>Ajouter un repas
+                                    </a>
+                                </div>
+                            <?php else: ?>
+                                <div class="list-group">
+                                    <?php foreach ($meals as $meal): ?>
+                                        <?php error_log("Affichage du repas : " . print_r($meal, true)); ?>
+                                        <div class="card mb-3">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h5 class="card-title mb-1">
+                                                            <?php echo getMealTypeName($meal['meal_type']); ?>
+                                                        </h5>
+                                                        <p class="card-text mb-1">
+                                                            <strong>Calories:</strong> <?php echo number_format($meal['total_calories']); ?> kcal
+                                                        </p>
+                                                        <?php if ($meal['notes']): ?>
+                                                            <p class="card-text mb-1">
+                                                                <strong>Notes:</strong> <?php echo htmlspecialchars($meal['notes']); ?>
+                                                            </p>
+                                                        <?php endif; ?>
+                                                        <small class="text-muted">
+                                                            <?php echo date('d/m/Y H:i', strtotime($meal['log_date'])); ?>
+                                                        </small>
+                                                    </div>
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary share-meal-btn" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#shareMealModal"
+                                                                data-meal-id="<?php echo $meal['id']; ?>"
+                                                                data-meal-type="<?php echo $meal['meal_type']; ?>"
+                                                                data-calories="<?php echo $meal['total_calories']; ?>"
+                                                                data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>"
+                                                                onclick="console.log('Partage de repas:', this.dataset);">
+                                                            <i class="fas fa-share-alt me-1"></i>Partager
+                                                        </button>
+                                                        <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" 
+                                                           class="btn btn-sm btn-outline-secondary">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" 
+                                                           class="btn btn-sm btn-outline-danger"
+                                                           onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <!-- Suggestions de repas -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Suggestions de repas</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="generateSuggestionsBtn">
+                                <i class="fas fa-sync-alt me-1"></i>Générer des suggestions
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <?php
+                            $suggestions = getMealSuggestions($user_id);
+                            if (empty($suggestions)): ?>
+                                <div class="text-center py-4">
+                                    <p class="mb-3">Aucune suggestion de repas disponible.</p>
+                                    <p class="text-muted small">Ajoutez des préférences alimentaires pour recevoir des suggestions personnalisées.</p>
+                                </div>
+                            <?php else: ?>
+                                <div class="list-group">
+                                    <?php foreach ($suggestions as $suggestion): ?>
+                                        <div class="card mb-3">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="card-title mb-2">
+                                                            <?php echo htmlspecialchars($suggestion['description']['raw_content']); ?>
+                                                            <?php if ($suggestion['goal_compatibility']): ?>
+                                                                <span class="badge bg-<?php echo $suggestion['goal_compatibility'] >= 70 ? 'success' : ($suggestion['goal_compatibility'] >= 40 ? 'warning' : 'danger'); ?>">
+                                                                    <?php echo round($suggestion['goal_compatibility']); ?>% compatible
+                                                                </span>
+                                                            <?php endif; ?>
+                                                        </h6>
+                                                        
+                                                        <?php if (!empty($suggestion['description']['ingredients'])): ?>
+                                                            <div class="mb-2">
+                                                                <strong>Ingrédients :</strong>
+                                                                <ul class="list-unstyled mb-0">
+                                                                    <?php foreach ($suggestion['description']['ingredients'] as $ingredient): ?>
+                                                                        <li><i class="fas fa-check text-success"></i> <?php echo htmlspecialchars($ingredient); ?></li>
+                                                                    <?php endforeach; ?>
+                                                                </ul>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        
+                                                        <?php if (!empty($suggestion['description']['steps'])): ?>
+                                                            <div class="mb-2">
+                                                                <strong>Étapes de préparation :</strong>
+                                                                <ol class="mb-0">
+                                                                    <?php foreach ($suggestion['description']['steps'] as $step): ?>
+                                                                        <li><?php echo htmlspecialchars($step); ?></li>
+                                                                    <?php endforeach; ?>
+                                                                </ol>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        
+                                                        <div class="nutrition-info small text-muted">
+                                                            <div class="d-flex justify-content-between">
+                                                                <span>Calories: <?php echo number_format($suggestion['totals']['calories']); ?> kcal</span>
+                                                                <span>Protéines: <?php echo $suggestion['totals']['protein']; ?>g</span>
+                                                                <span>Glucides: <?php echo $suggestion['totals']['carbs']; ?>g</span>
+                                                                <span>Lipides: <?php echo $suggestion['totals']['fat']; ?>g</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="ms-3">
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-outline-primary add-suggestion-btn"
+                                                                data-suggestion-id="<?php echo $suggestion['id']; ?>"
+                                                                data-calories="<?php echo $suggestion['totals']['calories']; ?>"
+                                                                data-protein="<?php echo $suggestion['totals']['protein']; ?>"
+                                                                data-carbs="<?php echo $suggestion['totals']['carbs']; ?>"
+                                                                data-fat="<?php echo $suggestion['totals']['fat']; ?>">
+                                                            <i class="fas fa-plus me-1"></i>Ajouter
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <!-- Repas prédéfinis -->
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <h5 class="card-title mb-0">Repas prédéfinis</h5>
+                        </div>
+                        <div class="card-body">
+                            <?php if (empty($predefined_meals)): ?>
+                                <div class="text-center py-4">
+                                    <p class="mb-3">Aucun repas prédéfini disponible.</p>
+                                    <p class="text-muted small">Créez des repas et enregistrez-les comme modèles pour les réutiliser facilement.</p>
+                                </div>
+                            <?php else: ?>
+                                <div class="list-group">
+                                    <?php 
+                                    $displayed_count = 0;
+                                    foreach ($predefined_meals as $pm): 
+                                        if ($displayed_count >= 5) break;
+                                        $displayed_count++;
+                                    ?>
+                                        <a href="food-log.php?action=view_predefined_meal&predefined_meal_id=<?php echo $pm['id']; ?>" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1"><?php echo htmlspecialchars($pm['name']); ?></h6>
+                                                <p class="text-muted small mb-0">
+                                                    <?php if ($pm['user_id'] == 1): ?>
+                                                        <span class="badge bg-danger">Admin</span>
+                                                    <?php endif; ?>
+                                                    <?php if ($pm['is_public'] && $pm['user_id'] != $user_id): ?>
+                                                        <span class="badge bg-success">Public</span>
+                                                    <?php endif; ?>
+                                                </p>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye me-1"></i>Voir
+                                            </button>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                                
+                                <?php if (count($predefined_meals) > 5): ?>
+                                    <div class="text-center mt-3">
+                                        <button class="btn btn-link" data-bs-toggle="modal" data-bs-target="#viewPredefinedMealsModal">
+                                            Voir tous les repas prédéfinis (<?php echo count($predefined_meals); ?>)
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Historique des repas -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Historique des repas</h5>
+                </div>
+                <div class="card-body">
+                    <?php if (empty($meal_history)): ?>
+                        <div class="text-center py-4">
+                            <p>Aucun historique de repas disponible.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Aliments</th>
+                                        <th>Calories</th>
+                                        <th>Notes</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($meals)): ?>
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                <p class="text-muted mb-0">Aucun repas enregistré</p>
+                                                <small class="text-muted">Commencez à enregistrer vos repas pour suivre votre alimentation</small>
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($meals as $meal): ?>
+                                            <?php error_log("Affichage du repas : " . print_r($meal, true)); ?>
+                                            <tr>
+                                                <td><?php echo date('d/m/Y', strtotime($meal['log_date'])); ?></td>
+                                                <td><?php echo getMealTypeName($meal['meal_type']); ?></td>
+                                                <td><?php echo $meal['food_count']; ?> aliment(s)</td>
+                                                <td><?php echo number_format($meal['total_calories']); ?> kcal</td>
+                                                <td><?php echo $meal['notes'] ? htmlspecialchars($meal['notes']) : '—'; ?></td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-outline-primary share-meal-btn" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#shareMealModal"
+                                                                data-meal-id="<?php echo $meal['id']; ?>"
+                                                                data-meal-type="<?php echo $meal['meal_type']; ?>"
+                                                                data-calories="<?php echo $meal['total_calories']; ?>"
+                                                                data-notes="<?php echo htmlspecialchars($meal['notes'] ?? ''); ?>"
+                                                                onclick="console.log('Partage de repas:', this.dataset);">
+                                                            <i class="fas fa-share-alt me-1"></i>Partager
+                                                        </button>
+                                                        <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" 
+                                                           class="btn btn-sm btn-outline-secondary">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <a href="food-log.php?action=delete_meal&meal_id=<?php echo $meal['id']; ?>" 
+                                                           class="btn btn-sm btn-outline-danger"
+                                                           onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+    
+    <!-- Modal pour voir tous les repas prédéfinis -->
+    <div class="modal fade" id="viewPredefinedMealsModal" tabindex="-1" aria-labelledby="viewPredefinedMealsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="viewPredefinedMealsModalLabel">Tous les repas prédéfinis</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <?php if (empty($predefined_meals)): ?>
+                        <div class="text-center py-4">
+                            <p>Aucun repas prédéfini disponible.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Nom</th>
+                                        <th>Description</th>
+                                        <th>Type</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($predefined_meals as $pm): ?>
+                                        <tr>
+                                            <td>
+                                                <?php echo htmlspecialchars($pm['name']); ?>
+                                                <?php if ($pm['user_id'] == 1): ?>
+                                                    <span class="badge bg-danger">Admin</span>
+                                                <?php endif; ?>
+                                                <?php if ($pm['is_public'] && $pm['user_id'] != $user_id): ?>
+                                                    <span class="badge bg-success">Public</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php echo !empty($pm['description']) ? htmlspecialchars(substr($pm['description'], 0, 50)) . (strlen($pm['description']) > 50 ? '...' : '') : '—'; ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($pm['user_id'] == $user_id): ?>
+                                                    <span class="badge bg-primary">Personnel</span>
+                                                <?php elseif ($pm['user_id'] == 1): ?>
+                                                    <span class="badge bg-danger">Admin</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-success">Public</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <a href="food-log.php?action=view_predefined_meal&predefined_meal_id=<?php echo $pm['id']; ?>" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye me-1"></i>Voir
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de partage de repas -->
+    <div class="modal fade" id="shareMealModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Partager ce repas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="shareForm" action="create-post.php" method="POST">
+                        <input type="hidden" name="post_type" value="meal">
+                        <input type="hidden" name="reference_id" id="share_meal_id">
+                        <input type="hidden" name="visibility" value="public">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Message (optionnel)</label>
+                            <textarea class="form-control" name="content" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="meal-details mb-3">
+                            <p class="mb-1"><strong>Type:</strong> <span id="share_meal_type"></span></p>
+                            <p class="mb-1"><strong>Calories:</strong> <span id="share_meal_calories"></span> kcal</p>
+                            <p class="mb-0"><strong>Notes:</strong> <span id="share_meal_notes"></span></p>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" form="shareForm" class="btn btn-primary">Partager</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmation d'ajout de suggestion -->
+    <div class="modal fade" id="confirmSuggestionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ajouter le repas suggéré</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="food-log.php" method="POST">
+                    <input type="hidden" name="action" value="use_predefined_meal">
+                    <input type="hidden" name="predefined_meal_id" id="confirm_suggestion_id">
+                    
+                    <div class="modal-body">
+                        <p>Voulez-vous ajouter <strong id="confirm_suggestion_name"></strong> à votre journal alimentaire ?</p>
+                        
+                        <div class="mb-3">
+                            <label for="meal_type_suggestion" class="form-label">Type de repas</label>
+                            <select class="form-select" id="meal_type_suggestion" name="meal_type" required>
+                                <option value="">Sélectionnez un type de repas</option>
+                                <option value="petit_dejeuner">Petit déjeuner</option>
+                                <option value="dejeuner">Déjeuner</option>
+                                <option value="diner">Dîner</option>
+                                <option value="collation">Collation</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="log_date_suggestion" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="log_date_suggestion" name="log_date" value="<?php echo date('Y-m-d'); ?>" required>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Ajouter le repas</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Gestionnaire pour le bouton de génération de suggestions
+            const generateSuggestionsBtn = document.getElementById('generateSuggestionsBtn');
+            if (generateSuggestionsBtn) {
+                generateSuggestionsBtn.addEventListener('click', function() {
+                    const icon = this.querySelector('i');
+                    icon.classList.add('fa-spin');
+                    this.disabled = true;
+                    
+                    fetch('generate-suggestions.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            type: 'alimentation'
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            alert('Erreur lors de la génération des suggestions : ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert('Une erreur est survenue lors de la génération des suggestions.');
+                    })
+                    .finally(() => {
+                        icon.classList.remove('fa-spin');
+                        this.disabled = false;
+                    });
+                });
+            }
+            
+            // Gestionnaire pour les boutons d'ajout de suggestion
+            document.querySelectorAll('.add-suggestion-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const suggestionId = this.dataset.suggestionId;
+                    const calories = this.dataset.calories;
+                    const protein = this.dataset.protein;
+                    const carbs = this.dataset.carbs;
+                    const fat = this.dataset.fat;
+                    
+                    // Récupérer le formulaire d'ajout de repas
+                    const mealForm = document.getElementById('addMealForm');
+                    if (mealForm) {
+                        // Remplir les champs du formulaire
+                        mealForm.querySelector('[name="meal_type"]').value = 'dejeuner'; // Type par défaut
+                        mealForm.querySelector('[name="log_date"]').value = new Date().toISOString().split('T')[0];
+                        mealForm.querySelector('[name="notes"]').value = 'Suggestion IA #' + suggestionId;
+                        
+                        // Ajouter les valeurs nutritionnelles
+                        const nutritionInputs = mealForm.querySelectorAll('.nutrition-input');
+                        nutritionInputs.forEach(input => {
+                            switch(input.dataset.nutrient) {
+                                case 'calories':
+                                    input.value = calories;
+                                    break;
+                                case 'protein':
+                                    input.value = protein;
+                                    break;
+                                case 'carbs':
+                                    input.value = carbs;
+                                    break;
+                                case 'fat':
+                                    input.value = fat;
+                                    break;
+                            }
+                        });
+                        
+                        // Soumettre le formulaire
+                        mealForm.submit();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
