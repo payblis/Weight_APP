@@ -20,14 +20,21 @@ $sql = "SELECT * FROM users WHERE id = ?";
 $user = fetchOne($sql, [$user_id]);
 
 // Récupérer les informations du profil utilisateur
-$sql = "SELECT up.*, u.gender, u.birth_date 
+$sql = "SELECT up.* 
         FROM user_profiles up 
-        JOIN users u ON up.user_id = u.id 
         WHERE up.user_id = ?";
 $user_profile = fetchOne($sql, [$user_id]);
 
-// Calculer l'âge
-$user_profile['age'] = calculateAge($user_profile['birth_date']);
+if (!$user_profile) {
+    $errors[] = "Veuillez compléter votre profil avant d'utiliser les suggestions.";
+} else {
+    // Calculer l'âge à partir de la date de naissance
+    if (isset($user_profile['birth_date'])) {
+        $user_profile['age'] = calculateAge($user_profile['birth_date']);
+    } else {
+        $errors[] = "Veuillez ajouter votre date de naissance dans votre profil.";
+    }
+}
 
 // Récupérer l'objectif actuel
 $sql = "SELECT * FROM goals 
@@ -122,43 +129,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $suggestion_content = '';
             
-            switch ($suggestion_type) {
-                case 'repas':
-                    $suggestion_content = generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods);
-                    break;
-                    
-                case 'exercice':
-                    $suggestion_content = generateExerciseSuggestion($profile, $latest_weight, $current_goal, $active_program);
-                    break;
-                    
-                case 'programme':
-                    if (empty($api_key)) {
-                        $errors[] = "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
+            // Vérifier que le profil est complet
+            if (empty($user_profile) || !isset($user_profile['age'])) {
+                $errors[] = "Veuillez compléter votre profil avant d'utiliser les suggestions.";
+            } else {
+                switch ($suggestion_type) {
+                    case 'repas':
+                        $suggestion_content = generateMealSuggestion($user_profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods);
                         break;
-                    }
-                    $meal_suggestion = generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods);
-                    $exercise_suggestion = generateExerciseSuggestion($profile, $latest_weight, $current_goal, $active_program);
-                    
-                    if (strpos($meal_suggestion, "La clé API ChatGPT n'est pas configurée") !== false || 
-                        strpos($exercise_suggestion, "La clé API ChatGPT n'est pas configurée") !== false) {
-                        $errors[] = "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
+                        
+                    case 'exercice':
+                        $suggestion_content = generateExerciseSuggestion($user_profile, $latest_weight, $current_goal, $active_program);
                         break;
-                    }
-                    
-                    $suggestion_content = "PROGRAMME ALIMENTAIRE :\n\n" . $meal_suggestion . "\n\n" . 
-                                        "PROGRAMME D'EXERCICES :\n\n" . $exercise_suggestion;
-                    break;
-            }
-            
-            if (!empty($suggestion_content) && empty($errors)) {
-                $sql = "INSERT INTO ai_suggestions (user_id, suggestion_type, content, is_read, is_implemented, created_at) 
-                        VALUES (?, ?, ?, 0, 0, NOW())";
-                $result = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
+                        
+                    case 'programme':
+                        if (empty($api_key)) {
+                            $errors[] = "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
+                            break;
+                        }
+                        $meal_suggestion = generateMealSuggestion($user_profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods);
+                        $exercise_suggestion = generateExerciseSuggestion($user_profile, $latest_weight, $current_goal, $active_program);
+                        
+                        if (strpos($meal_suggestion, "La clé API ChatGPT n'est pas configurée") !== false || 
+                            strpos($exercise_suggestion, "La clé API ChatGPT n'est pas configurée") !== false) {
+                            $errors[] = "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
+                            break;
+                        }
+                        
+                        $suggestion_content = "PROGRAMME ALIMENTAIRE :\n\n" . $meal_suggestion . "\n\n" . 
+                                            "PROGRAMME D'EXERCICES :\n\n" . $exercise_suggestion;
+                        break;
+                }
                 
-                if ($result) {
-                    $success_message = "Votre suggestion a été générée avec succès !";
-                } else {
-                    $errors[] = "Une erreur s'est produite lors de l'enregistrement de la suggestion. Veuillez réessayer.";
+                if (!empty($suggestion_content) && empty($errors)) {
+                    $sql = "INSERT INTO ai_suggestions (user_id, suggestion_type, content, is_read, is_implemented, created_at) 
+                            VALUES (?, ?, ?, 0, 0, NOW())";
+                    $result = insert($sql, [$user_id, $suggestion_type, $suggestion_content]);
+                    
+                    if ($result) {
+                        $success_message = "Votre suggestion a été générée avec succès !";
+                    } else {
+                        $errors[] = "Une erreur s'est produite lors de l'enregistrement de la suggestion. Veuillez réessayer.";
+                    }
                 }
             }
         } catch (Exception $e) {
@@ -254,7 +266,7 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                                 La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur pour utiliser cette fonctionnalité.
                             </div>
                         <?php else: ?>
-                            <form method="post" action="suggestions.php">
+                            <form method="post" action="suggestions.php" id="suggestionForm">
                                 <input type="hidden" name="suggestion_type" value="<?php echo htmlspecialchars($suggestion_type); ?>">
                                 
                                 <p>
@@ -268,11 +280,19 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                                 </p>
                                 
                                 <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary">
+                                    <button type="submit" class="btn btn-primary" id="generateButton">
                                         <i class="fas fa-robot me-1"></i>Générer une suggestion
                                     </button>
                                 </div>
                             </form>
+
+                            <!-- Loader -->
+                            <div id="loader" class="text-center mt-3 d-none">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Chargement...</span>
+                                </div>
+                                <p class="mt-2 mb-0">Génération de votre suggestion en cours...</p>
+                            </div>
                         <?php endif; ?>
                         
                         <div class="mt-3">
@@ -427,5 +447,16 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
 
     <!-- Scripts JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('suggestionForm').addEventListener('submit', function(e) {
+            // Afficher le loader
+            document.getElementById('loader').classList.remove('d-none');
+            document.getElementById('generateButton').disabled = true;
+            
+            // Désactiver le bouton pendant la génération
+            const button = document.getElementById('generateButton');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Génération en cours...';
+        });
+    </script>
 </body>
 </html> 

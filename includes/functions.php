@@ -2024,7 +2024,16 @@ Réponds uniquement avec un objet JSON contenant les champs suivants :
         // Vérifier que la réponse est un JSON valide
         $data = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return "La réponse de l'API n'est pas un JSON valide.";
+            error_log("Erreur de parsing JSON dans generateExerciseSuggestion: " . json_last_error_msg());
+            error_log("Réponse brute: " . $response);
+            return "Une erreur s'est produite lors du traitement de la suggestion.";
+        }
+
+        // Vérifier que tous les champs requis sont présents
+        if (!isset($data['nom_du_programme']) || !isset($data['objectif']) || 
+            !isset($data['exercices']) || !isset($data['conseils'])) {
+            error_log("Données JSON incomplètes dans generateExerciseSuggestion");
+            return "La suggestion générée est incomplète.";
         }
 
         // Formater la suggestion
@@ -2033,6 +2042,12 @@ Réponds uniquement avec un objet JSON contenant les champs suivants :
         
         $suggestion .= "Exercices proposés :\n";
         foreach ($data['exercices'] as $exercice) {
+            if (!isset($exercice['nom']) || !isset($exercice['duree']) || 
+                !isset($exercice['intensite']) || !isset($exercice['calories_brûlées']) || 
+                !isset($exercice['description'])) {
+                continue; // Ignorer les exercices incomplets
+            }
+            
             $suggestion .= "\n{$exercice['nom']} :\n";
             $suggestion .= "- Durée : {$exercice['duree']}\n";
             $suggestion .= "- Intensité : {$exercice['intensite']}\n";
@@ -2040,9 +2055,11 @@ Réponds uniquement avec un objet JSON contenant les champs suivants :
             $suggestion .= "- Description : {$exercice['description']}\n";
         }
         
-        $suggestion .= "\nConseils :\n";
-        foreach ($data['conseils'] as $conseil) {
-            $suggestion .= "- {$conseil}\n";
+        if (!empty($data['conseils'])) {
+            $suggestion .= "\nConseils :\n";
+            foreach ($data['conseils'] as $conseil) {
+                $suggestion .= "- {$conseil}\n";
+            }
         }
 
         return $suggestion;
