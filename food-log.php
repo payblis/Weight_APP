@@ -27,8 +27,30 @@ $meal_id = isset($_GET['meal_id']) ? intval($_GET['meal_id']) : 0;
 $predefined_meal_id = isset($_GET['predefined_meal_id']) ? intval($_GET['predefined_meal_id']) : 0;
 $success_message = '';
 $errors = [];
+
+// Initialiser les variables de stats
 $daily_goal = 0;
 $exercise_calories = 0;
+$total_calories = 0;
+
+// Récupérer l'objectif calorique
+$sql = "SELECT daily_calories as goal_calories FROM user_profiles WHERE user_id = ?";
+$daily_goal_result = fetchOne($sql, [$user_id]);
+$daily_goal = $daily_goal_result ? $daily_goal_result['goal_calories'] : 0;
+
+// Récupérer les calories brûlées
+$sql = "SELECT COALESCE(SUM(calories_burned), 0) as total_burned 
+        FROM exercise_logs 
+        WHERE user_id = ? AND DATE(log_date) = ?";
+$exercise_result = fetchOne($sql, [$user_id, $date_filter]);
+$exercise_calories = $exercise_result ? $exercise_result['total_burned'] : 0;
+
+// Récupérer les calories consommées
+$sql = "SELECT COALESCE(SUM(total_calories), 0) as total_calories 
+        FROM meals 
+        WHERE user_id = ? AND log_date = ?";
+$meals_result = fetchOne($sql, [$user_id, $date_filter]);
+$total_calories = $meals_result ? $meals_result['total_calories'] : 0;
 
 error_log("=== DÉBUT DU TRAITEMENT ===");
 error_log("Action : " . $action);
@@ -1380,7 +1402,7 @@ echo "</div>";
                     <div class="stats-operation">-</div>
                 </div>
                 <div class="stats-item">
-                    <div class="stats-value" id="total-calories"><?php echo array_sum(array_column($meals, 'total_calories')); ?></div>
+                    <div class="stats-value" id="total-calories"><?php echo $total_calories; ?></div>
                     <div class="stats-label">Aliments</div>
                 </div>
                 <div class="stats-item">
@@ -1394,7 +1416,7 @@ echo "</div>";
                     <div class="stats-operation">=</div>
                 </div>
                 <div class="stats-item">
-                    <div class="stats-value" id="remaining-calories"><?php echo $daily_goal - array_sum(array_column($meals, 'total_calories')) + $exercise_calories; ?></div>
+                    <div class="stats-value" id="remaining-calories"><?php echo $daily_goal - $total_calories + $exercise_calories; ?></div>
                     <div class="stats-label">Restants</div>
                 </div>
             </div>
