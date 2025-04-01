@@ -981,6 +981,63 @@ echo "<span class='debug-category'>[EXERCICES]</span> ";
 echo "Total des exercices enregistrés : " . ($total_exercises ? $total_exercises['total'] : 0);
 echo "<br>Résultat complet : " . print_r($total_exercises, true);
 echo "</div>";
+
+                // Vérifier les exercices avec les colonnes correctes
+                $sql = "SELECT name, duration, calories_burned, log_date 
+                        FROM exercise_logs 
+                        WHERE user_id = ? AND log_date = ? 
+                        ORDER BY log_date DESC";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête détails exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
+                
+                $exercises = fetchAll($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste des exercices du jour :";
+                if (!empty($exercises)) {
+                    foreach ($exercises as $exercise) {
+                        echo "<br>- " . $exercise['name'] . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal";
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré pour cette date";
+                }
+                echo "</div>";
+
+                // Vérifier tous les exercices de l'utilisateur sans filtre de date
+                $sql = "SELECT name, duration, calories_burned, log_date 
+                       FROM exercise_logs 
+                       WHERE user_id = ? 
+                       ORDER BY log_date DESC";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête tous les exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id;
+                echo "</div>";
+                
+                $all_exercises = fetchAll($sql, [$user_id]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste de tous les exercices :";
+                if (!empty($all_exercises)) {
+                    foreach ($all_exercises as $exercise) {
+                        echo "<br>- " . $exercise['name'] . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal, " .
+                             "date: " . $exercise['log_date'];
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré";
+                }
+                echo "</div>";
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -1139,6 +1196,112 @@ echo "</div>";
                 echo "<span class='debug-category'>[EXERCICES]</span> ";
                 echo "Total des exercices enregistrés : " . ($total_exercises ? $total_exercises['total'] : 0);
                 echo "<br>Résultat complet : " . print_r($total_exercises, true);
+                echo "</div>";
+
+                // Vérifier les exercices avec les colonnes correctes
+                $sql = "SELECT name, duration, calories_burned, log_date 
+                        FROM exercise_logs 
+                        WHERE user_id = ? AND log_date = ? 
+                        ORDER BY log_date DESC";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête détails exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
+                
+                $exercises = fetchAll($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste des exercices du jour :";
+                if (!empty($exercises)) {
+                    foreach ($exercises as $exercise) {
+                        echo "<br>- " . $exercise['name'] . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal";
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré pour cette date";
+                }
+                echo "</div>";
+
+                // Vérifier tous les exercices de l'utilisateur sans filtre de date
+                $sql = "SELECT name, duration, calories_burned, log_date 
+                       FROM exercise_logs 
+                       WHERE user_id = ? 
+                       ORDER BY log_date DESC";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête tous les exercices : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id;
+                echo "</div>";
+                
+                $all_exercises = fetchAll($sql, [$user_id]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Liste de tous les exercices :";
+                if (!empty($all_exercises)) {
+                    foreach ($all_exercises as $exercise) {
+                        echo "<br>- " . $exercise['name'] . " : " . 
+                             $exercise['duration'] . " min, " . 
+                             $exercise['calories_burned'] . " kcal, " .
+                             "date: " . $exercise['log_date'];
+                    }
+                } else {
+                    echo "<br>Aucun exercice enregistré";
+                }
+                echo "</div>";
+
+                // Vérifier le format de la date dans la base de données
+                $sql = "SELECT DATE_FORMAT(log_date, '%Y-%m-%d') as formatted_date, COUNT(*) as count 
+                       FROM exercise_logs 
+                       WHERE user_id = ? 
+                       GROUP BY DATE(log_date)";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête format dates : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id;
+                echo "</div>";
+                
+                $date_counts = fetchAll($sql, [$user_id]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[EXERCICES]</span> ";
+                echo "Nombre d'exercices par date :";
+                if (!empty($date_counts)) {
+                    foreach ($date_counts as $count) {
+                        echo "<br>- Date: " . $count['formatted_date'] . 
+                             ", Nombre d'exercices: " . $count['count'];
+                    }
+                } else {
+                    echo "<br>Aucune date trouvée";
+                }
+                echo "</div>";
+
+                // Vérifier la structure de la table exercise_logs
+                $sql = "DESCRIBE exercise_logs";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Structure de la table exercise_logs : " . $sql;
+                echo "</div>";
+                
+                $table_structure = fetchAll($sql, []);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[STRUCTURE]</span> ";
+                echo "Structure de la table :";
+                if (!empty($table_structure)) {
+                    foreach ($table_structure as $column) {
+                        echo "<br>- " . $column['Field'] . " : " . $column['Type'];
+                    }
+                } else {
+                    echo "<br>Structure non trouvée";
+                }
                 echo "</div>";
                 ?>
             </div>
