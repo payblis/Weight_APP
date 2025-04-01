@@ -264,794 +264,599 @@ if (!empty($pending_invitations)):
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/swiper@8/swiper-bundle.min.js"></script>
-    <style>
-        body {
-            background-color: #fbfbfb;
-        }
-        .dashboard-container {
-            max-width: 992px;
-            margin: 0 auto;
-        }
-        @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 0;
-            }
-            .container {
-                padding: 0.5rem;
-            }
-            .card {
-                padding: 0.75rem;
-                margin-bottom: 1rem;
-            }
-            .card-body {
-                padding: 0.5rem;
-            }
-            .calories-container {
-                flex-direction: row;
-                align-items: flex-start;
-                gap: 1rem;
-                padding: 0;
-            }
-            .calories-details {
-                padding-top: 0.5rem;
-            }
-            .calories-details .detail-item {
-                text-align: center;
-                margin-bottom: 1rem;
-            }
-            .calories-details .detail-item span {
-                display: block;
-                margin-bottom: 0.25rem;
-                font-size: 0.9rem;
-            }
-            .calories-details .detail-item strong {
-                display: block;
-                font-size: 1.1rem;
-            }
-            .progress-circle {
-                width: 120px;
-                height: 120px;
-            }
-            .progress-circle h2 {
-                font-size: 1.5rem;
-                margin-bottom: 0;
-            }
-            .progress-circle .text-muted {
-                font-size: 0.8rem;
-            }
-            .exercise-swiper .swiper-slide {
-                width: 48%;
-            }
-        }
-
-        .hydration-container {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-        }
-        .water-drop {
-            width: 150px;
-            height: 150px;
-            margin: 0;
-        }
-        .water-actions {
-            flex: 1;
-        }
-        @media (max-width: 768px) {
-            .water-drop {
-                width: 120px;
-                height: 120px;
-            }
-        }
-
-        @media (min-width: 768px) {
-            .exercise-swiper .swiper-slide {
-                width: 23%;
-            }
-        }
-        .card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            height: 100%;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-bottom: 2rem;
-        }
-        .calories-container {
-            display: flex;
-            align-items: flex-start;
-            gap: 2rem;
-            padding: 1rem;
-        }
-        .calories-details {
-            flex: 1;
-            padding-top: 1rem;
-        }
-        .progress-circle {
-            width: 180px;
-            height: 180px;
-            flex-shrink: 0;
-        }
-        .exercise-card {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 1.5rem;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            margin-bottom: 0;
-        }
-        .macro-circle {
-            width: 100px;
-            height: 100px;
-            margin: 0 auto;
-        }
-        .info-icon {
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-        .macro-goal {
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
-        .exercise-icon {
-            width: 32px;
-            height: 32px;
-            background: #e9ecef;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 0.75rem;
-        }
-        .swiper-pagination {
-            position: relative;
-            margin-top: 1rem;
-        }
-        .row {
-            margin-bottom: 2rem;
-        }
-    </style>
 </head>
 <body>
     <?php include 'navigation.php'; ?>
 
     <!-- Contenu principal -->
     <div class="container py-4">
-        <div class="dashboard-container">
-            <!-- En-tête avec logo -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div class="d-flex align-items-center">
-                    <img src="assets/img/logo.png" alt="Logo" class="me-2" style="height: 40px;">
-                    <h4 class="mb-0">Aujourd'hui</h4>
+        <!-- Section des notifications importantes -->
+        <div class="notifications-section mb-4">
+            <?php if (!$current_goal): ?>
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Important !</strong> Vous n'avez pas encore défini d'objectif de poids. 
+                    <a href="goals.php" class="alert-link">Définissez un objectif</a> pour suivre votre progression et recevoir des recommandations personnalisées.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
+            <?php endif; ?>
+
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        <?php foreach ($errors as $error): ?>
+                            <li><?php echo $error; ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($success_message)): ?>
+                <div class="alert alert-success">
+                    <?php echo $success_message; ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <?php echo $_SESSION['success']; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['encouragement_message'])): ?>
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <i class="fas fa-star me-2"></i>
+                    <?php echo $_SESSION['encouragement_message']; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-danger">
+                    <?php echo $_SESSION['error']; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php unset($_SESSION['error']); ?>
+            <?php endif; ?>
+        </div>
+
+        <!-- Section des notifications de repas -->
+        <div class="meal-notifications-section mb-4">
+            <?php
+            $notifications = checkMealNotifications($_SESSION['user_id']);
+            foreach ($notifications as $notification): 
+                $alertClass = $notification['priority'] == 2 ? 'alert-danger' : 'alert-warning';
+                $icon = $notification['priority'] == 2 ? 'exclamation-triangle' : 'bell';
+            ?>
+                <div class="alert <?php echo $alertClass; ?> alert-dismissible fade show meal-notification" 
+                     role="alert"
+                     data-start-time="<?php echo $notification['start_time']; ?>"
+                     data-end-time="<?php echo $notification['end_time']; ?>"
+                     data-priority="<?php echo $notification['priority']; ?>"
+                     data-message="<?php echo htmlspecialchars($notification['message']); ?>">
+                    <i class="fas fa-<?php echo $icon; ?> me-2"></i>
+                    <?php echo $notification['message']; ?>
+                    <a href="<?php echo $notification['action_url']; ?>" class="alert-link ms-2">
+                        <i class="fas fa-plus-circle me-1"></i>Ajouter ce repas
+                    </a>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- En-tête de la page -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h1 class="mb-0">Tableau de bord</h1>
+                <p class="text-muted">Bienvenue, <?php echo htmlspecialchars($user['username']); ?></p>
             </div>
-
-            <!-- Slider pour mobile -->
-            <div class="swiper dashboard-swiper d-md-none">
-                <div class="swiper-wrapper">
-                    <!-- Slide Calories -->
-                    <div class="swiper-slide">
-                        <div class="card h-100">
-                            <div class="card-body d-flex flex-column">
-                                <h5 class="card-title mb-3">Calories</h5>
-                                <p class="text-muted small mb-3">Reste = Objectif - Aliments + Exercices</p>
-                                
-                                <div class="calories-container">
-                                    <div class="progress-circle position-relative">
-                                        <svg width="180" height="180" viewBox="0 0 200 200">
-                                            <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="8"/>
-                                            <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="8"
-                                                stroke-dasharray="<?php 
-                                                    $calories_consumed = $calories_in - $calories_out;
-                                                    $percentage = ($calories_consumed / $calorie_goal) * 100;
-                                                    echo min(100, $percentage) * 5.65;
-                                                ?> 565"
-                                                transform="rotate(-90 100 100)"/>
-                                        </svg>
-                                        <div class="position-absolute top-50 start-50 translate-middle text-center">
-                                            <h2 class="mb-0"><?php echo number_format($remaining_calories); ?></h2>
-                                            <span class="text-muted">Reste</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="calories-details">
-                                        <div class="detail-item mb-3">
-                                            <div class="d-flex align-items-center justify-content-center mb-2">
-                                                <i class="fas fa-flag text-primary me-2"></i>
-                                                <span>Objectif de base</span>
-                                            </div>
-                                            <strong><?php echo number_format($calorie_goal); ?></strong>
-                                        </div>
-
-                                        <div class="detail-item mb-3">
-                                            <div class="d-flex align-items-center justify-content-center mb-2">
-                                                <i class="fas fa-utensils text-success me-2"></i>
-                                                <span>Aliments</span>
-                                            </div>
-                                            <strong><?php echo number_format($calories_in); ?></strong>
-                                        </div>
-
-                                        <div class="detail-item">
-                                            <div class="d-flex align-items-center justify-content-center mb-2">
-                                                <i class="fas fa-fire text-danger me-2"></i>
-                                                <span>Exercices</span>
-                                            </div>
-                                            <strong><?php echo number_format($calories_out); ?></strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Slide Macronutriments -->
-                    <div class="swiper-slide">
-                        <div class="card h-100">
-                            <div class="card-body d-flex flex-column">
-                                <h5 class="card-title mb-4">Macronutriments</h5>
-                                
-                                <div class="row g-4">
-                                    <div class="col-4 text-center">
-                                        <div class="macro-circle position-relative">
-                                            <svg width="100" height="100" viewBox="0 0 100 100">
-                                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f0f0f0" stroke-width="6"/>
-                                                <circle cx="50" cy="50" r="45" fill="none" stroke="#198754" stroke-width="6"
-                                                    stroke-dasharray="<?php echo min(100, ($protein_in / $protein_goal) * 100) * 2.83; ?> 283"
-                                                    transform="rotate(-90 50 50)"/>
-                                            </svg>
-                                            <div class="position-absolute top-50 start-50 translate-middle">
-                                                <strong><?php echo round(($protein_in / $protein_goal) * 100); ?>%</strong>
-                                            </div>
-                                        </div>
-                                        <div class="mt-2">
-                                            <h6 class="mb-0">Protéines</h6>
-                                            <small class="text-muted"><?php echo number_format($protein_in, 1); ?>g</small>
-                                            <div class="macro-goal">Objectif: <?php echo number_format($protein_goal, 1); ?>g</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-4 text-center">
-                                        <div class="macro-circle position-relative">
-                                            <svg width="100" height="100" viewBox="0 0 100 100">
-                                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f0f0f0" stroke-width="6"/>
-                                                <circle cx="50" cy="50" r="45" fill="none" stroke="#dc3545" stroke-width="6"
-                                                    stroke-dasharray="<?php echo min(100, ($carbs_in / $carbs_goal) * 100) * 2.83; ?> 283"
-                                                    transform="rotate(-90 50 50)"/>
-                                            </svg>
-                                            <div class="position-absolute top-50 start-50 translate-middle">
-                                                <strong><?php echo round(($carbs_in / $carbs_goal) * 100); ?>%</strong>
-                                            </div>
-                                        </div>
-                                        <div class="mt-2">
-                                            <h6 class="mb-0">Glucides</h6>
-                                            <small class="text-muted"><?php echo number_format($carbs_in, 1); ?>g</small>
-                                            <div class="macro-goal">Objectif: <?php echo number_format($carbs_goal, 1); ?>g</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-4 text-center">
-                                        <div class="macro-circle position-relative">
-                                            <svg width="100" height="100" viewBox="0 0 100 100">
-                                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f0f0f0" stroke-width="6"/>
-                                                <circle cx="50" cy="50" r="45" fill="none" stroke="#ffc107" stroke-width="6"
-                                                    stroke-dasharray="<?php echo min(100, ($fat_in / $fat_goal) * 100) * 2.83; ?> 283"
-                                                    transform="rotate(-90 50 50)"/>
-                                            </svg>
-                                            <div class="position-absolute top-50 start-50 translate-middle">
-                                                <strong><?php echo round(($fat_in / $fat_goal) * 100); ?>%</strong>
-                                            </div>
-                                        </div>
-                                        <div class="mt-2">
-                                            <h6 class="mb-0">Lipides</h6>
-                                            <small class="text-muted"><?php echo number_format($fat_in, 1); ?>g</small>
-                                            <div class="macro-goal">Objectif: <?php echo number_format($fat_goal, 1); ?>g</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="text-center mt-3">
-                                    <!-- Suppression du bouton Premium -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Slide Hydratation -->
-                    <div class="swiper-slide">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title mb-4">Hydratation</h5>
-                                <div class="hydration-container">
-                                    <div class="water-drop position-relative">
-                                        <svg width="150" height="150" viewBox="0 0 100 100">
-                                            <path d="M50,10 L70,40 A30,30 0 1,1 30,40 L50,10" 
-                                                  fill="#f0f0f0" stroke="#0dcaf0" stroke-width="2"/>
-                                            <path d="M50,10 L70,40 A30,30 0 1,1 30,40 L50,10" 
-                                                  fill="#0dcaf0" stroke="none"
-                                                  transform="translate(0,<?php echo 100 - min(100, $water_percentage); ?>)"/>
-                                        </svg>
-                                        <div class="position-absolute top-50 start-50 translate-middle">
-                                            <strong><?php echo number_format($water_consumed, 1); ?>L</strong>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="water-actions">
-                                        <div class="row g-2">
-                                            <?php
-                                            $water_amounts = [0.25, 0.5, 0.75, 1];
-                                            foreach ($water_amounts as $amount):
-                                            ?>
-                                            <div class="col-6">
-                                                <form action="water-log.php" method="POST">
-                                                    <input type="hidden" name="amount" value="<?php echo $amount; ?>">
-                                                    <button type="submit" class="btn btn-outline-info w-100">
-                                                        +<?php echo number_format($amount, 2); ?>L
-                                                    </button>
-                                                </form>
-                                            </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Slide Informations personnelles -->
-                    <div class="swiper-slide">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title mb-4">Informations personnelles</h5>
-
-                                <div class="row g-4">
-                                    <!-- Poids actuel -->
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="info-icon bg-primary bg-opacity-10 me-3">
-                                                <i class="fas fa-weight text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <div class="text-muted small">Poids actuel</div>
-                                                <div class="fw-bold">
-                                                    <?php echo $latest_weight ? number_format($latest_weight['weight'], 1) . ' kg' : '—'; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Taille -->
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="info-icon bg-info bg-opacity-10 me-3">
-                                                <i class="fas fa-ruler-vertical text-info"></i>
-                                            </div>
-                                            <div>
-                                                <div class="text-muted small">Taille</div>
-                                                <div class="fw-bold">
-                                                    <?php echo $profile && $profile['height'] ? $profile['height'] . ' cm' : '—'; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- IMC -->
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="info-icon bg-warning bg-opacity-10 me-3">
-                                                <i class="fas fa-calculator text-warning"></i>
-                                            </div>
-                                            <div>
-                                                <div class="text-muted small">IMC</div>
-                                                <?php if ($latest_weight && $profile && $profile['height'] > 0): 
-                                                    $weight_kg = $latest_weight['weight'];
-                                                    $height_m = $profile['height'] / 100;
-                                                    $bmi = $weight_kg / ($height_m * $height_m);
-                                                ?>
-                                                    <div class="fw-bold"><?php echo number_format($bmi, 1); ?></div>
-                                                    <small class="text-muted">
-                                                        <?php
-                                                        if ($bmi < 18.5) echo 'Insuffisance pondérale';
-                                                        elseif ($bmi < 25) echo 'Poids normal';
-                                                        elseif ($bmi < 30) echo 'Surpoids';
-                                                        else echo 'Obésité';
-                                                        ?>
-                                                    </small>
-                                                <?php else: ?>
-                                                    <div class="fw-bold">—</div>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Objectif de poids -->
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="info-icon bg-success bg-opacity-10 me-3">
-                                                <i class="fas fa-bullseye text-success"></i>
-                                            </div>
-                                            <div>
-                                                <div class="text-muted small">Objectif</div>
-                                                <div class="fw-bold">
-                                                    <?php echo $current_goal ? number_format($current_goal['target_weight'], 1) . ' kg' : '—'; ?>
-                                                </div>
-                                                <?php if ($current_goal && $latest_weight): 
-                                                    $diff = $current_goal['target_weight'] - $latest_weight['weight'];
-                                                ?>
-                                                    <small class="text-muted">
-                                                        <?php
-                                                        if ($diff < 0) echo 'Perdre ' . number_format(abs($diff), 1) . ' kg';
-                                                        elseif ($diff > 0) echo 'Prendre ' . number_format($diff, 1) . ' kg';
-                                                        else echo 'Maintenir le poids actuel';
-                                                        ?>
-                                                    </small>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <?php if ($active_program): ?>
-                                <div class="alert alert-info mt-4 mb-0">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-dumbbell fa-2x me-3"></i>
-                                        <div>
-                                            <div class="fw-bold">Programme actif: <?php echo htmlspecialchars($active_program['name']); ?></div>
-                                            <small>Commencé le <?php echo $active_program['formatted_start_date']; ?></small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-
-                                <div class="d-flex gap-2 mt-4">
-                                    <a href="profile.php" class="btn btn-outline-primary btn-sm flex-grow-1">
-                                        <i class="fas fa-user-edit me-1"></i>Modifier le profil
-                                    </a>
-                                    <a href="goals.php" class="btn btn-outline-success btn-sm flex-grow-1">
-                                        <i class="fas fa-bullseye me-1"></i>Gérer les objectifs
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="swiper-pagination"></div>
+            <div class="col-md-4 text-md-end">
+                <a href="weight-log.php?action=add" class="btn btn-primary">
+                    <i class="fas fa-weight me-1"></i>Ajouter un poids
+                </a>
+                <a href="food-log.php?action=add" class="btn btn-success">
+                    <i class="fas fa-utensils me-1"></i>Ajouter un repas
+                </a>
             </div>
+        </div>
 
-            <!-- Slider pour les exercices (mobile et desktop) -->
-            <div class="swiper exercise-swiper mt-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0">Activité physique</h5>
-                </div>
-                <div class="swiper-wrapper">
-                    <!-- Durée d'exercice -->
-                    <div class="swiper-slide">
-                        <div class="exercise-card">
-                            <div class="d-flex align-items-center">
-                                <div class="exercise-icon">
-                                    <i class="fas fa-clock text-info"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold"><?php 
-                                        $sql = "SELECT SEC_TO_TIME(SUM(TIME_TO_SEC(duration))) as total_duration 
-                                               FROM exercise_logs 
-                                               WHERE user_id = ? AND log_date = CURDATE()";
-                                        $duration = fetchOne($sql, [$user_id]);
-                                        echo $duration['total_duration'] ?? '00:00';
-                                    ?></div>
-                                    <small class="text-muted">Durée d'exercice</small>
-                                </div>
-                            </div>
-                        </div>
+        <!-- Résumé du jour -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Résumé du jour</h5>
                     </div>
-                    <!-- Calories brûlées -->
-                    <div class="swiper-slide">
-                        <div class="exercise-card">
-                            <div class="d-flex align-items-center">
-                                <div class="exercise-icon">
-                                    <i class="fas fa-fire text-danger"></i>
-                                </div>
-                                <div>
-                                    <div class="fw-bold"><?php echo number_format($calories_out); ?></div>
-                                    <small class="text-muted">kcal brûlées</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="swiper-pagination"></div>
-            </div>
-
-            <!-- Version desktop -->
-            <div class="row g-4 d-none d-md-flex">
-                <!-- Première ligne : Calories et Macronutriments -->
-                <div class="col-6">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title mb-3">Calories</h5>
-                            <p class="text-muted small mb-3">Reste = Objectif - Aliments + Exercices</p>
-                            
-                            <div class="calories-container">
-                                <div class="progress-circle position-relative">
-                                    <svg width="180" height="180" viewBox="0 0 200 200">
-                                        <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="8"/>
-                                        <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="8"
-                                            stroke-dasharray="<?php 
-                                                $calories_consumed = $calories_in - $calories_out;
-                                                $percentage = ($calories_consumed / $calorie_goal) * 100;
-                                                echo min(100, $percentage) * 5.65;
-                                            ?> 565"
-                                            transform="rotate(-90 100 100)"/>
-                                    </svg>
-                                    <div class="position-absolute top-50 start-50 translate-middle text-center">
-                                        <h2 class="mb-0"><?php echo number_format($remaining_calories); ?></h2>
-                                        <span class="text-muted">Reste</span>
-                                    </div>
-                                </div>
-
-                                <div class="calories-details">
-                                    <div class="detail-item mb-3">
-                                        <div class="d-flex align-items-center justify-content-center mb-2">
-                                            <i class="fas fa-flag text-primary me-2"></i>
-                                            <span>Objectif de base</span>
-                                        </div>
-                                        <strong><?php echo number_format($calorie_goal); ?></strong>
-                                    </div>
-
-                                    <div class="detail-item mb-3">
-                                        <div class="d-flex align-items-center justify-content-center mb-2">
-                                            <i class="fas fa-utensils text-success me-2"></i>
-                                            <span>Aliments</span>
-                                        </div>
-                                        <strong><?php echo number_format($calories_in); ?></strong>
-                                    </div>
-
-                                    <div class="detail-item">
-                                        <div class="d-flex align-items-center justify-content-center mb-2">
-                                            <i class="fas fa-fire text-danger me-2"></i>
-                                            <span>Exercices</span>
-                                        </div>
-                                        <strong><?php echo number_format($calories_out); ?></strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title mb-4">Macronutriments</h5>
-                            
-                            <div class="row g-4">
-                                <div class="col-4 text-center">
-                                    <div class="macro-circle position-relative">
-                                        <svg width="100" height="100" viewBox="0 0 100 100">
-                                            <circle cx="50" cy="50" r="45" fill="none" stroke="#f0f0f0" stroke-width="6"/>
-                                            <circle cx="50" cy="50" r="45" fill="none" stroke="#198754" stroke-width="6"
-                                                stroke-dasharray="<?php echo min(100, ($protein_in / $protein_goal) * 100) * 2.83; ?> 283"
-                                                transform="rotate(-90 50 50)"/>
-                                        </svg>
-                                        <div class="position-absolute top-50 start-50 translate-middle">
-                                            <strong><?php echo round(($protein_in / $protein_goal) * 100); ?>%</strong>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2">
-                                        <h6 class="mb-0">Protéines</h6>
-                                        <small class="text-muted"><?php echo number_format($protein_in, 1); ?>g</small>
-                                        <div class="macro-goal">Objectif: <?php echo number_format($protein_goal, 1); ?>g</div>
-                                    </div>
-                                </div>
-
-                                <div class="col-4 text-center">
-                                    <div class="macro-circle position-relative">
-                                        <svg width="100" height="100" viewBox="0 0 100 100">
-                                            <circle cx="50" cy="50" r="45" fill="none" stroke="#f0f0f0" stroke-width="6"/>
-                                            <circle cx="50" cy="50" r="45" fill="none" stroke="#dc3545" stroke-width="6"
-                                                stroke-dasharray="<?php echo min(100, ($carbs_in / $carbs_goal) * 100) * 2.83; ?> 283"
-                                                transform="rotate(-90 50 50)"/>
-                                        </svg>
-                                        <div class="position-absolute top-50 start-50 translate-middle">
-                                            <strong><?php echo round(($carbs_in / $carbs_goal) * 100); ?>%</strong>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2">
-                                        <h6 class="mb-0">Glucides</h6>
-                                        <small class="text-muted"><?php echo number_format($carbs_in, 1); ?>g</small>
-                                        <div class="macro-goal">Objectif: <?php echo number_format($carbs_goal, 1); ?>g</div>
-                                    </div>
-                                </div>
-
-                                <div class="col-4 text-center">
-                                    <div class="macro-circle position-relative">
-                                        <svg width="100" height="100" viewBox="0 0 100 100">
-                                            <circle cx="50" cy="50" r="45" fill="none" stroke="#f0f0f0" stroke-width="6"/>
-                                            <circle cx="50" cy="50" r="45" fill="none" stroke="#ffc107" stroke-width="6"
-                                                stroke-dasharray="<?php echo min(100, ($fat_in / $fat_goal) * 100) * 2.83; ?> 283"
-                                                transform="rotate(-90 50 50)"/>
-                                        </svg>
-                                        <div class="position-absolute top-50 start-50 translate-middle">
-                                            <strong><?php echo round(($fat_in / $fat_goal) * 100); ?>%</strong>
-                                        </div>
-                                    </div>
-                                    <div class="mt-2">
-                                        <h6 class="mb-0">Lipides</h6>
-                                        <small class="text-muted"><?php echo number_format($fat_in, 1); ?>g</small>
-                                        <div class="macro-goal">Objectif: <?php echo number_format($fat_goal, 1); ?>g</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="text-center mt-3">
-                                <!-- Suppression du bouton Premium -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Deuxième ligne : Hydratation et Informations personnelles -->
-            <div class="row g-4 d-none d-md-flex">
-                <div class="col-6">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title mb-4">Hydratation</h5>
-                            
-                            <div class="hydration-container">
-                                <div class="water-drop position-relative">
-                                    <svg width="150" height="150" viewBox="0 0 100 100">
-                                        <path d="M50,10 L70,40 A30,30 0 1,1 30,40 L50,10" 
-                                              fill="#f0f0f0" stroke="#0dcaf0" stroke-width="2"/>
-                                        <path d="M50,10 L70,40 A30,30 0 1,1 30,40 L50,10" 
-                                              fill="#0dcaf0" stroke="none"
-                                              transform="translate(0,<?php echo 100 - min(100, $water_percentage); ?>)"/>
-                                    </svg>
-                                    <div class="position-absolute top-50 start-50 translate-middle">
-                                        <strong><?php echo number_format($water_consumed, 1); ?>L</strong>
-                                    </div>
-                                </div>
-                                
-                                <div class="water-actions">
-                                    <div class="row g-2">
-                                        <?php
-                                        $water_amounts = [0.25, 0.5, 0.75, 1];
-                                        foreach ($water_amounts as $amount):
-                                        ?>
-                                        <div class="col-6">
-                                            <form action="water-log.php" method="POST">
-                                                <input type="hidden" name="amount" value="<?php echo $amount; ?>">
-                                                <button type="submit" class="btn btn-outline-info w-100">
-                                                    +<?php echo number_format($amount, 2); ?>L
-                                                </button>
-                                            </form>
-                                        </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title mb-4">Informations personnelles</h5>
-
-                            <div class="row g-4">
-                                <!-- Poids actuel -->
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center">
-                                        <div class="info-icon bg-primary bg-opacity-10 me-3">
-                                            <i class="fas fa-weight text-primary"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-muted small">Poids actuel</div>
-                                            <div class="fw-bold">
-                                                <?php echo $latest_weight ? number_format($latest_weight['weight'], 1) . ' kg' : '—'; ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Taille -->
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center">
-                                        <div class="info-icon bg-info bg-opacity-10 me-3">
-                                            <i class="fas fa-ruler-vertical text-info"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-muted small">Taille</div>
-                                            <div class="fw-bold">
-                                                <?php echo $profile && $profile['height'] ? $profile['height'] . ' cm' : '—'; ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- IMC -->
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center">
-                                        <div class="info-icon bg-warning bg-opacity-10 me-3">
-                                            <i class="fas fa-calculator text-warning"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-muted small">IMC</div>
-                                            <?php if ($latest_weight && $profile && $profile['height'] > 0): 
-                                                $weight_kg = $latest_weight['weight'];
-                                                $height_m = $profile['height'] / 100;
-                                                $bmi = $weight_kg / ($height_m * $height_m);
-                                            ?>
-                                                <div class="fw-bold"><?php echo number_format($bmi, 1); ?></div>
-                                                <small class="text-muted">
-                                                    <?php
-                                                    if ($bmi < 18.5) echo 'Insuffisance pondérale';
-                                                    elseif ($bmi < 25) echo 'Poids normal';
-                                                    elseif ($bmi < 30) echo 'Surpoids';
-                                                    else echo 'Obésité';
-                                                    ?>
-                                                </small>
-                                            <?php else: ?>
-                                                <div class="fw-bold">—</div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Objectif de poids -->
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center">
-                                        <div class="info-icon bg-success bg-opacity-10 me-3">
-                                            <i class="fas fa-bullseye text-success"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-muted small">Objectif</div>
-                                            <div class="fw-bold">
-                                                <?php echo $current_goal ? number_format($current_goal['target_weight'], 1) . ' kg' : '—'; ?>
-                                            </div>
-                                            <?php if ($current_goal && $latest_weight): 
-                                                $diff = $current_goal['target_weight'] - $latest_weight['weight'];
-                                            ?>
-                                                <small class="text-muted">
-                                                    <?php
-                                                    if ($diff < 0) echo 'Perdre ' . number_format(abs($diff), 1) . ' kg';
-                                                    elseif ($diff > 0) echo 'Prendre ' . number_format($diff, 1) . ' kg';
-                                                    else echo 'Maintenir le poids actuel';
-                                                    ?>
-                                                </small>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <?php if ($active_program): ?>
-                            <div class="alert alert-info mt-4 mb-0">
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-6">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-dumbbell fa-2x me-3"></i>
-                                    <div>
-                                        <div class="fw-bold">Programme actif: <?php echo htmlspecialchars($active_program['name']); ?></div>
-                                        <small>Commencé le <?php echo $active_program['formatted_start_date']; ?></small>
+                                    <div class="flex-shrink-0">
+                                        <div class="stat-icon bg-primary text-white">
+                                            <i class="fas fa-fire"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Calories consommées</h6>
+                                        <h4 class="mb-0"><?php echo number_format($calories_in); ?></h4>
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="stat-icon bg-success text-white">
+                                            <i class="fas fa-running"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Calories brûlées</h6>
+                                        <h4 class="mb-0"><?php echo number_format($calories_out); ?></h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="stat-icon bg-info text-white">
+                                            <i class="fas fa-balance-scale"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Bilan calorique</h6>
+                                        <h4 class="mb-0"><?php echo number_format($net_calories); ?></h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="stat-icon bg-warning text-white">
+                                            <i class="fas fa-bullseye"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Objectif calorique</h6>
+                                        <h4 class="mb-0"><?php echo number_format($calorie_goal); ?></h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress mb-2" style="height: 20px;">
+                            <?php 
+                            $percentage = 0;
+                            if ($calorie_goal > 0) {
+                                $percentage = min(100, max(0, ($net_calories / $calorie_goal) * 100));
+                            }
+                            $bg_class = $percentage > 100 ? 'bg-danger' : 'bg-success';
+                            ?>
+                            <div class="progress-bar <?php echo $bg_class; ?>" role="progressbar" style="width: <?php echo $percentage; ?>%;" aria-valuenow="<?php echo $percentage; ?>" aria-valuemin="0" aria-valuemax="100">
+                                <?php echo number_format($percentage, 1); ?>%
+                            </div>
+                        </div>
+                        
+                        <p class="text-center mb-3">
+                            <?php if ($remaining_calories > 0): ?>
+                                <span class="text-success">Il vous reste <?php echo number_format($remaining_calories); ?> calories à consommer aujourd'hui</span>
+                            <?php else: ?>
+                                <span class="text-danger">Vous avez dépassé votre objectif de <?php echo number_format(abs($remaining_calories)); ?> calories</span>
                             <?php endif; ?>
-
-                            <div class="d-flex gap-2 mt-4">
-                                <a href="profile.php" class="btn btn-outline-primary btn-sm flex-grow-1">
+                        </p>
+                        
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <h6>Protéines</h6>
+                                <div class="d-flex justify-content-center align-items-center">
+                                    <h5 class="mb-0 me-2"><?php echo $protein_in; ?>g</h5>
+                                    <small class="text-muted">/ <?php echo round($protein_goal); ?>g</small>
+                                </div>
+                                <?php if ($protein_remaining > 0): ?>
+                                    <small class="text-success">Reste: <?php echo $protein_remaining; ?>g</small>
+                                <?php else: ?>
+                                    <small class="text-success">Objectif atteint</small>
+                                <?php endif; ?>
+                            </div>
+                            <div class="col-4">
+                                <h6>Glucides</h6>
+                                <div class="d-flex justify-content-center align-items-center">
+                                    <h5 class="mb-0 me-2"><?php echo $carbs_in; ?>g</h5>
+                                    <small class="text-muted">/ <?php echo round($carbs_goal); ?>g</small>
+                                </div>
+                                <?php if ($carbs_remaining > 0): ?>
+                                    <small class="text-success">Reste: <?php echo $carbs_remaining; ?>g</small>
+                                <?php else: ?>
+                                    <small class="text-success">Objectif atteint</small>
+                                <?php endif; ?>
+                            </div>
+                            <div class="col-4">
+                                <h6>Lipides</h6>
+                                <div class="d-flex justify-content-center align-items-center">
+                                    <h5 class="mb-0 me-2"><?php echo $fat_in; ?>g</h5>
+                                    <small class="text-muted">/ <?php echo round($fat_goal); ?>g</small>
+                                </div>
+                                <?php if ($fat_remaining > 0): ?>
+                                    <small class="text-success">Reste: <?php echo $fat_remaining; ?>g</small>
+                                <?php else: ?>
+                                    <small class="text-success">Objectif atteint</small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <div class="row">
+                            <div class="col-6">
+                                <a href="food-log.php" class="btn btn-outline-primary btn-sm w-100">
+                                    <i class="fas fa-utensils me-1"></i>Journal alimentaire
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <a href="exercise-log.php" class="btn btn-outline-success btn-sm w-100">
+                                    <i class="fas fa-running me-1"></i>Journal d'exercices
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Informations personnelles</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="stat-icon bg-primary text-white">
+                                            <i class="fas fa-weight"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Poids actuel</h6>
+                                        <h4 class="mb-0">
+                                            <?php echo $latest_weight ? number_format($latest_weight['weight'], 1) . ' kg' : '—'; ?>
+                                        </h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="stat-icon bg-info text-white">
+                                            <i class="fas fa-ruler-vertical"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Taille</h6>
+                                        <h4 class="mb-0">
+                                            <?php echo $profile && $profile['height'] ? $profile['height'] . ' cm' : '—'; ?>
+                                        </h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="stat-icon bg-warning text-white">
+                                            <i class="fas fa-calculator"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">IMC</h6>
+                                        <?php if ($latest_weight && $profile && $profile['height'] > 0): ?>
+                                            <?php 
+                                            $weight_kg = $latest_weight['weight'];
+                                            $height_m = $profile['height'] / 100;
+                                            $bmi = $weight_kg / ($height_m * $height_m);
+                                            ?>
+                                            <h4 class="mb-0"><?php echo number_format($bmi, 1); ?></h4>
+                                            <small class="text-muted">
+                                                <?php
+                                                if ($bmi < 18.5) {
+                                                    echo 'Insuffisance pondérale';
+                                                } elseif ($bmi < 25) {
+                                                    echo 'Poids normal';
+                                                } elseif ($bmi < 30) {
+                                                    echo 'Surpoids';
+                                                } else {
+                                                    echo 'Obésité';
+                                                }
+                                                ?>
+                                            </small>
+                                        <?php else: ?>
+                                            <h4 class="mb-0">—</h4>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="stat-icon bg-danger text-white">
+                                            <i class="fas fa-bullseye"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Objectif de poids</h6>
+                                        <h4 class="mb-0">
+                                            <?php echo $current_goal ? number_format($current_goal['target_weight'], 1) . ' kg' : '—'; ?>
+                                        </h4>
+                                        <?php if ($current_goal && $latest_weight): ?>
+                                            <small class="text-muted">
+                                                <?php 
+                                                $diff = $current_goal['target_weight'] - $latest_weight['weight'];
+                                                if ($diff < 0) {
+                                                    echo 'Perdre ' . number_format(abs($diff), 1) . ' kg';
+                                                } elseif ($diff > 0) {
+                                                    echo 'Prendre ' . number_format($diff, 1) . ' kg';
+                                                } else {
+                                                    echo 'Maintenir le poids actuel';
+                                                }
+                                                ?>
+                                            </small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <?php if ($active_program): ?>
+                            <div class="alert alert-info mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-dumbbell fa-2x me-3"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">Programme actif: <?php echo htmlspecialchars($active_program['name']); ?></h6>
+                                        <p class="mb-0 small">Commencé le <?php echo $active_program['formatted_start_date']; ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <div class="row">
+                            <div class="col-6">
+                                <a href="profile.php" class="btn btn-outline-primary btn-sm w-100">
                                     <i class="fas fa-user-edit me-1"></i>Modifier le profil
                                 </a>
-                                <a href="goals.php" class="btn btn-outline-success btn-sm flex-grow-1">
+                            </div>
+                            <div class="col-6">
+                                <a href="goals.php" class="btn btn-outline-success btn-sm w-100">
                                     <i class="fas fa-bullseye me-1"></i>Gérer les objectifs
                                 </a>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Après la section des objectifs -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tint me-2"></i>Hydratation
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <h6>Objectif quotidien : <?php echo number_format($user['water_goal'], 1); ?> L</h6>
+                        <div class="water-bottle-container position-relative" style="height: 400px; width: 200px; margin: 0 auto;">
+                            <!-- Bouteille d'eau SVG -->
+                            <svg viewBox="0 0 200 400" class="water-bottle" style="width: 100%; height: 100%;">
+                                <!-- Corps de la bouteille -->
+                                <path d="M60,50 L80,50 L90,20 L110,20 L120,50 L140,50 C140,50 145,60 145,70 L145,350 C145,360 140,370 140,370 L60,370 C60,370 55,360 55,350 L55,70 C55,60 60,50 60,50" 
+                                      fill="none" stroke="#0dcaf0" stroke-width="3"/>
+                                
+                                <!-- Niveau d'eau -->
+                                <rect x="60" y="<?php echo 370 - ($water_percentage * 3.2); ?>" 
+                                      width="80" height="<?php echo $water_percentage * 3.2; ?>" 
+                                      fill="rgba(13, 202, 240, 0.5)" rx="5"/>
+                                
+                                <!-- Marqueurs de niveau -->
+                                <?php
+                                $markers = [25, 50, 75, 100];
+                                foreach ($markers as $marker):
+                                    $y = 370 - ($marker * 3.2);
+                                ?>
+                                <line x1="55" y1="<?php echo $y; ?>" x2="145" y2="<?php echo $y; ?>" 
+                                      stroke="#0dcaf0" stroke-width="2" stroke-dasharray="5,5"/>
+                                <text x="150" y="<?php echo $y + 5; ?>" fill="#0dcaf0" font-size="12">
+                                    <?php echo $marker; ?>%
+                                </text>
+                                <?php endforeach; ?>
+                                
+                                <!-- Goulot de la bouteille -->
+                                <path d="M85,20 L90,10 L110,10 L115,20" 
+                                      fill="none" stroke="#0dcaf0" stroke-width="3"/>
+                            </svg>
+                            
+                            <!-- Affichage de la quantité -->
+                            <div class="water-amount" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: bold; color: #0dcaf0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
+                                <?php echo number_format($water_consumed, 1); ?> L
+                            </div>
+                        </div>
+                        <small class="text-muted mt-2">
+                            <?php echo number_format($water_consumed, 1); ?> L sur <?php echo number_format($user['water_goal'], 1); ?> L
+                        </small>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <?php
+                        // Paliers de remplissage (en cl)
+                        $fill_levels = [25, 50, 75, 100];
+                        foreach ($fill_levels as $level):
+                            $amount = ($user['water_goal'] * $level) / 100; // Convertir le pourcentage en litres
+                        ?>
+                        <div class="col-6">
+                            <form action="water-log.php" method="POST" class="h-100">
+                                <input type="hidden" name="amount" value="<?php echo $amount; ?>">
+                                <button type="submit" class="btn btn-outline-info w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                                    <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                                    <span>Ajouter <?php echo $level; ?>%</span>
+                                </button>
+                            </form>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#resetWaterModal">
+                            <i class="fas fa-undo me-1"></i>Réinitialiser le compteur
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de réinitialisation -->
+        <div class="modal fade" id="resetWaterModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Réinitialiser le compteur d'eau</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Êtes-vous sûr de vouloir réinitialiser votre consommation d'eau du jour ?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <form action="water-log.php" method="POST" class="d-inline">
+                            <input type="hidden" name="action" value="reset">
+                            <button type="submit" class="btn btn-danger">Réinitialiser</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Graphiques -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Évolution du poids</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if (count($weight_values) > 1): ?>
+                            <canvas id="weightChart" height="250"></canvas>
+                        <?php else: ?>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Pas assez de données pour afficher le graphique. Ajoutez au moins deux entrées de poids.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="card-footer bg-white text-center">
+                        <a href="weight-log.php" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-history me-1"></i>Voir l'historique complet
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Bilan calorique</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if (count($calorie_dates) > 1): ?>
+                            <canvas id="calorieChart" height="250"></canvas>
+                        <?php else: ?>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Pas assez de données pour afficher le graphique. Ajoutez des entrées alimentaires et d'exercices.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="card-footer bg-white text-center">
+                        <a href="calorie-history.php" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-history me-1"></i>Voir l'historique complet
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Suggestions IA -->
+        <div class="row">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Suggestions de repas</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($meal_suggestions)): ?>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Aucune suggestion de repas disponible. Visitez la page des suggestions IA pour en générer.
+                            </div>
+                        <?php else: ?>
+                            <div class="list-group">
+                                <?php foreach ($meal_suggestions as $suggestion): ?>
+                                    <div class="list-group-item">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">Suggestion du <?php echo date('d/m/Y', strtotime($suggestion['created_at'])); ?></h6>
+                                            <small><?php echo $suggestion['is_applied'] ? '<span class="badge bg-success">Appliqué</span>' : '<span class="badge bg-secondary">Non appliqué</span>'; ?></small>
+                                        </div>
+                                        <p class="mb-1"><?php echo nl2br(htmlspecialchars($suggestion['content'])); ?></p>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="card-footer bg-white text-center">
+                        <a href="ai-suggestions.php" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-robot me-1"></i>Obtenir plus de suggestions
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">Suggestions d'exercices</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($exercise_suggestions)): ?>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Aucune suggestion d'exercice disponible. Visitez la page des suggestions IA pour en générer.
+                            </div>
+                        <?php else: ?>
+                            <div class="list-group">
+                                <?php foreach ($exercise_suggestions as $suggestion): ?>
+                                    <div class="list-group-item">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">Suggestion du <?php echo date('d/m/Y', strtotime($suggestion['created_at'])); ?></h6>
+                                            <small><?php echo $suggestion['is_applied'] ? '<span class="badge bg-success">Appliqué</span>' : '<span class="badge bg-secondary">Non appliqué</span>'; ?></small>
+                                        </div>
+                                        <p class="mb-1"><?php echo nl2br(htmlspecialchars($suggestion['content'])); ?></p>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="card-footer bg-white text-center">
+                        <a href="ai-suggestions.php" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-robot me-1"></i>Obtenir plus de suggestions
+                        </a>
                     </div>
                 </div>
             </div>
@@ -1061,32 +866,6 @@ if (!empty($pending_invitations)):
     <!-- Scripts JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Initialisation des sliders
-        const dashboardSwiper = new Swiper('.dashboard-swiper', {
-            slidesPerView: 'auto',
-            spaceBetween: 20,
-            centeredSlides: true,
-            pagination: {
-                el: '.swiper-pagination',
-                clickable: true
-            }
-        });
-
-        const exerciseSwiper = new Swiper('.exercise-swiper', {
-            slidesPerView: 'auto',
-            spaceBetween: 15,
-            pagination: {
-                el: '.swiper-pagination',
-                clickable: true
-            },
-            breakpoints: {
-                768: {
-                    slidesPerView: 4,
-                    spaceBetween: 20
-                }
-            }
-        });
-
         // Graphique d'évolution du poids
         <?php if (count($weight_values) > 1): ?>
         const weightCtx = document.getElementById('weightChart').getContext('2d');
