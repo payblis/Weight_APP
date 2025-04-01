@@ -41,7 +41,7 @@ include 'header.php';
                     <a href="food-log.php" class="btn btn-primary btn-lg">Commencer à suivre</a>
                 </div>
                 <div class="col-lg-6">
-                    <img src="assets/images/food-tracking.jpg" alt="Suivi alimentaire" class="img-fluid rounded shadow">
+                    <img src="assets/images/consign.png" alt="Suivi alimentaire" class="img-fluid rounded shadow">
                 </div>
             </div>
         </div>
