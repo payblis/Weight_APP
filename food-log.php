@@ -302,7 +302,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Validation
         if ($food_log_id <= 0) {
-            $errors[] = "ID d'aliment invalide";
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => "ID d'aliment invalide"]);
+                exit;
+            } else {
+                $errors[] = "ID d'aliment invalide";
+            }
         }
         
         if (empty($errors)) {
@@ -312,7 +318,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $food_log = fetchOne($sql, [$food_log_id, $user_id]);
                 
                 if (!$food_log) {
-                    $errors[] = "Aliment introuvable ou vous n'avez pas les droits pour le supprimer";
+                    if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => false, 'error' => "Aliment introuvable ou vous n'avez pas les droits pour le supprimer"]);
+                        exit;
+                    } else {
+                        $errors[] = "Aliment introuvable ou vous n'avez pas les droits pour le supprimer";
+                    }
                 } else {
                     // Supprimer l'aliment
                     $sql = "DELETE FROM food_logs WHERE id = ?";
@@ -367,7 +379,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Validation
         if ($meal_id <= 0) {
             error_log("Erreur : ID de repas invalide");
-            $errors[] = "ID de repas invalide";
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => "ID de repas invalide"]);
+                exit;
+            } else {
+                $errors[] = "ID de repas invalide";
+            }
         }
         
         if (empty($errors)) {
@@ -380,7 +398,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (!$meal) {
                     error_log("Erreur : Repas introuvable ou non autorisé");
-                    $errors[] = "Repas introuvable ou vous n'avez pas les droits pour le supprimer";
+                    if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => false, 'error' => "Repas introuvable ou vous n'avez pas les droits pour le supprimer"]);
+                        exit;
+                    } else {
+                        $errors[] = "Repas introuvable ou vous n'avez pas les droits pour le supprimer";
+                    }
                 } else {
                     error_log("Repas trouvé, début de la suppression");
                     
@@ -404,12 +428,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         error_log("Suppression réussie");
                         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') {
-                            // Si c'est une requête AJAX, retourner une réponse JSON
                             header('Content-Type: application/json');
                             echo json_encode(['success' => true]);
                             exit;
                         } else {
-                            // Sinon, rediriger
                             $success_message = "Repas supprimé avec succès";
                             redirect("food-log.php");
                         }
@@ -460,7 +482,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         // Récupérer l'objectif calorique
         $sql = "SELECT goal_calories FROM user_calorie_needs WHERE user_id = ?";
-        $daily_goal = fetchOne($sql, [$user_id])['goal_calories'] ?? 0;
+        error_log("=== RÉCUPÉRATION DE L'OBJECTIF CALORIQUE ===");
+        error_log("SQL : " . $sql);
+        error_log("User ID : " . $user_id);
+        $daily_goal_result = fetchOne($sql, [$user_id]);
+        error_log("Résultat de la requête : " . print_r($daily_goal_result, true));
+        $daily_goal = $daily_goal_result ? $daily_goal_result['goal_calories'] : 0;
+        error_log("Objectif calorique final : " . $daily_goal);
+        error_log("=== FIN DE LA RÉCUPÉRATION DE L'OBJECTIF CALORIQUE ===");
         
         // Calculer les totaux
         $total_calories = array_sum(array_column($meals, 'total_calories'));
@@ -612,16 +641,6 @@ $sql = "SELECT m.*,
         ORDER BY m.log_date DESC, FIELD(m.meal_type, 'petit_dejeuner', 'dejeuner', 'diner', 'collation', 'autre')
         LIMIT 50";
 $meal_history = fetchAll($sql, [$user_id]);
-
-// Récupérer les calories des exercices pour la journée
-$sql = "SELECT COALESCE(SUM(calories_burned), 0) as total_burned 
-        FROM exercise_logs 
-        WHERE user_id = ? AND DATE(log_date) = ?";
-$exercise_calories = fetchOne($sql, [$user_id, $date_filter])['total_burned'] ?? 0;
-
-// Récupérer l'objectif calorique de l'utilisateur
-$sql = "SELECT goal_calories FROM user_calorie_needs WHERE user_id = ?";
-$daily_goal = fetchOne($sql, [$user_id])['goal_calories'] ?? 0;
 
 // Fonction pour obtenir le nom du type de repas
 function getMealTypeName($type) {
@@ -1091,19 +1110,44 @@ function updateMealTotals($meal_id) {
 
             // Fonction pour mettre à jour les stats
             function updateStats() {
+                console.log("Début de la mise à jour des stats");
                 fetch('food-log.php?action=get_stats&date=<?php echo $date_filter; ?>')
-                    .then(response => response.json())
+                    .then(response => {
+                        console.log("Réponse reçue :", response);
+                        if (!response.ok) {
+                            throw new Error('Erreur réseau: ' + response.status);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
+                        console.log("Données reçues :", data);
                         // Mise à jour des calories
-                        document.querySelector('.stats-value:nth-child(1)').textContent = data.daily_goal;
-                        document.querySelector('.stats-value:nth-child(3)').textContent = data.total_calories;
-                        document.querySelector('.stats-value:nth-child(5)').textContent = data.exercise_calories;
-                        document.querySelector('.stats-value:nth-child(7)').textContent = data.remaining_calories;
+                        const statsValues = document.querySelectorAll('.stats-value');
+                        console.log("Nombre d'éléments stats-value trouvés :", statsValues.length);
+                        
+                        if (statsValues.length >= 7) {
+                            statsValues[0].textContent = data.daily_goal;
+                            statsValues[2].textContent = data.total_calories;
+                            statsValues[4].textContent = data.exercise_calories;
+                            statsValues[6].textContent = data.remaining_calories;
+                        } else {
+                            console.error("Pas assez d'éléments stats-value trouvés");
+                        }
                         
                         // Mise à jour des macronutriments
-                        document.querySelector('.macro-value:nth-child(1)').textContent = data.total_protein;
-                        document.querySelector('.macro-value:nth-child(2)').textContent = data.total_carbs;
-                        document.querySelector('.macro-value:nth-child(3)').textContent = data.total_fat;
+                        const macroValues = document.querySelectorAll('.macro-value');
+                        console.log("Nombre d'éléments macro-value trouvés :", macroValues.length);
+                        
+                        if (macroValues.length >= 3) {
+                            macroValues[0].textContent = data.total_protein;
+                            macroValues[1].textContent = data.total_carbs;
+                            macroValues[2].textContent = data.total_fat;
+                        } else {
+                            console.error("Pas assez d'éléments macro-value trouvés");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Erreur lors de la mise à jour des stats :", error);
                     });
             }
 
@@ -1113,7 +1157,13 @@ function updateMealTotals($meal_id) {
                     const action = this.querySelector('input[name="action"]').value;
                     if (action === 'remove_food_from_meal' || action === 'delete_meal') {
                         e.preventDefault();
+                        console.log("Début de la suppression - Action :", action);
                         const formData = new FormData(this);
+                        
+                        // Afficher les données du formulaire
+                        for (let pair of formData.entries()) {
+                            console.log(pair[0] + ': ' + pair[1]);
+                        }
                         
                         fetch('food-log.php', {
                             method: 'POST',
@@ -1123,28 +1173,32 @@ function updateMealTotals($meal_id) {
                             }
                         })
                         .then(response => {
+                            console.log("Réponse reçue :", response);
                             if (!response.ok) {
-                                throw new Error('Erreur réseau');
+                                throw new Error('Erreur réseau: ' + response.status);
                             }
                             return response.json();
                         })
                         .then(data => {
+                            console.log("Données reçues :", data);
                             if (data.success) {
                                 if (action === 'remove_food_from_meal') {
-                                    // Supprimer la ligne du tableau
-                                    this.closest('tr').remove();
+                                    const row = this.closest('tr');
+                                    console.log("Ligne à supprimer :", row);
+                                    row.remove();
                                 } else if (action === 'delete_meal') {
-                                    // Supprimer la section du repas
-                                    this.closest('.meal-section').remove();
+                                    const section = this.closest('.meal-section');
+                                    console.log("Section à supprimer :", section);
+                                    section.remove();
                                 }
-                                // Mettre à jour les stats
+                                console.log("Mise à jour des stats après suppression");
                                 updateStats();
                             } else {
                                 throw new Error(data.error || 'Une erreur est survenue lors de la suppression');
                             }
                         })
                         .catch(error => {
-                            console.error('Erreur:', error);
+                            console.error("Erreur lors de la suppression :", error);
                             alert(error.message || 'Une erreur est survenue lors de la suppression');
                         });
                     }
