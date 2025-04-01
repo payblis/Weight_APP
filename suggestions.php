@@ -20,8 +20,9 @@ $sql = "SELECT * FROM users WHERE id = ?";
 $user = fetchOne($sql, [$user_id]);
 
 // Récupérer les informations du profil utilisateur
-$sql = "SELECT up.* 
+$sql = "SELECT up.*, u.gender, u.birth_date 
         FROM user_profiles up 
+        JOIN users u ON up.user_id = u.id 
         WHERE up.user_id = ?";
 $user_profile = fetchOne($sql, [$user_id]);
 
@@ -178,6 +179,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Erreur dans suggestions.php: " . $e->getMessage());
         }
     }
+}
+
+// Gérer la suppression de suggestion
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+    $suggestion_id = (int)$_GET['id'];
+    $sql = "DELETE FROM ai_suggestions WHERE id = ? AND user_id = ?";
+    $result = delete($sql, [$suggestion_id, $user_id]);
+    
+    if ($result) {
+        $success_message = "La suggestion a été supprimée avec succès.";
+    } else {
+        $errors[] = "Une erreur s'est produite lors de la suppression de la suggestion.";
+    }
+    
+    // Rediriger pour éviter la soumission multiple
+    redirect("suggestions.php?type=" . urlencode($suggestion_type));
 }
 
 // Récupérer les suggestions existantes
