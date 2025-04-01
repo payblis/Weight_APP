@@ -275,15 +275,57 @@ if (!empty($pending_invitations)):
             .dashboard-container {
                 padding: 0;
             }
-            .col-md-6 {
-                width: 100%;
+            .container {
+                padding: 0.5rem;
             }
-            .swiper {
-                padding: 20px 0;
+            .card {
+                padding: 0.75rem;
+                margin-bottom: 1rem;
             }
-            .swiper-slide {
-                width: 85%;
-                height: auto;
+            .card-body {
+                padding: 0.5rem;
+            }
+            .calories-container {
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 1rem;
+                padding: 0;
+            }
+            .calories-details {
+                padding-top: 0.5rem;
+            }
+            .progress-circle {
+                width: 120px;
+                height: 120px;
+            }
+            .progress-circle h2 {
+                font-size: 1.5rem;
+                margin-bottom: 0;
+            }
+            .progress-circle .text-muted {
+                font-size: 0.8rem;
+            }
+            .card-title {
+                font-size: 1.1rem;
+                margin-bottom: 0.5rem;
+            }
+            .text-muted {
+                font-size: 0.8rem;
+            }
+            .calories-details .d-flex {
+                margin-bottom: 0.5rem;
+            }
+            .calories-details .d-flex:last-child {
+                margin-bottom: 0;
+            }
+            .calories-details i {
+                font-size: 0.9rem;
+            }
+            .calories-details span {
+                font-size: 0.9rem;
+            }
+            .calories-details strong {
+                font-size: 0.9rem;
             }
         }
         .card {
@@ -308,23 +350,6 @@ if (!empty($pending_invitations)):
             width: 180px;
             height: 180px;
             flex-shrink: 0;
-        }
-        @media (max-width: 768px) {
-            .calories-container {
-                flex-direction: row;
-                align-items: flex-start;
-                gap: 1.5rem;
-            }
-            .calories-details {
-                padding-top: 1rem;
-            }
-            .progress-circle {
-                width: 140px;
-                height: 140px;
-            }
-        }
-        .exercise-swiper .swiper-slide {
-            width: 45%;
         }
         @media (min-width: 768px) {
             .exercise-swiper .swiper-slide {
@@ -409,10 +434,10 @@ if (!empty($pending_invitations)):
                                 <div class="calories-container">
                                     <div class="progress-circle position-relative">
                                         <svg width="180" height="180" viewBox="0 0 200 200">
-                                            <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="12"/>
-                                            <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="12"
+                                            <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="8"/>
+                                            <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="8"
                                                 stroke-dasharray="<?php 
-                                                    $calories_consumed = $calorie_goal - $remaining_calories;
+                                                    $calories_consumed = $calories_in - $calories_out;
                                                     $percentage = ($calories_consumed / $calorie_goal) * 100;
                                                     echo min(100, $percentage) * 5.65;
                                                 ?> 565"
@@ -741,10 +766,10 @@ if (!empty($pending_invitations)):
                             <div class="calories-container">
                                 <div class="progress-circle position-relative">
                                     <svg width="180" height="180" viewBox="0 0 200 200">
-                                        <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="12"/>
-                                        <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="12"
+                                        <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="8"/>
+                                        <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="8"
                                             stroke-dasharray="<?php 
-                                                $calories_consumed = $calorie_goal - $remaining_calories;
+                                                $calories_consumed = $calories_in - $calories_out;
                                                 $percentage = ($calories_consumed / $calorie_goal) * 100;
                                                 echo min(100, $percentage) * 5.65;
                                             ?> 565"
