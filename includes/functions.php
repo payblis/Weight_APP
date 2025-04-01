@@ -1882,53 +1882,7 @@ function deleteRecord($sql, $params = []) {
  * @param array $user Données de l'utilisateur
  * @return float Objectif d'hydratation en litres
  */
-function calculateWaterGoal($user) {
-    // Valeurs par défaut si les données ne sont pas disponibles
-    $weight = isset($user['weight']) ? $user['weight'] : 70;
-    $height = isset($user['height']) ? $user['height'] : 170;
-    $age = isset($user['age']) ? $user['age'] : 30;
-    $activity_level = isset($user['activity_level']) ? $user['activity_level'] : 'modéré';
-    
-    // Calcul de base : 35ml par kg de poids corporel
-    $base_water = $weight * 0.035;
-    
-    // Ajustement selon le niveau d'activité
-    $activity_multiplier = 1.0;
-    switch ($activity_level) {
-        case 'sédentaire':
-            $activity_multiplier = 0.9;
-            break;
-        case 'légèrement_actif':
-            $activity_multiplier = 1.0;
-            break;
-        case 'modéré':
-            $activity_multiplier = 1.1;
-            break;
-        case 'actif':
-            $activity_multiplier = 1.2;
-            break;
-        case 'très_actif':
-            $activity_multiplier = 1.3;
-            break;
-    }
-    
-    // Ajustement selon l'âge (les personnes âgées ont besoin de plus d'eau)
-    $age_multiplier = 1.0;
-    if ($age > 65) {
-        $age_multiplier = 1.1;
-    } elseif ($age < 18) {
-        $age_multiplier = 1.05;
-    }
-    
-    // Calcul final
-    $water_goal = $base_water * $activity_multiplier * $age_multiplier;
-    
-    // Conversion en litres et arrondi à 2 décimales
-    $water_goal = round($water_goal / 1000, 2);
-    
-    // Minimum 1.5L, maximum 4L
-    return max(1.5, min(4, $water_goal));
-}
+
 
 /**
  * Calcule le métabolisme de base (BMR) selon la formule de Mifflin-St Jeor
