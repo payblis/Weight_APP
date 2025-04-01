@@ -308,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($errors)) {
             try {
                 // Vérifier si l'aliment existe et appartient à l'utilisateur
-                $sql = "SELECT id FROM food_logs WHERE id = ? AND user_id = ?";
+                $sql = "SELECT id, meal_id FROM food_logs WHERE id = ? AND user_id = ?";
                 $food_log = fetchOne($sql, [$food_log_id, $user_id]);
                 
                 if (!$food_log) {
@@ -323,7 +323,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("Aliment supprimé avec succès. ID: " . $food_log_id);
                         
                         // Mettre à jour les totaux du repas
-                        updateMealTotals($meal_id);
+                        updateMealTotals($food_log['meal_id']);
+                        
+                        // Mettre à jour le bilan calorique quotidien
+                        updateDailyCalorieBalance($user_id);
+                        
                         $success_message = "Aliment supprimé du repas avec succès";
                     } else {
                         $errors[] = "Une erreur s'est produite lors de la suppression de l'aliment";
@@ -376,6 +380,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     error_log("Résultat de la suppression du repas : " . ($result ? "Succès" : "Échec"));
                     
                     if ($result) {
+                        // Mettre à jour le bilan calorique quotidien
+                        updateDailyCalorieBalance($user_id);
+                        
                         error_log("Suppression réussie, redirection vers food-log.php");
                         $success_message = "Repas supprimé avec succès";
                         redirect("food-log.php");
