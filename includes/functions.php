@@ -1868,3 +1868,187 @@ function deleteRecord($sql, $params = []) {
     }
 }
 
+/**
+ * Génère une suggestion de repas personnalisée
+ * 
+ * @param array $profile Profil de l'utilisateur
+ * @param array $latest_weight Dernier poids enregistré
+ * @param array $current_goal Objectif actuel
+ * @param array $active_program Programme actif
+ * @param array $favorite_foods Aliments préférés
+ * @param array $blacklisted_foods Aliments à éviter
+ * @return string Suggestion de repas
+ */
+function generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods) {
+    try {
+        // Récupérer la clé API ChatGPT
+        $sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+        $api_key_setting = fetchOne($sql, []);
+        $api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
+
+        if (empty($api_key)) {
+            return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
+        }
+
+        // Construire le prompt
+        $prompt = "En tant que coach nutritionnel, génère une suggestion de repas adaptée au profil suivant :
+- Poids : {$profile['weight']} kg
+- Taille : {$profile['height']} cm
+- Âge : {$profile['age']} ans
+- Niveau d'activité : {$profile['activity_level']}
+- Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
+
+La suggestion doit être :
+1. Adaptée aux besoins nutritionnels de l'utilisateur en fonction de son profil
+2. Respecter les objectifs du programme choisi
+3. Être équilibrée en macronutriments
+4. Être réaliste et facile à préparer
+
+Réponds uniquement avec un objet JSON contenant les champs suivants :
+{
+    \"nom_du_repas\": \"string\",
+    \"valeurs_nutritionnelles\": {
+        \"calories\": number,
+        \"proteines\": number,
+        \"glucides\": number,
+        \"lipides\": number
+    },
+    \"ingredients\": [
+        {
+            \"nom\": \"string\",
+            \"quantité\": \"string\"
+        }
+    ],
+    \"instructions\": [
+        \"string\"
+    ]
+}";
+
+        // Appeler l'API ChatGPT
+        $response = callChatGPTAPI($prompt, $api_key);
+        
+        if (empty($response)) {
+            return "Une erreur s'est produite lors de la génération de la suggestion.";
+        }
+
+        // Vérifier que la réponse est un JSON valide
+        $data = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return "La réponse de l'API n'est pas un JSON valide.";
+        }
+
+        // Formater la suggestion
+        $suggestion = "SUGGESTION DE REPAS : {$data['nom_du_repas']}\n\n";
+        $suggestion .= "Valeurs nutritionnelles :\n";
+        $suggestion .= "- Calories : {$data['valeurs_nutritionnelles']['calories']} kcal\n";
+        $suggestion .= "- Protéines : {$data['valeurs_nutritionnelles']['proteines']} g\n";
+        $suggestion .= "- Glucides : {$data['valeurs_nutritionnelles']['glucides']} g\n";
+        $suggestion .= "- Lipides : {$data['valeurs_nutritionnelles']['lipides']} g\n\n";
+        
+        $suggestion .= "Ingrédients :\n";
+        foreach ($data['ingredients'] as $ingredient) {
+            $suggestion .= "- {$ingredient['quantité']} {$ingredient['nom']}\n";
+        }
+        
+        $suggestion .= "\nInstructions :\n";
+        foreach ($data['instructions'] as $instruction) {
+            $suggestion .= "- {$instruction}\n";
+        }
+
+        return $suggestion;
+    } catch (Exception $e) {
+        error_log("Erreur lors de la génération de la suggestion de repas : " . $e->getMessage());
+        return "Une erreur s'est produite lors de la génération de la suggestion.";
+    }
+}
+
+/**
+ * Génère une suggestion d'exercice personnalisée
+ * 
+ * @param array $profile Profil de l'utilisateur
+ * @param array $latest_weight Dernier poids enregistré
+ * @param array $current_goal Objectif actuel
+ * @param array $active_program Programme actif
+ * @return string Suggestion d'exercice
+ */
+function generateExerciseSuggestion($profile, $latest_weight, $current_goal, $active_program) {
+    try {
+        // Récupérer la clé API ChatGPT
+        $sql = "SELECT setting_value FROM settings WHERE setting_name = 'chatgpt_api_key'";
+        $api_key_setting = fetchOne($sql, []);
+        $api_key = $api_key_setting ? $api_key_setting['setting_value'] : '';
+
+        if (empty($api_key)) {
+            return "La clé API ChatGPT n'est pas configurée. Veuillez contacter l'administrateur.";
+        }
+
+        // Construire le prompt
+        $prompt = "En tant que coach sportif, génère une suggestion d'exercice adaptée au profil suivant :
+- Poids : {$profile['weight']} kg
+- Taille : {$profile['height']} cm
+- Âge : {$profile['age']} ans
+- Niveau d'activité : {$profile['activity_level']}
+- Programme/Objectif : " . ($active_program ? $active_program['name'] : 'Aucun programme actif') . " (" . ($active_program ? $active_program['description'] : '') . ")
+
+La suggestion doit être :
+1. Adaptée au niveau d'activité de l'utilisateur
+2. Respecter les objectifs du programme choisi
+3. Être réaliste et réalisable
+4. Inclure des exercices variés (cardio, renforcement, flexibilité)
+
+Réponds uniquement avec un objet JSON contenant les champs suivants :
+{
+    \"nom_du_programme\": \"string\",
+    \"objectif\": \"string\",
+    \"exercices\": [
+        {
+            \"nom\": \"string\",
+            \"duree\": \"string\",
+            \"intensite\": \"string\",
+            \"calories_brûlées\": number,
+            \"description\": \"string\"
+        }
+    ],
+    \"conseils\": [
+        \"string\"
+    ]
+}";
+
+        // Appeler l'API ChatGPT
+        $response = callChatGPTAPI($prompt, $api_key);
+        
+        if (empty($response)) {
+            return "Une erreur s'est produite lors de la génération de la suggestion.";
+        }
+
+        // Vérifier que la réponse est un JSON valide
+        $data = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return "La réponse de l'API n'est pas un JSON valide.";
+        }
+
+        // Formater la suggestion
+        $suggestion = "PROGRAMME D'EXERCICES : {$data['nom_du_programme']}\n\n";
+        $suggestion .= "Objectif : {$data['objectif']}\n\n";
+        
+        $suggestion .= "Exercices proposés :\n";
+        foreach ($data['exercices'] as $exercice) {
+            $suggestion .= "\n{$exercice['nom']} :\n";
+            $suggestion .= "- Durée : {$exercice['duree']}\n";
+            $suggestion .= "- Intensité : {$exercice['intensite']}\n";
+            $suggestion .= "- Calories brûlées : {$exercice['calories_brûlées']} kcal\n";
+            $suggestion .= "- Description : {$exercice['description']}\n";
+        }
+        
+        $suggestion .= "\nConseils :\n";
+        foreach ($data['conseils'] as $conseil) {
+            $suggestion .= "- {$conseil}\n";
+        }
+
+        return $suggestion;
+    } catch (Exception $e) {
+        error_log("Erreur lors de la génération de la suggestion d'exercice : " . $e->getMessage());
+        return "Une erreur s'est produite lors de la génération de la suggestion.";
+    }
+}
+
