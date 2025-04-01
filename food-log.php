@@ -528,6 +528,16 @@ $sql = "SELECT m.*,
         LIMIT 50";
 $meal_history = fetchAll($sql, [$user_id]);
 
+// Récupérer les calories des exercices pour la journée
+$sql = "SELECT COALESCE(SUM(calories_burned), 0) as total_burned 
+        FROM exercise_logs 
+        WHERE user_id = ? AND DATE(log_date) = ?";
+$exercise_calories = fetchOne($sql, [$user_id, $date_filter])['total_burned'] ?? 0;
+
+// Récupérer l'objectif calorique de l'utilisateur
+$sql = "SELECT goal_calories FROM user_calorie_needs WHERE user_id = ?";
+$daily_goal = fetchOne($sql, [$user_id])['goal_calories'] ?? 0;
+
 // Fonction pour obtenir le nom du type de repas
 function getMealTypeName($type) {
     $types = [
@@ -661,20 +671,20 @@ function updateMealTotals($meal_id) {
                 </div>
                 <div class="stats-item">
                     <div class="stats-value"><?php echo array_sum(array_column($meals, 'total_calories')); ?></div>
-                    <div class="stats-label">Aliment</div>
+                    <div class="stats-label">Aliments</div>
                 </div>
                 <div class="stats-item">
                     <div class="stats-operation">+</div>
                 </div>
                 <div class="stats-item">
-                    <div class="stats-value"><?php echo $exercise_calories ?? 0; ?></div>
+                    <div class="stats-value"><?php echo $exercise_calories; ?></div>
                     <div class="stats-label">Exercice</div>
                 </div>
                 <div class="stats-item">
                     <div class="stats-operation">=</div>
                 </div>
                 <div class="stats-item">
-                    <div class="stats-value"><?php echo $daily_goal - array_sum(array_column($meals, 'total_calories')) + ($exercise_calories ?? 0); ?></div>
+                    <div class="stats-value"><?php echo $daily_goal - array_sum(array_column($meals, 'total_calories')) + $exercise_calories; ?></div>
                     <div class="stats-label">Restants</div>
                 </div>
             </div>
@@ -867,12 +877,12 @@ function updateMealTotals($meal_id) {
                                 <thead>
                                     <tr>
                                         <th>Aliment</th>
-                                        <th>Quantité</th>
-                                        <th>Calories</th>
-                                        <th>Protéines</th>
-                                        <th>Glucides</th>
-                                        <th>Lipides</th>
-                                        <th>Actions</th>
+                                        <th>Qté</th>
+                                        <th>Cal</th>
+                                        <th>Prot</th>
+                                        <th>Gluc</th>
+                                        <th>Lip</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -914,70 +924,6 @@ function updateMealTotals($meal_id) {
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
-
-            <!-- Totaux journaliers -->
-            <div class="daily-totals">
-                <div class="totals-grid">
-                    <div class="total-item">
-                        <div class="total-value">
-                            <?php
-                            $total_calories = array_sum(array_column($meals, 'total_calories'));
-                            echo number_format($total_calories);
-                            ?>
-                        </div>
-                        <div class="total-goal">Calories</div>
-                    </div>
-                    <div class="total-item">
-                        <div class="total-value">
-                            <?php
-                            $total_carbs = array_sum(array_column($meals, 'total_carbs'));
-                            echo number_format($total_carbs, 1);
-                            ?>
-                        </div>
-                        <div class="total-goal">Glucides (g)</div>
-                    </div>
-                    <div class="total-item">
-                        <div class="total-value">
-                            <?php
-                            $total_fat = array_sum(array_column($meals, 'total_fat'));
-                            echo number_format($total_fat, 1);
-                            ?>
-                        </div>
-                        <div class="total-goal">Lipides (g)</div>
-                    </div>
-                    <div class="total-item">
-                        <div class="total-value">
-                            <?php
-                            $total_protein = array_sum(array_column($meals, 'total_protein'));
-                            echo number_format($total_protein, 1);
-                            ?>
-                        </div>
-                        <div class="total-goal">Protéines (g)</div>
-                    </div>
-                    <div class="total-item">
-                        <div class="total-value">
-                            <?php
-                            $total_sodium = array_sum(array_map(function($meal) {
-                                return $meal['total_sodium'] ?? 0;
-                            }, $meals));
-                            echo number_format($total_sodium, 1);
-                            ?>
-                        </div>
-                        <div class="total-goal">Sodium (mg)</div>
-                    </div>
-                    <div class="total-item">
-                        <div class="total-value">
-                            <?php
-                            $total_sugar = array_sum(array_map(function($meal) {
-                                return $meal['total_sugar'] ?? 0;
-                            }, $meals));
-                            echo number_format($total_sugar, 1);
-                            ?>
-                        </div>
-                        <div class="total-goal">Sucres (g)</div>
-                    </div>
-                </div>
-            </div>
         <?php endif; ?>
     </div>
 

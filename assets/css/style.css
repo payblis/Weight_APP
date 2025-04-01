@@ -1237,7 +1237,7 @@ footer h5 {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(7, 1fr);
     gap: 0.5rem;
     text-align: center;
 }
@@ -1249,7 +1249,7 @@ footer h5 {
 }
 
 .stats-value {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 600;
     color: var(--primary-color);
 }
@@ -1263,45 +1263,7 @@ footer h5 {
 .stats-operation {
     font-size: 1.2rem;
     color: var(--text-muted);
-    margin: 0 0.5rem;
-}
-
-/* Styles pour les repas */
-.meal-section {
-    background-color: white;
-    border-radius: 12px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.meal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.meal-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-color);
-    margin: 0;
-}
-
-.meal-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.meal-empty {
-    text-align: center;
-    padding: 1.5rem;
-    color: var(--text-muted);
-    background-color: var(--background-color);
-    border-radius: 8px;
+    margin-top: 0.5rem;
 }
 
 /* Media Queries pour Mobile */
@@ -1316,15 +1278,21 @@ footer h5 {
     }
 
     .stats-grid {
+        grid-template-columns: repeat(7, 1fr);
         gap: 0.25rem;
     }
 
     .stats-value {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
 
     .stats-label {
         font-size: 0.7rem;
+    }
+
+    .stats-operation {
+        font-size: 1rem;
+        margin-top: 0.25rem;
     }
 
     .meal-section {
@@ -1350,11 +1318,6 @@ footer h5 {
         font-size: 0.85rem;
     }
 
-    /* Ajustement du padding pour le contenu principal */
-    .main-content {
-        padding: 0.5rem;
-    }
-
     /* Optimisation de l'espace pour les tableaux */
     .table-responsive {
         margin: 0;
@@ -1367,5 +1330,15 @@ footer h5 {
 
     .table th, .table td {
         padding: 0.5rem 0.25rem;
+        white-space: nowrap;
+    }
+
+    .table th {
+        font-size: 0.8rem;
+    }
+
+    /* Ajustement du padding pour le contenu principal */
+    .main-content {
+        padding: 0.5rem;
     }
 }
