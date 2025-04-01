@@ -25,7 +25,7 @@ include 'header.php';
                     <a href="register.php" class="btn btn-light btn-lg">Démarrez gratuitement</a>
                 </div>
                 <div class="col-lg-6">
-                    <img src="assets/images/hero-image.jpg" alt="MyFity App" class="img-fluid rounded shadow">
+                    <img src="assets/images/hero.png" alt="MyFity App" class="img-fluid rounded shadow">
                 </div>
             </div>
         </div>
