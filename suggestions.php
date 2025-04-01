@@ -98,34 +98,6 @@ $sql = "SELECT p.* FROM user_programs up
         ORDER BY up.created_at DESC LIMIT 1";
 $active_program = fetchOne($sql, [$user_id]);
 
-// Récupérer les préférences alimentaires de l'utilisateur
-$sql = "SELECT * FROM food_preferences WHERE user_id = ?";
-$preferences = fetchAll($sql, [$user_id]);
-
-// Organiser les préférences par type
-$favorite_foods = [];
-$blacklisted_foods = [];
-
-foreach ($preferences as $pref) {
-    if ($pref['preference_type'] === 'favori') {
-        if ($pref['food_id']) {
-            $sql = "SELECT name FROM foods WHERE id = ?";
-            $food_info = fetchOne($sql, [$pref['food_id']]);
-            $favorite_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
-        } else {
-            $favorite_foods[] = $pref['custom_food'];
-        }
-    } elseif ($pref['preference_type'] === 'blacklist') {
-        if ($pref['food_id']) {
-            $sql = "SELECT name FROM foods WHERE id = ?";
-            $food_info = fetchOne($sql, [$pref['food_id']]);
-            $blacklisted_foods[] = $food_info ? $food_info['name'] : 'Aliment inconnu';
-        } else {
-            $blacklisted_foods[] = $pref['custom_food'];
-        }
-    }
-}
-
 // Traitement de la demande de suggestion
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $suggestion_type = sanitizeInput($_POST['suggestion_type'] ?? 'alimentation');
@@ -142,12 +114,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 switch ($suggestion_type) {
                     case 'alimentation':
-                        // Récupérer les aliments préférés et à éviter
-                        $sql = "SELECT favorite_foods, blacklisted_foods FROM user_profiles WHERE user_id = ?";
-                        $food_preferences = fetchOne($sql, [$user_id]);
-                        $favorite_foods = $food_preferences ? explode(',', $food_preferences['favorite_foods']) : [];
-                        $blacklisted_foods = $food_preferences ? explode(',', $food_preferences['blacklisted_foods']) : [];
-
                         // Récupérer le dernier poids enregistré
                         $sql = "SELECT weight FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1";
                         $latest_weight = fetchOne($sql, [$user_id]);
@@ -165,7 +131,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // Générer la suggestion
                         $meal_type = isset($_GET['meal_type']) ? $_GET['meal_type'] : 'dejeuner';
-                        $suggestion_content = generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods, $meal_type);
+                        
+                        if ($meal_type === 'liste_courses') {
+                            $suggestion_content = generateShoppingList($profile, $favorite_foods, $blacklisted_foods);
+                        } else {
+                            $suggestion_content = generateMealSuggestion($profile, $latest_weight, $current_goal, $active_program, $favorite_foods, $blacklisted_foods, $meal_type);
+                        }
                         break;
                         
                     case 'exercice':
@@ -391,6 +362,7 @@ $suggestions = fetchAll($sql, [$user_id, $suggestion_type]);
                                         <option value="dejeuner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'dejeuner' ? 'selected' : ''; ?>>Déjeuner</option>
                                         <option value="diner" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'diner' ? 'selected' : ''; ?>>Dîner</option>
                                         <option value="collation" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'collation' ? 'selected' : ''; ?>>Collation</option>
+                                        <option value="liste_courses" <?php echo isset($_GET['meal_type']) && $_GET['meal_type'] === 'liste_courses' ? 'selected' : ''; ?>>Liste de courses</option>
                                     </select>
                                 </div>
                                 <?php endif; ?>

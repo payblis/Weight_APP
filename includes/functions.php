@@ -2033,3 +2033,97 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
     }
 }
 
+function generateShoppingList($profile, $favorite_foods, $blacklisted_foods) {
+    try {
+        // Construire le prompt pour la liste de courses
+        $prompt = "Tu es un expert en nutrition et en planification de repas. Je vais te donner les informations nécessaires pour générer une liste de courses adaptée au profil de l'utilisateur.
+
+RÈGLES STRICTES :
+1. Inclure uniquement des aliments sains et nutritifs
+2. Privilégier les aliments préférés de l'utilisateur
+3. Éviter ABSOLUMENT les aliments blacklistés
+4. Organiser les aliments par catégories
+5. Inclure des quantités raisonnables
+6. Privilégier les aliments frais et non transformés
+7. Inclure des alternatives pour les aliments allergènes courants
+
+PROFIL UTILISATEUR :
+- Genre : {$profile['gender']}
+- Âge : {$profile['age']}
+- Taille : {$profile['height']}cm
+- Niveau d'activité : {$profile['activity_level']}
+- Poids actuel : {$profile['current_weight']}kg
+- Objectif : " . (is_array($profile['goal']) ? $profile['goal']['name'] : $profile['goal']) . "
+
+PREFERENCES ALIMENTAIRES :
+- Aliments préférés : " . implode(", ", $favorite_foods) . "
+- Aliments à éviter : " . implode(", ", $blacklisted_foods) . "
+
+Génère une liste de courses au format JSON avec la structure suivante :
+{
+    \"categories\": [
+        {
+            \"name\": \"Nom de la catégorie\",
+            \"items\": [
+                {
+                    \"name\": \"Nom de l'aliment\",
+                    \"quantity\": \"Quantité\",
+                    \"unit\": \"Unité de mesure\",
+                    \"notes\": \"Notes ou alternatives\"
+                }
+            ]
+        }
+    ],
+    \"total_items\": X,
+    \"estimated_cost\": \"Coût estimé\",
+    \"storage_tips\": [
+        \"Conseil de conservation 1\",
+        \"Conseil de conservation 2\"
+    ]
+}";
+
+        // Appeler l'API ChatGPT
+        $response = callChatGPTAPI($prompt, getSetting('chatgpt_api_key'));
+        
+        // Vérifier la réponse
+        if (!$response) {
+            throw new Exception("Erreur lors de l'appel à l'API ChatGPT");
+        }
+
+        // Vérifier que la réponse est un JSON valide
+        $shopping_list = json_decode($response, true);
+        if (!$shopping_list || !isset($shopping_list['categories'])) {
+            throw new Exception("Réponse invalide de l'API");
+        }
+
+        // Formater la liste de courses pour l'affichage
+        $list_text = "LISTE DE COURSES PERSONNALISÉE\n\n";
+        
+        foreach ($shopping_list['categories'] as $category) {
+            $list_text .= "=== {$category['name']} ===\n";
+            foreach ($category['items'] as $item) {
+                $list_text .= "- {$item['quantity']} {$item['unit']} {$item['name']}";
+                if (!empty($item['notes'])) {
+                    $list_text .= " ({$item['notes']})";
+                }
+                $list_text .= "\n";
+            }
+            $list_text .= "\n";
+        }
+
+        $list_text .= "Total des articles : {$shopping_list['total_items']}\n";
+        $list_text .= "Coût estimé : {$shopping_list['estimated_cost']}\n\n";
+        
+        $list_text .= "CONSEILS DE CONSERVATION :\n";
+        foreach ($shopping_list['storage_tips'] as $tip) {
+            $list_text .= "- {$tip}\n";
+        }
+
+        return $list_text;
+
+    } catch (Exception $e) {
+        error_log("Erreur dans generateShoppingList : " . $e->getMessage());
+        return "Erreur lors de la génération de la liste de courses : " . $e->getMessage();
+    }
+}
+
