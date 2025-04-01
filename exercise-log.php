@@ -476,59 +476,132 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <!-- Tableau des exercices -->
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Date</th>
-                            <th>Exercice</th>
-                            <th class="text-center">Durée</th>
-                            <th class="text-center">Intensité</th>
-                            <th class="text-center">Calories</th>
-                            <th>Notes</th>
-                            <th class="text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($exercises)): ?>
+            <div class="d-none d-md-block">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
                             <tr>
-                                <td colspan="7" class="text-center py-4">Aucun exercice enregistré</td>
+                                <th>Date</th>
+                                <th>Exercice</th>
+                                <th class="text-center">Durée</th>
+                                <th class="text-center">Intensité</th>
+                                <th class="text-center">Calories</th>
+                                <th>Notes</th>
+                                <th class="text-center">Actions</th>
                             </tr>
-                        <?php else: ?>
-                            <?php foreach ($exercises as $exercise): ?>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($exercises)): ?>
                                 <tr>
-                                    <td class="text-nowrap"><?php echo date('d/m/Y', strtotime($exercise['log_date'])); ?></td>
-                                    <td><?php echo htmlspecialchars($exercise['custom_exercise_name'] ?: $exercise['exercise_name']); ?></td>
-                                    <td class="text-center"><?php echo $exercise['duration']; ?> min</td>
-                                    <td class="text-center"><?php echo ucfirst($exercise['intensity']); ?></td>
-                                    <td class="text-center"><?php echo number_format($exercise['calories_burned']); ?></td>
-                                    <td class="text-truncate" style="max-width: 150px;"><?php echo htmlspecialchars($exercise['notes']); ?></td>
-                                    <td class="text-center">
-                                        <div class="btn-group">
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-outline-success share-btn" 
-                                                    data-exercise-id="<?php echo $exercise['id']; ?>"
-                                                    data-exercise-name="<?php echo htmlspecialchars($exercise['custom_exercise_name'] ?: $exercise['exercise_name']); ?>"
-                                                    data-duration="<?php echo $exercise['duration']; ?>"
-                                                    data-intensity="<?php echo $exercise['intensity']; ?>"
-                                                    data-calories="<?php echo $exercise['calories_burned']; ?>"
-                                                    data-notes="<?php echo htmlspecialchars($exercise['notes']); ?>">
-                                                <i class="fas fa-share-alt"></i>
-                                            </button>
-                                            <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet exercice ?');">
-                                                <input type="hidden" name="action" value="delete">
-                                                <input type="hidden" name="exercise_id" value="<?php echo $exercise['id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
+                                    <td colspan="7" class="text-center py-4">Aucun exercice enregistré</td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                            <?php else: ?>
+                                <?php foreach ($exercises as $exercise): ?>
+                                    <tr>
+                                        <td class="text-nowrap"><?php echo date('d/m/Y', strtotime($exercise['log_date'])); ?></td>
+                                        <td><?php echo htmlspecialchars($exercise['custom_exercise_name'] ?: $exercise['exercise_name']); ?></td>
+                                        <td class="text-center"><?php echo $exercise['duration']; ?> min</td>
+                                        <td class="text-center"><?php echo ucfirst($exercise['intensity']); ?></td>
+                                        <td class="text-center"><?php echo number_format($exercise['calories_burned']); ?></td>
+                                        <td class="text-truncate" style="max-width: 150px;"><?php echo htmlspecialchars($exercise['notes']); ?></td>
+                                        <td class="text-center">
+                                            <div class="btn-group">
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-success share-btn" 
+                                                        data-exercise-id="<?php echo $exercise['id']; ?>"
+                                                        data-exercise-name="<?php echo htmlspecialchars($exercise['custom_exercise_name'] ?: $exercise['exercise_name']); ?>"
+                                                        data-duration="<?php echo $exercise['duration']; ?>"
+                                                        data-intensity="<?php echo $exercise['intensity']; ?>"
+                                                        data-calories="<?php echo $exercise['calories_burned']; ?>"
+                                                        data-notes="<?php echo htmlspecialchars($exercise['notes']); ?>">
+                                                    <i class="fas fa-share-alt"></i>
+                                                </button>
+                                                <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet exercice ?');">
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="exercise_id" value="<?php echo $exercise['id']; ?>">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Vue mobile (cartes) -->
+            <div class="d-md-none">
+                <?php if (empty($exercises)): ?>
+                    <div class="text-center py-4">Aucun exercice enregistré</div>
+                <?php else: ?>
+                    <div class="row g-3">
+                        <?php foreach ($exercises as $exercise): ?>
+                            <div class="col-12">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="card-title mb-0"><?php echo htmlspecialchars($exercise['custom_exercise_name'] ?: $exercise['exercise_name']); ?></h6>
+                                            <div class="btn-group">
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-success share-btn" 
+                                                        data-exercise-id="<?php echo $exercise['id']; ?>"
+                                                        data-exercise-name="<?php echo htmlspecialchars($exercise['custom_exercise_name'] ?: $exercise['exercise_name']); ?>"
+                                                        data-duration="<?php echo $exercise['duration']; ?>"
+                                                        data-intensity="<?php echo $exercise['intensity']; ?>"
+                                                        data-calories="<?php echo $exercise['calories_burned']; ?>"
+                                                        data-notes="<?php echo htmlspecialchars($exercise['notes']); ?>">
+                                                    <i class="fas fa-share-alt"></i>
+                                                </button>
+                                                <form method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet exercice ?');">
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="exercise_id" value="<?php echo $exercise['id']; ?>">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <div class="d-flex align-items-center text-muted">
+                                                    <i class="fas fa-calendar me-2"></i>
+                                                    <small><?php echo date('d/m/Y', strtotime($exercise['log_date'])); ?></small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="d-flex align-items-center text-muted">
+                                                    <i class="fas fa-clock me-2"></i>
+                                                    <small><?php echo $exercise['duration']; ?> min</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="d-flex align-items-center text-muted">
+                                                    <i class="fas fa-bolt me-2"></i>
+                                                    <small><?php echo ucfirst($exercise['intensity']); ?></small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="d-flex align-items-center text-muted">
+                                                    <i class="fas fa-fire me-2"></i>
+                                                    <small><?php echo number_format($exercise['calories_burned']); ?> cal</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php if (!empty($exercise['notes'])): ?>
+                                            <div class="mt-2">
+                                                <small class="text-muted"><?php echo htmlspecialchars($exercise['notes']); ?></small>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
     </div>
