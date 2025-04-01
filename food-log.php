@@ -16,6 +16,9 @@ $user_id = $_SESSION['user_id'];
 $sql = "SELECT * FROM users WHERE id = ?";
 $user = fetchOne($sql, [$user_id]);
 
+// Initialiser la date de filtrage
+$date_filter = isset($_GET['date']) ? sanitizeInput($_GET['date']) : date('Y-m-d');
+
 // Vérifier si l'utilisateur est un administrateur
 $sql = "SELECT role_id FROM users WHERE id = ?";
 $user_role = fetchOne($sql, [$user_id]);
