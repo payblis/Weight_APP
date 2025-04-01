@@ -53,10 +53,19 @@ $sql = "SELECT e.*, ec.name as category_name
 $available_exercises = fetchAll($sql, []);
 
 // Récupérer les préférences alimentaires
-$sql = "SELECT food_id, preference_type 
-        FROM food_preferences 
-        WHERE user_id = ?";
-$food_preferences = fetchAll($sql, [$user_id]);
+$favorite_foods = [];
+$blacklisted_foods = [];
+
+$sql = "SELECT custom_food, preference_type FROM food_preferences WHERE user_id = ?";
+$preferences = fetchAll($sql, [$user_id]);
+
+foreach ($preferences as $pref) {
+    if ($pref['preference_type'] === 'favorite') {
+        $favorite_foods[] = $pref['custom_food'];
+    } else if ($pref['preference_type'] === 'blacklist') {
+        $blacklisted_foods[] = $pref['custom_food'];
+    }
+}
 
 // Récupérer les besoins caloriques quotidiens
 $sql = "SELECT * FROM user_calorie_needs 

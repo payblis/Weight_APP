@@ -1972,7 +1972,16 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
     \"proteins\": X,
     \"carbs\": X,
     \"fats\": X,
-    \"ingredients\": [\"ingrédient 1\", \"ingrédient 2\", ...],
+    \"ingredients\": [
+        {
+            \"name\": \"Nom de l'ingrédient\",
+            \"quantity\": \"Quantité\",
+            \"calories\": X,
+            \"proteins\": X,
+            \"carbs\": X,
+            \"fats\": X
+        }
+    ],
     \"instructions\": [\"étape 1\", \"étape 2\", ...]
 }";
 
@@ -2009,7 +2018,7 @@ Génère une suggestion de repas au format JSON avec la structure suivante :
         $suggestion_text .= "- Lipides : {$suggestion['fats']}g\n\n";
         $suggestion_text .= "Ingrédients :\n";
         foreach ($suggestion['ingredients'] as $ingredient) {
-            $suggestion_text .= "- {$ingredient}\n";
+            $suggestion_text .= "- {$ingredient['quantity']} {$ingredient['name']}\n";
         }
         $suggestion_text .= "\nInstructions :\n";
         foreach ($suggestion['instructions'] as $index => $instruction) {
