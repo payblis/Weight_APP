@@ -20,7 +20,7 @@ $sql = "SELECT * FROM users WHERE id = ?";
 $user = fetchOne($sql, [$user_id]);
 
 // Récupérer les informations du profil utilisateur
-$sql = "SELECT up.*, u.gender, u.birth_date 
+$sql = "SELECT up.*, u.birth_date 
         FROM user_profiles up 
         JOIN users u ON up.user_id = u.id 
         WHERE up.user_id = ?";
