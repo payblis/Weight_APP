@@ -27,6 +27,9 @@ $submenus = [
     'goals.php' => [
         ['title' => 'Mes objectifs', 'url' => 'goals.php'],
         ['title' => 'Progression', 'url' => 'goals-progress.php']
+    ],
+    'suggestions.php' => [
+        ['title' => 'Suggestions personnalisées', 'url' => 'suggestions.php']
     ]
 ];
 

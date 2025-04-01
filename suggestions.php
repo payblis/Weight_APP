@@ -1,14 +1,20 @@
 <?php
-require_once 'includes/config.php';
+// Démarrer la session
+session_start();
+
+// Inclure les fichiers nécessaires
+require_once 'config/database.php';
 require_once 'includes/functions.php';
 
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
-    header('Location: login.php');
-    exit;
+    redirect('login.php');
 }
 
+// Récupérer les informations de l'utilisateur
 $user_id = $_SESSION['user_id'];
+$sql = "SELECT * FROM users WHERE id = ?";
+$user = fetchOne($sql, [$user_id]);
 
 // Récupérer les informations du profil utilisateur
 $sql = "SELECT up.*, u.age, u.gender 
