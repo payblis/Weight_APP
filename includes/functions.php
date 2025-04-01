@@ -1931,22 +1931,18 @@ function generateMealSuggestion($profile, $latest_weight, $current_goal, $active
             ]
         ];
 
-        // Récupérer les préférences alimentaires depuis la table user_food_preferences
-        $sql = "SELECT food_id, is_favorite FROM user_food_preferences WHERE user_id = ?";
+        // Récupérer les préférences alimentaires depuis la table food_preferences
+        $sql = "SELECT custom_food, preference_type FROM food_preferences WHERE user_id = ?";
         $preferences = fetchAll($sql, [$profile['user_id']]);
         
         $favorite_foods = [];
         $blacklisted_foods = [];
         
         foreach ($preferences as $pref) {
-            $food_sql = "SELECT name FROM foods WHERE id = ?";
-            $food = fetchOne($food_sql, [$pref['food_id']]);
-            if ($food) {
-                if ($pref['is_favorite']) {
-                    $favorite_foods[] = $food['name'];
-                } else {
-                    $blacklisted_foods[] = $food['name'];
-                }
+            if ($pref['preference_type'] === 'favori') {
+                $favorite_foods[] = $pref['custom_food'];
+            } elseif ($pref['preference_type'] === 'blacklist') {
+                $blacklisted_foods[] = $pref['custom_food'];
             }
         }
 

@@ -72,27 +72,27 @@ foreach ($submenus as $menu => $items) {
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo $current_page === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">
+                    <a class="nav-link <?php echo $current_page === 'dashboard.php' ? 'active' : ''; ?>" href="dashboard.php">
                         <i class="fas fa-home me-1"></i>Ma Journée
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo in_array($current_page, ['food-log.php', 'food-management.php', 'preferences.php']) ? 'active' : ''; ?>" href="food-log.php">
+                    <a class="nav-link <?php echo in_array($current_page, ['food-log.php', 'food-management.php', 'preferences.php']) ? 'active' : ''; ?>" href="food-log.php">
                         <i class="fas fa-utensils me-1"></i>Aliments
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo in_array($current_page, ['exercise-log.php', 'programs.php']) ? 'active' : ''; ?>" href="exercise-log.php">
+                    <a class="nav-link <?php echo in_array($current_page, ['exercise-log.php', 'programs.php']) ? 'active' : ''; ?>" href="exercise-log.php">
                         <i class="fas fa-dumbbell me-1"></i>Exercices
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo in_array($current_page, ['weight-log.php', 'calorie-history.php', 'reports.php']) ? 'active' : ''; ?>" href="reports.php">
+                    <a class="nav-link <?php echo in_array($current_page, ['weight-log.php', 'calorie-history.php', 'reports.php']) ? 'active' : ''; ?>" href="reports.php">
                         <i class="fas fa-chart-bar me-1"></i>Rapports
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-uppercase <?php echo $current_page === 'goals.php' ? 'active' : ''; ?>" href="goals.php">
+                    <a class="nav-link <?php echo $current_page === 'goals.php' ? 'active' : ''; ?>" href="goals.php">
                         <i class="fas fa-bullseye me-1"></i>Objectifs
                     </a>
                 </li>
