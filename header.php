@@ -68,10 +68,6 @@
             transition: color 0.2s;
         }
 
-        .user-controls a:hover {
-            color: var(--primary-color);
-        }
-
         .notification-count {
             background-color: #ff0000;
             color: white;

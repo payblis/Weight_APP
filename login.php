@@ -175,67 +175,6 @@ if (!isLoggedIn() && isset($_COOKIE['remember_token'])) {
                         <p class="mb-0">Vous n'avez pas de compte ? <a href="register.php" class="text-primary">Inscrivez-vous</a></p>
                     </div>
                 </div>
-                
-                <!-- Témoignages -->
-                <div class="card mt-4 shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">Ce que disent nos utilisateurs</h5>
-                        <div id="testimonialCarousel" class="carousel slide" data-bs-ride="carousel">
-                            <div class="carousel-inner py-3">
-                                <div class="carousel-item active">
-                                    <div class="testimonial text-center">
-                                        <p class="mb-3">"Grâce à MyFity, j'ai perdu 15 kg en 6 mois. L'application m'a aidé à rester motivé et à suivre mes progrès jour après jour."</p>
-                                        <div class="testimonial-author">
-                                            <div class="rating text-warning mb-2">
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                            </div>
-                                            <h6 class="mb-0">Thomas D.</h6>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="carousel-item">
-                                    <div class="testimonial text-center">
-                                        <p class="mb-3">"Les recommandations de repas sont excellentes et adaptées à mes préférences. Je n'ai jamais mangé aussi sainement tout en me faisant plaisir !"</p>
-                                        <div class="testimonial-author">
-                                            <div class="rating text-warning mb-2">
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star-half-alt"></i>
-                                            </div>
-                                            <h6 class="mb-0">Sophie M.</h6>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="carousel-item">
-                                    <div class="testimonial text-center">
-                                        <p class="mb-3">"Le suivi des exercices est très précis et m'aide à rester motivé. J'apprécie particulièrement les graphiques qui montrent mes progrès."</p>
-                                        <div class="testimonial-author">
-                                            <div class="rating text-warning mb-2">
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                                <i class="fas fa-star"></i>
-                                            </div>
-                                            <h6 class="mb-0">Lucas P.</h6>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="carousel-indicators position-relative mt-3">
-                                <button type="button" data-bs-target="#testimonialCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
-                                <button type="button" data-bs-target="#testimonialCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
-                                <button type="button" data-bs-target="#testimonialCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
