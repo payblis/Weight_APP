@@ -292,15 +292,17 @@ if (!empty($pending_invitations)):
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             height: 100%;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-bottom: 1rem;
+            margin-bottom: 2rem;
         }
         .calories-container {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 2rem;
+            padding: 1rem;
         }
         .calories-details {
             flex: 1;
+            padding-top: 1rem;
         }
         .progress-circle {
             width: 180px;
@@ -309,11 +311,16 @@ if (!empty($pending_invitations)):
         }
         @media (max-width: 768px) {
             .calories-container {
-                flex-direction: column;
-                gap: 1rem;
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 1.5rem;
             }
             .calories-details {
-                width: 100%;
+                padding-top: 1rem;
+            }
+            .progress-circle {
+                width: 140px;
+                height: 140px;
             }
         }
         .exercise-swiper .swiper-slide {
@@ -332,6 +339,7 @@ if (!empty($pending_invitations)):
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            margin-bottom: 0;
         }
         .macro-circle {
             width: 100px;
@@ -355,12 +363,6 @@ if (!empty($pending_invitations)):
             font-size: 0.8rem;
             color: #6c757d;
         }
-        .exercise-card {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
         .exercise-icon {
             width: 32px;
             height: 32px;
@@ -375,15 +377,8 @@ if (!empty($pending_invitations)):
             position: relative;
             margin-top: 1rem;
         }
-        .premium-button {
-            background: #ffc107;
-            color: #000;
-            border: none;
-            border-radius: 25px;
-            padding: 0.5rem 2rem;
-            font-weight: 500;
-            width: 100%;
-            max-width: 300px;
+        .row {
+            margin-bottom: 2rem;
         }
     </style>
 </head>
@@ -393,15 +388,12 @@ if (!empty($pending_invitations)):
     <!-- Contenu principal -->
     <div class="container py-4">
         <div class="dashboard-container">
-            <!-- En-tête avec logo et bouton premium -->
+            <!-- En-tête avec logo -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div class="d-flex align-items-center">
                     <img src="assets/img/logo.png" alt="Logo" class="me-2" style="height: 40px;">
                     <h4 class="mb-0">Aujourd'hui</h4>
                 </div>
-                <button class="premium-button">
-                    Passez à Premium <i class="fas fa-crown ms-1"></i>
-                </button>
             </div>
 
             <!-- Slider pour mobile -->
@@ -420,7 +412,8 @@ if (!empty($pending_invitations)):
                                             <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="12"/>
                                             <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="12"
                                                 stroke-dasharray="<?php 
-                                                    $percentage = (($calorie_goal - $remaining_calories) / $calorie_goal) * 100;
+                                                    $calories_consumed = $calorie_goal - $remaining_calories;
+                                                    $percentage = ($calories_consumed / $calorie_goal) * 100;
                                                     echo min(100, $percentage) * 5.65;
                                                 ?> 565"
                                                 transform="rotate(-90 100 100)"/>
@@ -527,9 +520,7 @@ if (!empty($pending_invitations)):
                                 </div>
 
                                 <div class="text-center mt-3">
-                                    <button class="btn btn-warning btn-sm">
-                                        Passez À Premium <i class="fas fa-crown ms-1"></i>
-                                    </button>
+                                    <!-- Suppression du bouton Premium -->
                                 </div>
                             </div>
                         </div>
@@ -538,9 +529,8 @@ if (!empty($pending_invitations)):
                     <!-- Slide Hydratation -->
                     <div class="swiper-slide">
                         <div class="card h-100">
-                            <div class="card-body d-flex flex-column">
+                            <div class="card-body">
                                 <h5 class="card-title mb-4">Hydratation</h5>
-                                
                                 <div class="text-center mb-4">
                                     <div class="water-drop position-relative">
                                         <svg width="150" height="150" viewBox="0 0 100 100">
@@ -578,7 +568,7 @@ if (!empty($pending_invitations)):
                     <!-- Slide Informations personnelles -->
                     <div class="swiper-slide">
                         <div class="card h-100">
-                            <div class="card-body d-flex flex-column">
+                            <div class="card-body">
                                 <h5 class="card-title mb-4">Informations personnelles</h5>
 
                                 <div class="row g-4">
@@ -695,13 +685,10 @@ if (!empty($pending_invitations)):
                 <div class="swiper-pagination"></div>
             </div>
 
-            <!-- Slider pour les exercices -->
+            <!-- Slider pour les exercices (mobile et desktop) -->
             <div class="swiper exercise-swiper mt-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0">Activité physique</h5>
-                    <a href="#" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-plus"></i>
-                    </a>
                 </div>
                 <div class="swiper-wrapper">
                     <!-- Durée d'exercice -->
@@ -757,7 +744,8 @@ if (!empty($pending_invitations)):
                                         <circle cx="100" cy="100" r="90" fill="none" stroke="#f0f0f0" stroke-width="12"/>
                                         <circle cx="100" cy="100" r="90" fill="none" stroke="#0d6efd" stroke-width="12"
                                             stroke-dasharray="<?php 
-                                                $percentage = (($calorie_goal - $remaining_calories) / $calorie_goal) * 100;
+                                                $calories_consumed = $calorie_goal - $remaining_calories;
+                                                $percentage = ($calories_consumed / $calorie_goal) * 100;
                                                 echo min(100, $percentage) * 5.65;
                                             ?> 565"
                                             transform="rotate(-90 100 100)"/>
@@ -797,8 +785,6 @@ if (!empty($pending_invitations)):
                         </div>
                     </div>
                 </div>
-
-                <!-- Section Macronutriments -->
                 <div class="col-6">
                     <div class="card h-100">
                         <div class="card-body">
@@ -864,56 +850,15 @@ if (!empty($pending_invitations)):
                             </div>
 
                             <div class="text-center mt-3">
-                                <button class="btn btn-warning btn-sm">
-                                    Passez À Premium <i class="fas fa-crown ms-1"></i>
-                                </button>
+                                <!-- Suppression du bouton Premium -->
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Exercices version desktop -->
-            <div class="row g-4 mt-4 d-none d-md-flex">
-                <!-- Durée d'exercice -->
-                <div class="col-6">
-                    <div class="exercise-card">
-                        <div class="d-flex align-items-center">
-                            <div class="exercise-icon">
-                                <i class="fas fa-clock text-info"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold"><?php 
-                                    $sql = "SELECT SEC_TO_TIME(SUM(TIME_TO_SEC(duration))) as total_duration 
-                                           FROM exercise_logs 
-                                           WHERE user_id = ? AND log_date = CURDATE()";
-                                    $duration = fetchOne($sql, [$user_id]);
-                                    echo $duration['total_duration'] ?? '00:00';
-                                ?></div>
-                                <small class="text-muted">Durée d'exercice</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Calories brûlées -->
-                <div class="col-6">
-                    <div class="exercise-card">
-                        <div class="d-flex align-items-center">
-                            <div class="exercise-icon">
-                                <i class="fas fa-fire text-danger"></i>
-                            </div>
-                            <div>
-                                <div class="fw-bold"><?php echo number_format($calories_out); ?></div>
-                                <small class="text-muted">kcal brûlées</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Deuxième ligne : Hydratation et Informations personnelles (visible uniquement sur mobile) -->
-            <div class="row g-4 d-md-none">
-                <!-- Section Hydratation -->
+            <!-- Deuxième ligne : Hydratation et Informations personnelles -->
+            <div class="row g-4 d-none d-md-flex">
                 <div class="col-6">
                     <div class="card h-100">
                         <div class="card-body">
@@ -952,8 +897,6 @@ if (!empty($pending_invitations)):
                         </div>
                     </div>
                 </div>
-
-                <!-- Section Informations personnelles -->
                 <div class="col-6">
                     <div class="card h-100">
                         <div class="card-body">
