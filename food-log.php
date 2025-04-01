@@ -1386,6 +1386,103 @@ echo "</div>";
                     echo "<br>Structure non trouvée";
                 }
                 echo "</div>";
+
+                // Déboguer les calories consommées
+                $sql = "SELECT 
+                    m.id as meal_id,
+                    m.meal_type,
+                    m.total_calories as meal_calories,
+                    m.total_protein as meal_protein,
+                    m.total_carbs as meal_carbs,
+                    m.total_fat as meal_fat,
+                    COUNT(fl.id) as food_count
+                FROM meals m
+                LEFT JOIN food_logs fl ON m.id = fl.meal_id
+                WHERE m.user_id = ? AND m.log_date = ?
+                GROUP BY m.id";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête détails repas : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
+                
+                $meals_details = fetchAll($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[REPAS]</span> ";
+                echo "Détails des repas du jour :";
+                if (!empty($meals_details)) {
+                    foreach ($meals_details as $meal) {
+                        echo "<br>- " . getMealTypeName($meal['meal_type']) . " : " . 
+                             $meal['meal_calories'] . " kcal, " .
+                             $meal['meal_protein'] . "g protéines, " .
+                             $meal['meal_carbs'] . "g glucides, " .
+                             $meal['meal_fat'] . "g lipides, " .
+                             $meal['food_count'] . " aliments";
+                    }
+                } else {
+                    echo "<br>Aucun repas enregistré pour cette date";
+                }
+                echo "</div>";
+
+                // Déboguer les aliments de chaque repas
+                foreach ($meals_details as $meal) {
+                    $sql = "SELECT fl.*, f.name as food_name, f.calories, f.protein, f.carbs, f.fat 
+                           FROM food_logs fl 
+                           LEFT JOIN foods f ON fl.food_id = f.id 
+                           WHERE fl.meal_id = ?";
+                    echo "<div class='debug-message'>";
+                    echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                    echo "<span class='debug-category'>[ALIMENTS]</span> ";
+                    echo "Aliments du " . getMealTypeName($meal['meal_type']) . " :";
+                    
+                    $foods = fetchAll($sql, [$meal['meal_id']]);
+                    if (!empty($foods)) {
+                        foreach ($foods as $food) {
+                            $calories = $food['food_id'] ? ($food['calories'] * $food['quantity'] / 100) : $food['custom_calories'];
+                            $protein = $food['food_id'] ? ($food['protein'] * $food['quantity'] / 100) : $food['custom_protein'];
+                            $carbs = $food['food_id'] ? ($food['carbs'] * $food['quantity'] / 100) : $food['custom_carbs'];
+                            $fat = $food['food_id'] ? ($food['fat'] * $food['quantity'] / 100) : $food['custom_fat'];
+                            
+                            echo "<br>- " . ($food['food_id'] ? $food['food_name'] : $food['custom_food_name']) . " : " .
+                                 $food['quantity'] . "g, " .
+                                 round($calories) . " kcal, " .
+                                 round($protein, 1) . "g protéines, " .
+                                 round($carbs, 1) . "g glucides, " .
+                                 round($fat, 1) . "g lipides";
+                        }
+                    } else {
+                        echo "<br>Aucun aliment dans ce repas";
+                    }
+                    echo "</div>";
+                }
+
+                // Total des calories consommées
+                $sql = "SELECT 
+                    SUM(m.total_calories) as total_calories,
+                    SUM(m.total_protein) as total_protein,
+                    SUM(m.total_carbs) as total_carbs,
+                    SUM(m.total_fat) as total_fat
+                FROM meals m
+                WHERE m.user_id = ? AND m.log_date = ?";
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[SQL]</span> ";
+                echo "Requête total calories : " . $sql;
+                echo "<br>Paramètres : user_id=" . $user_id . ", date=" . $date_filter;
+                echo "</div>";
+                
+                $totals = fetchOne($sql, [$user_id, $date_filter]);
+                echo "<div class='debug-message'>";
+                echo "<span class='debug-time'>[" . date('H:i:s') . "]</span>";
+                echo "<span class='debug-category'>[TOTAUX]</span> ";
+                echo "Total de la journée :<br>" .
+                     "- Calories : " . round($totals['total_calories']) . " kcal<br>" .
+                     "- Protéines : " . round($totals['total_protein'], 1) . "g<br>" .
+                     "- Glucides : " . round($totals['total_carbs'], 1) . "g<br>" .
+                     "- Lipides : " . round($totals['total_fat'], 1) . "g";
+                echo "</div>";
                 ?>
             </div>
         </div>
@@ -1694,25 +1791,48 @@ echo "</div>";
                         return response.json();
                     })
                     .then(data => {
+                        console.log('Données reçues:', data); // Debug des données reçues
+                        
                         // Mise à jour des calories
                         const dailyGoal = document.getElementById('daily-goal');
                         const totalCalories = document.getElementById('total-calories');
                         const exerciseCalories = document.getElementById('exercise-calories');
                         const remainingCalories = document.getElementById('remaining-calories');
                         
-                        if (dailyGoal) dailyGoal.textContent = data.daily_goal;
-                        if (totalCalories) totalCalories.textContent = data.total_calories;
-                        if (exerciseCalories) exerciseCalories.textContent = data.exercise_calories;
-                        if (remainingCalories) remainingCalories.textContent = data.remaining_calories;
+                        if (dailyGoal) {
+                            dailyGoal.textContent = data.daily_goal;
+                            console.log('Objectif mis à jour:', data.daily_goal); // Debug
+                        }
+                        if (totalCalories) {
+                            totalCalories.textContent = data.total_calories;
+                            console.log('Calories totales mises à jour:', data.total_calories); // Debug
+                        }
+                        if (exerciseCalories) {
+                            exerciseCalories.textContent = data.exercise_calories;
+                            console.log('Calories exercices mises à jour:', data.exercise_calories); // Debug
+                        }
+                        if (remainingCalories) {
+                            remainingCalories.textContent = data.remaining_calories;
+                            console.log('Calories restantes mises à jour:', data.remaining_calories); // Debug
+                        }
                         
                         // Mise à jour des macronutriments
                         const totalProtein = document.getElementById('total-protein');
                         const totalCarbs = document.getElementById('total-carbs');
                         const totalFat = document.getElementById('total-fat');
                         
-                        if (totalProtein) totalProtein.textContent = data.total_protein;
-                        if (totalCarbs) totalCarbs.textContent = data.total_carbs;
-                        if (totalFat) totalFat.textContent = data.total_fat;
+                        if (totalProtein) {
+                            totalProtein.textContent = data.total_protein;
+                            console.log('Protéines mises à jour:', data.total_protein); // Debug
+                        }
+                        if (totalCarbs) {
+                            totalCarbs.textContent = data.total_carbs;
+                            console.log('Glucides mis à jour:', data.total_carbs); // Debug
+                        }
+                        if (totalFat) {
+                            totalFat.textContent = data.total_fat;
+                            console.log('Lipides mis à jour:', data.total_fat); // Debug
+                        }
                     })
                     .catch(error => {
                         console.error('Erreur lors de la mise à jour des stats:', error);
@@ -1741,6 +1861,7 @@ echo "</div>";
                             return response.json();
                         })
                         .then(data => {
+                            console.log('Réponse de suppression:', data); // Debug
                             if (data.success) {
                                 if (action === 'remove_food_from_meal') {
                                     const row = this.closest('tr');
@@ -1782,6 +1903,42 @@ echo "</div>";
                     }
                 });
             });
+
+            // Ajouter un gestionnaire pour le formulaire d'ajout d'aliment
+            const addFoodForm = document.querySelector('form[action="food-log.php"] input[name="action"][value="add_food_to_meal"]')?.closest('form');
+            if (addFoodForm) {
+                addFoodForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    
+                    fetch('food-log.php', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erreur réseau: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Réponse d\'ajout d\'aliment:', data); // Debug
+                        if (data.success) {
+                            updateStats();
+                            window.location.reload();
+                        } else {
+                            throw new Error(data.error || 'Une erreur est survenue lors de l\'ajout de l\'aliment');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert(error.message || 'Une erreur est survenue lors de l\'ajout de l\'aliment');
+                    });
+                });
+            }
         });
     </script>
 </body>
