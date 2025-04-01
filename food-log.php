@@ -637,68 +637,15 @@ function updateMealTotals($meal_id) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Journal alimentaire - Weight Tracker</title>
-    <!-- Debug: Vérification du chargement des CSS -->
-    <style>
-        /* Debug: Style de test */
-        .debug-test {
-            background-color: red;
-            color: white;
-            padding: 10px;
-            margin: 10px;
-        }
-        
-        /* Styles spécifiques pour le tableau */
-        .table {
-            width: 100%;
-            margin-bottom: 1rem;
-            background-color: white;
-            border-collapse: collapse;
-        }
-        
-        .table th,
-        .table td {
-            padding: 0.75rem;
-            vertical-align: middle;
-            border-top: 1px solid #dee2e6;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        .table thead th {
-            vertical-align: bottom;
-            border-bottom: 2px solid #dee2e6;
-            background-color: #f8f9fa;
-            font-weight: 600;
-        }
-        
-        .table tbody tr:hover {
-            background-color: rgba(0, 0, 0, 0.075);
-        }
-        
-        .table-responsive {
-            display: block;
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-    </style>
+    <!-- Prévention du cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <!-- Debug: Vérification du chemin du CSS -->
-    <script>
-        window.addEventListener('load', function() {
-            console.log('=== Debug CSS ===');
-            const styles = document.styleSheets;
-            for (let i = 0; i < styles.length; i++) {
-                console.log('StyleSheet ' + i + ':', styles[i].href);
-            }
-        });
-    </script>
+    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
 </head>
 <body>
-    <!-- Debug: Élément de test -->
-    <div class="debug-test">Test de chargement CSS</div>
-    
     <?php include 'navigation.php'; ?>
 
     <div class="container py-4">
@@ -714,9 +661,6 @@ function updateMealTotals($meal_id) {
                     <i class="fas fa-chevron-right"></i>
                 </a>
             </div>
-            <a href="food-log.php?action=add_meal" class="btn btn-primary">
-                <i class="fas fa-plus me-2"></i>Ajouter un repas
-            </a>
         </div>
 
         <?php if (!empty($success_message)): ?>
@@ -737,47 +681,7 @@ function updateMealTotals($meal_id) {
             </div>
         <?php endif; ?>
 
-        <?php if ($action === 'add_meal'): ?>
-            <!-- Formulaire d'ajout de repas -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">Ajouter un nouveau repas</h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" action="food-log.php" class="needs-validation" novalidate>
-                        <input type="hidden" name="action" value="add_meal">
-                        
-                        <div class="mb-3">
-                            <label for="meal_type" class="form-label">Type de repas</label>
-                            <select class="form-select" id="meal_type" name="meal_type" required>
-                                <option value="">Sélectionnez un type de repas</option>
-                                <option value="petit_dejeuner">Petit déjeuner</option>
-                                <option value="dejeuner">Déjeuner</option>
-                                <option value="diner">Dîner</option>
-                                <option value="collation">Collation</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="log_date" class="form-label">Date</label>
-                            <input type="date" class="form-control" id="log_date" name="log_date" value="<?php echo date('Y-m-d'); ?>" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Notes (optionnel)</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                        </div>
-                        
-                        <div class="d-flex justify-content-between">
-                            <a href="food-log.php" class="btn btn-secondary">Annuler</a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus me-1"></i>Ajouter le repas
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        <?php elseif ($action === 'edit_meal' && $meal_details): ?>
+        <?php if ($action === 'edit_meal' && $meal_details): ?>
             <!-- Édition d'un repas -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-white">
@@ -903,43 +807,74 @@ function updateMealTotals($meal_id) {
                     <div class="meal-header">
                         <h3 class="meal-title"><?php echo $label; ?></h3>
                         <div class="meal-actions">
-                            <a href="food-log.php?action=add_meal&meal_type=<?php echo $type; ?>&date=<?php echo $date_filter; ?>">
-                                <i class="fas fa-plus me-1"></i>Ajouter un aliment
-                            </a>
+                            <?php if (empty($type_meals)): ?>
+                                <a href="food-log.php?action=add_meal&meal_type=<?php echo $type; ?>&date=<?php echo $date_filter; ?>" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i>Créer le repas
+                                </a>
+                            <?php else: ?>
+                                <a href="food-log.php?action=edit_meal&meal_id=<?php echo reset($type_meals)['id']; ?>" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i>Ajouter un aliment
+                                </a>
+                            <?php endif; ?>
                         </div>
                     </div>
 
                     <?php if (empty($type_meals)): ?>
                         <div class="meal-empty">
-                            Aucun aliment enregistré pour ce repas
+                            Aucun repas enregistré
                         </div>
                     <?php else: ?>
                         <?php foreach ($type_meals as $meal): ?>
-                            <div class="nutrient-grid">
-                                <div class="nutrient-item">
-                                    <div class="nutrient-value"><?php echo number_format($meal['total_calories']); ?></div>
-                                    <div class="nutrient-label">Calories</div>
-                                </div>
-                                <div class="nutrient-item">
-                                    <div class="nutrient-value"><?php echo number_format($meal['total_carbs'], 1); ?></div>
-                                    <div class="nutrient-label">Glucides (g)</div>
-                                </div>
-                                <div class="nutrient-item">
-                                    <div class="nutrient-value"><?php echo number_format($meal['total_fat'], 1); ?></div>
-                                    <div class="nutrient-label">Lipides (g)</div>
-                                </div>
-                                <div class="nutrient-item">
-                                    <div class="nutrient-value"><?php echo number_format($meal['total_protein'], 1); ?></div>
-                                    <div class="nutrient-label">Protéines (g)</div>
-                                </div>
-                                <div class="nutrient-item">
-                                    <div class="nutrient-value"><?php echo number_format($meal['total_sodium'] ?? 0, 1); ?></div>
-                                    <div class="nutrient-label">Sodium (mg)</div>
-                                </div>
-                                <div class="nutrient-item">
-                                    <div class="nutrient-value"><?php echo number_format($meal['total_sugar'] ?? 0, 1); ?></div>
-                                    <div class="nutrient-label">Sucres (g)</div>
-                                </div>
+                            <div class="table-responsive mb-4">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Aliment</th>
+                                            <th>Quantité (g)</th>
+                                            <th>Calories</th>
+                                            <th>Protéines</th>
+                                            <th>Glucides</th>
+                                            <th>Lipides</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php
+                                        $sql = "SELECT fl.*, 
+                                                f.name as food_name, 
+                                                f.calories as food_calories, 
+                                                f.protein as food_protein, 
+                                                f.carbs as food_carbs, 
+                                                f.fat as food_fat
+                                                FROM food_logs fl 
+                                                LEFT JOIN foods f ON fl.food_id = f.id 
+                                                WHERE fl.meal_id = ? 
+                                                ORDER BY fl.created_at";
+                                        $meal_foods = fetchAll($sql, [$meal['id']]);
+                                        
+                                        foreach ($meal_foods as $food):
+                                            $nutrients = calculateNutrients($food);
+                                        ?>
+                                            <tr>
+                                                <td><?php echo $food['food_id'] ? $food['food_name'] : $food['custom_food_name']; ?></td>
+                                                <td><?php echo $food['quantity']; ?></td>
+                                                <td><?php echo $nutrients['calories']; ?></td>
+                                                <td><?php echo $nutrients['protein']; ?></td>
+                                                <td><?php echo $nutrients['carbs']; ?></td>
+                                                <td><?php echo $nutrients['fat']; ?></td>
+                                                <td>
+                                                    <form action="food-log.php" method="POST" class="d-inline">
+                                                        <input type="hidden" name="action" value="remove_food_from_meal">
+                                                        <input type="hidden" name="food_log_id" value="<?php echo $food['id']; ?>">
+                                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet aliment ?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
                             </div>
                             <div class="d-flex justify-content-end mt-2">
                                 <a href="food-log.php?action=edit_meal&meal_id=<?php echo $meal['id']; ?>" class="btn btn-sm btn-primary me-2">
