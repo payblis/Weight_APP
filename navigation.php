@@ -55,7 +55,7 @@ foreach ($submenus as $menu => $items) {
             </a>
             <a href="#" class="nav-link me-3">
                 <i class="far fa-user me-1"></i>
-            <a href="profile.php" class="nav-link me-3"><?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?></a>
+            <a href="profile.php" class="nav-link"><?php echo htmlspecialchars($_SESSION['username'] ?? 'Utilisateur'); ?></a>
             </a>
             <a href="settings.php" class="nav-link me-3">Paramètres</a>
             <a href="logout.php" class="nav-link">Déconnexion</a>
