@@ -170,10 +170,22 @@ foreach ($submenus as $menu => $items) {
                 </a>
             </div>
             <div class="col">
-                <a class="nav-link py-2 <?php echo $current_page === 'profile.php' ? 'text-primary' : ''; ?>" href="profile.php">
-                    <i class="fas fa-user d-block mb-1"></i>
-                    <small>Profil</small>
-                </a>
+                <div class="dropup">
+                    <a class="nav-link py-2" href="#" data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-h d-block mb-1"></i>
+                        <small>Autres</small>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="preferences.php"><i class="fas fa-sliders-h me-2"></i>Préférences</a></li>
+                        <li><a class="dropdown-item" href="programs.php"><i class="fas fa-list me-2"></i>Programmes</a></li>
+                        <li><a class="dropdown-item" href="reports.php"><i class="fas fa-chart-bar me-2"></i>Rapports</a></li>
+                        <li><a class="dropdown-item" href="calorie-history.php"><i class="fas fa-fire me-2"></i>Historique calorique</a></li>
+                        <li><a class="dropdown-item" href="weight-log.php"><i class="fas fa-weight me-2"></i>Suivi de poids</a></li>
+                        <li><a class="dropdown-item" href="goals.php"><i class="fas fa-bullseye me-2"></i>Objectifs</a></li>
+                        <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
+                        <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-2"></i>Profil</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
