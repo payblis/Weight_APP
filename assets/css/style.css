@@ -39,6 +39,10 @@ a:hover {
     border-color: var(--primary-color);
 }
 
+.btn-submit {
+    display: block!important;
+}
+
 .btn-primary:hover {
     background-color: #004c99;
     border-color: #004c99;

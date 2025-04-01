@@ -167,7 +167,7 @@ if (!isLoggedIn() && isset($_COOKIE['remember_token'])) {
                             </div>
                             
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg">Se connecter</button>
+                                <button type="submit" class="btn btn-primary btn-lg btn-submit">Se connecter</button>
                             </div>
                         </form>
                     </div>
