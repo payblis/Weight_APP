@@ -174,8 +174,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Calculer l'âge minimum (16 ans)
 $min_year = date('Y') - 100;
-$max_year = date('Y') - 16;
-$max_date = date('Y-m-d', strtotime("-16 years"));
+$max_year = date('Y');
+$max_date = date('Y-m-d');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -285,8 +285,7 @@ $max_date = date('Y-m-d', strtotime("-16 years"));
                                 
                                 <div class="col-md-6 mb-3">
                                     <label for="birth_date" class="form-label">Date de naissance</label>
-                                    <input type="date" class="form-control" id="birth_date" name="birth_date" value="<?php echo htmlspecialchars($birth_date); ?>" max="<?php echo $max_date; ?>" required>
-                                    <div class="form-text">Vous devez avoir au moins 16 ans pour utiliser cette application.</div>
+                                    <input type="date" class="form-control" id="birth_date" name="birth_date" value="<?php echo htmlspecialchars($birth_date); ?>" required>
                                 </div>
                             </div>
                             
@@ -407,7 +406,6 @@ $max_date = date('Y-m-d', strtotime("-16 years"));
         flatpickr("#birth_date", {
             locale: "fr",
             dateFormat: "Y-m-d",
-            maxDate: "<?php echo $max_date; ?>",
             defaultDate: "1990-01-01"
         });
         
