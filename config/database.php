@@ -121,10 +121,15 @@ function getLastError() {
 
 // Fonction pour vérifier si une table existe
 function tableExists($tableName) {
-    $conn = connectDB();
-    $result = $conn->query("SHOW TABLES LIKE '$tableName'");
-    $exists = $result && $result->num_rows > 0;
-    $conn->close();
-    return $exists;
+    global $pdo;
+    try {
+        $sql = "SHOW TABLES LIKE :table_name";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':table_name' => $tableName]);
+        return $stmt->rowCount() > 0;
+    } catch (Exception $e) {
+        error_log("Erreur dans tableExists: " . $e->getMessage());
+        return false;
+    }
 }
 ?>
