@@ -176,6 +176,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $min_year = date('Y') - 100;
 $max_year = date('Y');
 $max_date = date('Y-m-d');
+
+// Fonction pour vérifier si une table existe
+function tableExists($table_name) {
+    global $pdo;
+    try {
+        $sql = "SHOW TABLES LIKE :table_name";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':table_name' => $table_name]);
+        return $stmt->rowCount() > 0;
+    } catch (PDOException $e) {
+        error_log("Erreur dans tableExists: " . $e->getMessage());
+        return false;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
