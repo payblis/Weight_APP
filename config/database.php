@@ -123,10 +123,9 @@ function getLastError() {
 function tableExists($tableName) {
     global $pdo;
     try {
-        $sql = "SHOW TABLES LIKE :table_name";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([':table_name' => $tableName]);
-        return $stmt->rowCount() > 0;
+        $result = $pdo->query("SHOW TABLES");
+        $tables = $result->fetchAll(PDO::FETCH_COLUMN);
+        return in_array($tableName, $tables);
     } catch (Exception $e) {
         error_log("Erreur dans tableExists: " . $e->getMessage());
         return false;
