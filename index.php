@@ -12,6 +12,11 @@ if (isLoggedIn()) {
     redirect('dashboard.php');
 }
 
+// Détecter la langue demandée
+$lang = isset($_GET['lang']) ? $_GET['lang'] : 'fr';
+$fromLang = 'fr';
+$toLang = $lang;
+
 // Démarrer la capture de sortie pour la traduction
 ob_start();
 
@@ -105,9 +110,11 @@ $content = ob_get_contents();
 ob_end_clean();
 
 // Appliquer la traduction si nécessaire
-$translator = new TranslationManager();
-$translatedContent = $translator->translatePage($content);
-
-// Afficher le contenu traduit
-echo $translatedContent;
+if ($lang !== 'fr') {
+    $translator = new TranslationManager();
+    $translatedContent = $translator->translatePage($content, $fromLang, $toLang);
+    echo $translatedContent;
+} else {
+    echo $content;
+}
 ?>
