@@ -2,6 +2,18 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/translation.php';
+
+// Détecter la langue demandée
+$lang = isset($_GET['lang']) ? $_GET['lang'] : 'fr';
+$fromLang = 'fr';
+$toLang = $lang;
+
+// Démarrer la capture de sortie pour la traduction
+ob_start();
+
+include 'header.php';
+?>
 
 // Vérifier si l'utilisateur est connecté
 if (!isLoggedIn()) {
@@ -485,4 +497,21 @@ $suggested_users = fetchAll($sql, [$user_id, $user_id]);
         });
     </script>
 </body>
-</html> 
+</html>
+
+<?php include 'footer.php'; ?>
+
+<?php
+// Récupérer le contenu de la page
+$content = ob_get_contents();
+ob_end_clean();
+
+// Appliquer la traduction si nécessaire
+if ($lang !== 'fr') {
+    $translator = new TranslationManager();
+    $translatedContent = $translator->translatePage($content, $fromLang, $toLang);
+    echo $translatedContent;
+} else {
+    echo $content;
+}
+?> 

@@ -2182,3 +2182,17 @@ N'ajoute rien d'autre que ce JSON dans ta réponse. Ne pas inclure de suggestion
         return "Une erreur s'est produite lors de la génération de la suggestion.";
     }
 }
+
+/**
+ * Construit l'URL actuelle avec le paramètre de langue
+ */
+function getCurrentUrlWithLang($lang) {
+    $currentUrl = $_SERVER['REQUEST_URI'];
+    
+    // Supprimer le paramètre lang existant s'il y en a un
+    $currentUrl = preg_replace('/[?&]lang=[^&]*/', '', $currentUrl);
+    
+    // Ajouter le nouveau paramètre lang
+    $separator = (strpos($currentUrl, '?') !== false) ? '&' : '?';
+    return $currentUrl . $separator . 'lang=' . $lang;
+}

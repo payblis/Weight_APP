@@ -201,8 +201,8 @@
                         <?php echo (isset($_GET['lang']) && $_GET['lang'] === 'en') ? 'EN' : 'FR'; ?>
                     </button>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item<?php echo (!isset($_GET['lang']) || $_GET['lang'] === 'fr') ? ' active' : ''; ?>" href="?lang=fr">Français</a></li>
-                        <li><a class="dropdown-item<?php echo (isset($_GET['lang']) && $_GET['lang'] === 'en') ? ' active' : ''; ?>" href="?lang=en">English</a></li>
+                        <li><a class="dropdown-item<?php echo (!isset($_GET['lang']) || $_GET['lang'] === 'fr') ? ' active' : ''; ?>" href="<?php echo getCurrentUrlWithLang('fr'); ?>">Français</a></li>
+                        <li><a class="dropdown-item<?php echo (isset($_GET['lang']) && $_GET['lang'] === 'en') ? ' active' : ''; ?>" href="<?php echo getCurrentUrlWithLang('en'); ?>">English</a></li>
                     </ul>
                 </div>
             </div>
