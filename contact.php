@@ -44,10 +44,42 @@ include 'header.php';
             </div>
         </div>
         <div class="row justify-content-center">
-            <div class="col-lg-7 text-center">
-                <p class="mb-2"><i class="fas fa-envelope me-2"></i>contact@myfity.com</p>
-                <p class="mb-2"><i class="fas fa-phone me-2"></i>+33 1 23 45 67 89</p>
-                <p><i class="fas fa-map-marker-alt me-2"></i>123 Rue de la Santé, 75001 Paris, France</p>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4">
+                        <h3 class="h4 mb-4">Informations de contact</h3>
+                        
+                        <div class="mb-3">
+                            <h5 class="fw-bold text-primary">Adresse</h5>
+                            <p class="mb-0">Payblis SASU<br>
+                            99 AVENUE ACHILLE PERETTI<br>
+                            92200 NEUILLY-SUR-SEINE, France</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h5 class="fw-bold text-primary">Téléphone</h5>
+                            <p class="mb-0">+33 1 XX XX XX XX</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h5 class="fw-bold text-primary">Email</h5>
+                            <p class="mb-0"><a href="mailto:contact@myfity.com">contact@myfity.com</a></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h5 class="fw-bold text-primary">Heures d'ouverture</h5>
+                            <p class="mb-0">Lun - Ven: 9h00 - 18h00<br>
+                            Sam: 10h00 - 16h00</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h5 class="fw-bold text-primary">Informations légales</h5>
+                            <p class="mb-0">SIREN: 950843516<br>
+                            TVA: FR53950843516<br>
+                            Capital: 1 000,00 €</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

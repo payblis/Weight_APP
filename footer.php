@@ -39,7 +39,8 @@
         <hr class="my-4 border-secondary">
         <div class="row align-items-center">
             <div class="col-md-6 text-center text-md-start">
-                <p class="mb-0">&copy; 2024 MyFity.com. Tous droits réservés.</p>
+                <p class="mb-0">&copy; 2024 Payblis SASU - MyFity.com. Tous droits réservés.</p>
+                <small class="text-muted">SIREN: 950843516 | TVA: FR53950843516</small>
             </div>
             <div class="col-md-6 text-center text-md-end">
                 <div class="social-links">

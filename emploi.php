@@ -45,6 +45,34 @@ include 'header.php';
             <p class="lead mb-4">Startup dynamique, équipe passionnée, impact positif sur la santé publique, télétravail possible.</p>
             <a href="mailto:jobs@myfity.com" class="btn btn-light btn-lg">Envoyer une candidature spontanée</a>
         </div>
+        <div class="col-lg-8">
+            <h2 class="h3 mb-4">Notre mission</h2>
+            <p class="lead mb-4">Aider des millions de personnes à atteindre leurs objectifs de santé et de bien-être grâce à la technologie.</p>
+            
+            <h2 class="h3 mb-4">À propos de Payblis SASU</h2>
+            <p>Payblis SASU est une société innovante basée à Neuilly-sur-Seine, spécialisée dans le développement d'applications de santé et de bien-être. Notre application MyFity aide les utilisateurs à suivre leur nutrition et leur activité physique pour atteindre leurs objectifs de santé.</p>
+            
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <h5 class="fw-bold text-primary">Informations légales</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Raison sociale :</strong> Payblis SASU</li>
+                        <li><strong>Adresse :</strong> 99 AVENUE ACHILLE PERETTI, 92200 NEUILLY-SUR-SEINE, France</li>
+                        <li><strong>SIREN :</strong> 950843516</li>
+                        <li><strong>TVA :</strong> FR53950843516</li>
+                        <li><strong>Capital :</strong> 1 000,00 €</li>
+                        <li><strong>Forme juridique :</strong> SASU</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="fw-bold text-primary">Contact</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Email :</strong> <a href="mailto:emploi@myfity.com">emploi@myfity.com</a></li>
+                        <li><strong>Site web :</strong> www.myfity.com</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 <?php include 'footer.php'; ?>

@@ -48,6 +48,31 @@ include 'header.php';
             <h2 class="fw-bold mb-3">Prêt à connecter votre app ?</h2>
             <a href="mailto:dev@myfity.com" class="btn btn-light btn-lg">Demander un accès API</a>
         </div>
+        <div class="col-lg-8">
+            <h2 class="h3 mb-4">À propos de l'API MyFity</h2>
+            <p>L'API MyFity est développée et maintenue par Payblis SASU, une société spécialisée dans les applications de santé et de bien-être.</p>
+            
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <h5 class="fw-bold text-primary">Informations légales</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Raison sociale :</strong> Payblis SASU</li>
+                        <li><strong>Adresse :</strong> 99 AVENUE ACHILLE PERETTI, 92200 NEUILLY-SUR-SEINE, France</li>
+                        <li><strong>SIREN :</strong> 950843516</li>
+                        <li><strong>TVA :</strong> FR53950843516</li>
+                        <li><strong>Capital :</strong> 1 000,00 €</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="fw-bold text-primary">Support API</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Email :</strong> <a href="mailto:api@myfity.com">api@myfity.com</a></li>
+                        <li><strong>Documentation :</strong> <a href="#">docs.myfity.com</a></li>
+                        <li><strong>Status :</strong> <a href="#">status.myfity.com</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 <?php include 'footer.php'; ?>
