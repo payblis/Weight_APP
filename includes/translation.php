@@ -193,9 +193,9 @@ function getLanguageSelector() {
     }
     
     $html = '<div class="language-selector dropdown">';
-    $html .= '<button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">';
+    $html .= '<button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">';
     $html .= '<i class="fas fa-globe me-1"></i>';
-    $html .= ($currentLang === 'fr') ? 'Français' : 'English';
+    $html .= ($currentLang === 'fr') ? 'FR' : 'EN';
     $html .= '</button>';
     $html .= '<ul class="dropdown-menu">';
     

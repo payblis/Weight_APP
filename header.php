@@ -144,6 +144,18 @@
             background-color: var(--primary-color);
             color: white;
         }
+
+        .language-selector .btn {
+            font-size: 0.9rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+        }
+
+        .language-selector .btn:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -182,8 +194,17 @@
                     <a href="register.php" class="btn btn-primary">S'inscrire</a>
                 <?php endif; ?>
                 
-                <!-- Sélecteur de langue -->
-                <?php echo getLanguageSelector(); ?>
+                <!-- Sélecteur de langue simple -->
+                <div class="language-selector dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-globe me-1"></i>
+                        <?php echo (isset($_GET['lang']) && $_GET['lang'] === 'en') ? 'EN' : 'FR'; ?>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item<?php echo (!isset($_GET['lang']) || $_GET['lang'] === 'fr') ? ' active' : ''; ?>" href="?lang=fr">Français</a></li>
+                        <li><a class="dropdown-item<?php echo (isset($_GET['lang']) && $_GET['lang'] === 'en') ? ' active' : ''; ?>" href="?lang=en">English</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </header>
