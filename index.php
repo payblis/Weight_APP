@@ -5,11 +5,15 @@ session_start();
 // Inclure les fichiers nécessaires
 require_once 'config/database.php';
 require_once 'includes/functions.php';
+require_once 'includes/translation.php';
 
 // Vérifier si l'utilisateur est déjà connecté
 if (isLoggedIn()) {
     redirect('dashboard.php');
 }
+
+// Démarrer la capture de sortie pour la traduction
+ob_start();
 
 include 'header.php';
 ?>
@@ -94,3 +98,16 @@ include 'header.php';
 </main>
 
 <?php include 'footer.php'; ?>
+
+<?php
+// Récupérer le contenu de la page
+$content = ob_get_contents();
+ob_end_clean();
+
+// Appliquer la traduction si nécessaire
+$translator = new TranslationManager();
+$translatedContent = $translator->translatePage($content);
+
+// Afficher le contenu traduit
+echo $translatedContent;
+?>

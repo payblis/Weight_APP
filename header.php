@@ -131,10 +131,26 @@
             height: 80px;
             object-fit: cover;
         }
+
+        .language-selector {
+            margin-left: 1rem;
+        }
+
+        .language-selector .dropdown-menu {
+            min-width: 120px;
+        }
+
+        .language-selector .dropdown-item.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
     </style>
 </head>
 <body>
     <?php if (!isset($_SESSION)) { session_start(); } ?>
+    
+    <!-- Inclure le système de traduction -->
+    <?php require_once 'includes/translation.php'; ?>
     
     <!-- Header principal -->
     <header class="app-header">
@@ -165,6 +181,9 @@
                     <a href="login.php" class="btn btn-outline-primary me-2">Se connecter</a>
                     <a href="register.php" class="btn btn-primary">S'inscrire</a>
                 <?php endif; ?>
+                
+                <!-- Sélecteur de langue -->
+                <?php echo getLanguageSelector(); ?>
             </div>
         </div>
     </header>
