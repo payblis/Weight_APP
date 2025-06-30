@@ -20,9 +20,9 @@
             <div class="col-md-3 mb-4">
                 <h5 class="mb-3">Légal</h5>
                 <ul class="list-unstyled">
-                    <li class="mb-2"><a href="#" class="text-light text-decoration-none">Modalités</a></li>
-                    <li class="mb-2"><a href="#" class="text-light text-decoration-none">Confidentialité</a></li>
-                    <li class="mb-2"><a href="#" class="text-light text-decoration-none">Cookies</a></li>
+                    <li class="mb-2"><a href="conditions-generales.php" class="text-light text-decoration-none">Conditions générales</a></li>
+                    <li class="mb-2"><a href="mentions-legales.php" class="text-light text-decoration-none">Mentions légales</a></li>
+                    <li class="mb-2"><a href="politique-vie-privee.php" class="text-light text-decoration-none">Politique de vie privée</a></li>
                 </ul>
             </div>
             <div class="col-md-3 mb-4">
