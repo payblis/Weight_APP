@@ -353,6 +353,9 @@ if (!empty($pending_invitations)):
                 <p class="text-muted">Bienvenue, <?php echo htmlspecialchars($user['username']); ?></p>
             </div>
             <div class="col-md-4 text-md-end">
+                <a href="premium-subscribe.php" class="btn btn-warning ms-2">
+                    <i class="fas fa-gem me-1"></i>Devenir Premium
+                </a>
                 <a href="weight-log.php?action=add" class="btn btn-primary">
                     <i class="fas fa-weight me-1"></i>Ajouter un poids
                 </a>
