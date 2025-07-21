@@ -2196,3 +2196,19 @@ function getCurrentUrlWithLang($lang) {
     $separator = (strpos($currentUrl, '?') !== false) ? '&' : '?';
     return $currentUrl . $separator . 'lang=' . $lang;
 }
+
+/**
+ * Affiche le badge de statut premium/free
+ */
+function showUserStatusBadge() {
+    // Fake: tout le monde est free
+    $status = 'Free';
+    $color = 'secondary';
+    $icon = 'fa-user';
+    if ($status === 'Premium') {
+        $color = 'warning';
+        $icon = 'fa-gem';
+    }
+    echo '<a href="status.php" class="badge bg-' . $color . ' text-decoration-none ms-2" style="font-size:1rem;vertical-align:middle;">'
+        . '<i class="fas ' . $icon . ' me-1"></i>' . $status . '</a>';
+}

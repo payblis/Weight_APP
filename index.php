@@ -27,6 +27,7 @@ include 'header.php';
     <!-- Hero Section -->
     <section class="hero bg-primary text-white py-5">
         <div class="container">
+            <?php showUserStatusBadge(); ?>
             <div class="row align-items-center">
                 <div class="col-lg-6">
                     <h1 class="display-4 fw-bold mb-4">Une bonne santé, c'est d'abord une bonne alimentation.</h1>
@@ -43,6 +44,7 @@ include 'header.php';
     <!-- Food Tracking Section -->
     <section class="py-5">
         <div class="container">
+            <?php showUserStatusBadge(); ?>
             <div class="row align-items-center">
                 <div class="col-lg-6">
                     <h2 class="display-5 fw-bold mb-4">Consignez ce que vous mangez grâce aux plus de 14 millions d'aliments.</h2>
@@ -59,6 +61,7 @@ include 'header.php';
     <!-- Tools Section -->
     <section class="py-5 bg-light">
         <div class="container">
+            <?php showUserStatusBadge(); ?>
             <h2 class="text-center display-5 fw-bold mb-5">Les outils pour vos objectifs</h2>
             <div class="row g-4">
                 <div class="col-md-4">
@@ -95,6 +98,7 @@ include 'header.php';
     <!-- CTA Section -->
     <section class="py-5 bg-primary text-white">
         <div class="container text-center">
+            <?php showUserStatusBadge(); ?>
             <h2 class="display-5 fw-bold mb-4">DÉBUTEZ VOTRE VOYAGE DÈS AUJOURD'HUI</h2>
             <p class="lead mb-4">Rejoignez des milliers d'utilisateurs qui ont déjà transformé leur vie avec MyFity.</p>
             <a href="register.php" class="btn btn-light btn-lg">Démarrer gratuitement</a>

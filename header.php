@@ -250,8 +250,8 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'premium.php' ? 'active' : ''; ?>" href="premium.php">
-                        <i class="fas fa-crown me-1"></i>Premium
+                    <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'premium-subscribe.php' ? 'active' : ''; ?>" href="premium-subscribe.php">
+                        <i class="fas fa-gem me-1"></i>Premium
                     </a>
                 </li>
             </ul>
