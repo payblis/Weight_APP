@@ -111,7 +111,7 @@ include 'header.php';
                             <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Support prioritaire</li>
                             <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Annulation à tout moment</li>
                         </ul>
-                        <a href="register.php" class="btn btn-outline-primary w-100">Choisir ce plan</a>
+                        <a href="premium-subscribe.php?plan=mensuel" class="btn btn-outline-primary w-100">Choisir ce plan</a>
                     </div>
                 </div>
             </div>
@@ -132,7 +132,7 @@ include 'header.php';
                             <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Contenu exclusif</li>
                             <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Garantie satisfait ou remboursé</li>
                         </ul>
-                        <a href="register.php" class="btn btn-primary w-100">Choisir ce plan</a>
+                        <a href="premium-subscribe.php?plan=annuel" class="btn btn-primary w-100">Choisir ce plan</a>
                     </div>
                 </div>
             </div>
@@ -152,7 +152,7 @@ include 'header.php';
                             <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Suivi familial</li>
                             <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Support dédié</li>
                         </ul>
-                        <a href="register.php" class="btn btn-outline-primary w-100">Choisir ce plan</a>
+                        <a href="premium-subscribe.php?plan=famille" class="btn btn-outline-primary w-100">Choisir ce plan</a>
                     </div>
                 </div>
             </div>

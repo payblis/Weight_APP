@@ -97,7 +97,7 @@ foreach ($submenus as $menu => $items) {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'premium-subscribe.php' ? 'active' : ''; ?>" href="premium-subscribe.php">
+                    <a class="nav-link <?php echo $current_page === 'premium.php' ? 'active' : ''; ?>" href="premium.php">
                         <i class="fas fa-gem me-1"></i>Premium
                     </a>
                 </li>
@@ -180,7 +180,7 @@ foreach ($submenus as $menu => $items) {
                         <li><a class="dropdown-item" href="calorie-history.php"><i class="fas fa-fire me-2"></i>Historique calorique</a></li>
                         <li><a class="dropdown-item" href="weight-log.php"><i class="fas fa-weight me-2"></i>Suivi de poids</a></li>
                         <li><a class="dropdown-item" href="goals.php"><i class="fas fa-bullseye me-2"></i>Objectifs</a></li>
-                        <li><a class="dropdown-item" href="premium-subscribe.php"><i class="fas fa-gem me-2"></i>Premium</a></li>
+                        <li><a class="dropdown-item" href="premium.php"><i class="fas fa-gem me-2"></i>Premium</a></li>
                         <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
                         <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-2"></i>Profil</a></li>
                     </ul>
