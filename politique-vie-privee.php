@@ -24,10 +24,10 @@ include 'header.php';
                 <div class="card-body p-4">
                     <div class="mb-4">
                         <h2 class="h3 mb-3">1. Introduction</h2>
-                        <p>Payblis SASU, éditeur de l'application MyFity, s'engage à protéger la vie privée de ses utilisateurs. Cette politique de confidentialité décrit comment nous collectons, utilisons et protégeons vos informations personnelles.</p>
-                        <p><strong>Responsable du traitement :</strong> Payblis SASU<br>
-                        <strong>Adresse :</strong> 99 AVENUE ACHILLE PERETTI, 92200 NEUILLY-SUR-SEINE, France<br>
-                        <strong>SIREN :</strong> 950843516<br>
+                        <p>Grow Ecom, éditeur de l'application MyFity, s'engage à protéger la vie privée de ses utilisateurs. Cette politique de confidentialité décrit comment nous collectons, utilisons et protégeons vos informations personnelles.</p>
+                        <p><strong>Responsable du traitement :</strong> Grow Ecom<br>
+                        <strong>Adresse :</strong> Grow Ecom, 195 rue Pierre et Marie Curie, 27310 Bourg Achards<br>
+                        <strong>SIREN :</strong> 988820304<br>
                         <strong>Email :</strong> <a href="mailto:privacy@myfity.com">privacy@myfity.com</a></p>
                     </div>
 
@@ -139,7 +139,7 @@ include 'header.php';
                         <h2 class="h3 mb-3">12. Contact</h2>
                         <p>Pour toute question concernant cette politique de confidentialité :</p>
                         <p><strong>Email :</strong> <a href="mailto:privacy@myfity.com">privacy@myfity.com</a><br>
-                        <strong>Adresse :</strong> Payblis SASU, 99 AVENUE ACHILLE PERETTI, 92200 NEUILLY-SUR-SEINE, France</p>
+                        <strong>Adresse :</strong> Grow Ecom, 195 rue Pierre et Marie Curie, 27310 Bourg Achards</p>
                         <p>Vous pouvez également contacter la CNIL (www.cnil.fr) si vous estimez que vos droits ne sont pas respectés.</p>
                     </div>
 

@@ -22,17 +22,17 @@ include 'header.php';
             
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
-                    <h2 class="h3 mb-4">Payblis SASU - Informations légales</h2>
+                    <h2 class="h3 mb-4">Grow Ecom - Informations légales</h2>
                     
                     <div class="row">
                         <div class="col-md-6">
                             <h4 class="h5 fw-bold text-primary mb-3">Informations générales</h4>
                             <ul class="list-unstyled">
-                                <li class="mb-2"><strong>Raison sociale :</strong> Payblis SASU</li>
-                                <li class="mb-2"><strong>Adresse :</strong> 99 AVENUE ACHILLE PERETTI, 92200 NEUILLY-SUR-SEINE, France</li>
-                                <li class="mb-2"><strong>SIREN :</strong> 950843516</li>
-                                <li class="mb-2"><strong>Numéro de TVA :</strong> FR53950843516</li>
-                                <li class="mb-2"><strong>Capital social :</strong> 1 000,00 €</li>
+                                <li class="mb-2"><strong>Raison sociale :</strong> Grow Ecom</li>
+                                <li class="mb-2"><strong>Adresse :</strong> 195 rue Pierre et Marie Curie, 27310 Bourg Achards</li>
+                                <li class="mb-2"><strong>SIREN :</strong> 988820304</li>
+                                <li class="mb-2"><strong>Numéro de TVA :</strong> FR37988820304</li>
+                                <li class="mb-2"><strong>Capital social :</strong> 100 €</li>
                                 <li class="mb-2"><strong>Forme juridique :</strong> Société par Actions Simplifiée Unipersonnelle (SASU)</li>
                             </ul>
                         </div>
@@ -75,7 +75,7 @@ include 'header.php';
                     
                     <div class="alert alert-info">
                         <h5 class="alert-heading">Vérification terminée</h5>
-                        <p class="mb-0">Toutes les informations de la société Payblis SASU ont été mises à jour sur l'ensemble du site MyFity.</p>
+                        <p class="mb-0">Toutes les informations de la société Grow Ecom ont été mises à jour sur l'ensemble du site MyFity.</p>
                     </div>
                     
                     <div class="mt-4">

@@ -50,16 +50,16 @@ include 'header.php';
         </div>
         <div class="col-lg-8">
             <h2 class="h3 mb-4">À propos de l'API MyFity</h2>
-            <p>L'API MyFity est développée et maintenue par Payblis SASU, une société spécialisée dans les applications de santé et de bien-être.</p>
+            <p>L'API MyFity est développée et maintenue par Grow Ecom, une société spécialisée dans les applications de santé et de bien-être.</p>
             
             <div class="row mt-4">
                 <div class="col-md-6">
                     <h5 class="fw-bold text-primary">Informations légales</h5>
                     <ul class="list-unstyled">
-                        <li><strong>Raison sociale :</strong> Payblis SASU</li>
-                        <li><strong>Adresse :</strong> 99 AVENUE ACHILLE PERETTI, 92200 NEUILLY-SUR-SEINE, France</li>
-                        <li><strong>SIREN :</strong> 950843516</li>
-                        <li><strong>TVA :</strong> FR53950843516</li>
+                        <li><strong>Raison sociale :</strong> Grow Ecom</li>
+                        <li><strong>Adresse :</strong> 195 rue Pierre et Marie Curie, 27310 Bourg Achards</li>
+                        <li><strong>SIREN :</strong> 988820304</li>
+                        <li><strong>TVA :</strong> FR37988820304</li>
                         <li><strong>Capital :</strong> 1 000,00 €</li>
                     </ul>
                 </div>

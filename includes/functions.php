@@ -2201,6 +2201,7 @@ function getCurrentUrlWithLang($lang) {
  * Affiche le badge de statut premium/free
  */
 function showUserStatusBadge() {
+    if (!isset($_SESSION['user_id'])) return;
     // Fake: tout le monde est free
     $status = 'Free';
     $color = 'secondary';

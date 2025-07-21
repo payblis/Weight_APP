@@ -189,6 +189,7 @@
                         <i class="fas fa-sign-out-alt"></i>
                         Déconnexion
                     </a>
+                    <?php showUserStatusBadge(); ?>
                 <?php else: ?>
                     <a href="login.php" class="btn btn-outline-primary me-2">Se connecter</a>
                     <a href="register.php" class="btn btn-primary">S'inscrire</a>
@@ -249,11 +250,13 @@
                         <i class="fas fa-newspaper me-1"></i>Blog
                     </a>
                 </li>
+                <?php if (isset($_SESSION['user_id'])): ?>
                 <li class="nav-item">
                     <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) === 'premium-subscribe.php' ? 'active' : ''; ?>" href="premium-subscribe.php">
                         <i class="fas fa-gem me-1"></i>Premium
                     </a>
                 </li>
+                <?php endif; ?>
             </ul>
         </div>
     </nav>

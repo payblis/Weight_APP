@@ -51,7 +51,7 @@ include 'header.php';
                         
                         <div class="mb-3">
                             <h5 class="fw-bold text-primary">Adresse</h5>
-                            <p class="mb-0">Payblis SASU<br>
+                            <p class="mb-0">Grow Ecom<br>
                             99 AVENUE ACHILLE PERETTI<br>
                             92200 NEUILLY-SUR-SEINE, France</p>
                         </div>
@@ -74,8 +74,8 @@ include 'header.php';
                         
                         <div class="mb-3">
                             <h5 class="fw-bold text-primary">Informations légales</h5>
-                            <p class="mb-0">SIREN: 950843516<br>
-                            TVA: FR53950843516<br>
+                            <p class="mb-0">SIREN: 988820304<br>
+                            TVA: FR37988820304<br>
                             Capital: 1 000,00 €</p>
                         </div>
                     </div>

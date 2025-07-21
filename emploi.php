@@ -49,17 +49,17 @@ include 'header.php';
             <h2 class="h3 mb-4">Notre mission</h2>
             <p class="lead mb-4">Aider des millions de personnes à atteindre leurs objectifs de santé et de bien-être grâce à la technologie.</p>
             
-            <h2 class="h3 mb-4">À propos de Payblis SASU</h2>
-            <p>Payblis SASU est une société innovante basée à Neuilly-sur-Seine, spécialisée dans le développement d'applications de santé et de bien-être. Notre application MyFity aide les utilisateurs à suivre leur nutrition et leur activité physique pour atteindre leurs objectifs de santé.</p>
+            <h2 class="h3 mb-4">À propos de Grow Ecom</h2>
+            <p>Grow Ecom est une société innovante basée à Neuilly-sur-Seine, spécialisée dans le développement d'applications de santé et de bien-être. Notre application MyFity aide les utilisateurs à suivre leur nutrition et leur activité physique pour atteindre leurs objectifs de santé.</p>
             
             <div class="row mt-4">
                 <div class="col-md-6">
                     <h5 class="fw-bold text-primary">Informations légales</h5>
                     <ul class="list-unstyled">
-                        <li><strong>Raison sociale :</strong> Payblis SASU</li>
-                        <li><strong>Adresse :</strong> 99 AVENUE ACHILLE PERETTI, 92200 NEUILLY-SUR-SEINE, France</li>
-                        <li><strong>SIREN :</strong> 950843516</li>
-                        <li><strong>TVA :</strong> FR53950843516</li>
+                        <li><strong>Raison sociale :</strong> Grow Ecom</li>
+                        <li><strong>Adresse :</strong> 195 rue Pierre et Marie Curie, 27310 Bourg Achards</li>
+                        <li><strong>SIREN :</strong> 988820304</li>
+                        <li><strong>TVA :</strong> FR37988820304</li>
                         <li><strong>Capital :</strong> 1 000,00 €</li>
                         <li><strong>Forme juridique :</strong> SASU</li>
                     </ul>

@@ -24,17 +24,17 @@ include 'header.php';
                 <div class="card-body p-4">
                     <div class="mb-4">
                         <h2 class="h3 mb-3">Préambule</h2>
-                        <p>Les présentes conditions générales de vente s'appliquent à toutes les prestations conclues par Payblis SASU au sein de son site myfity.com et par téléphone.</p>
+                        <p>Les présentes conditions générales de vente s'appliquent à toutes les prestations conclues par Grow Ecom au sein de son site myfity.com et par téléphone.</p>
                         <p>Elles sont obligatoirement consultées avant la passation de toute commande.</p>
                     </div>
 
                     <div class="mb-4">
                         <h2 class="h3 mb-3">Article 1 - Éditeur</h2>
-                        <p><strong>Raison sociale :</strong> Payblis SASU</p>
-                        <p><strong>Adresse :</strong> 99 AVENUE ACHILLE PERETTI, 92200 NEUILLY-SUR-SEINE, France</p>
-                        <p><strong>SIREN :</strong> 950843516</p>
-                        <p><strong>Numéro de TVA intracommunautaire :</strong> FR53950843516</p>
-                        <p><strong>Capital social :</strong> 1 000,00 €</p>
+                        <p><strong>Raison sociale :</strong> Grow Ecom</p>
+                        <p><strong>Adresse :</strong> 195 rue Pierre et Marie Curie, 27310 Bourg Achards</p>
+                        <p><strong>SIREN :</strong> 988820304</p>
+                        <p><strong>Numéro de TVA intracommunautaire :</strong> FR37988820304</p>
+                        <p><strong>Capital social :</strong> 100 €</p>
                         <p><strong>Forme juridique :</strong> Société par Actions Simplifiée Unipersonnelle (SASU)</p>
                         <p><strong>Email :</strong> <a href="mailto:contact@myfity.com">contact@myfity.com</a></p>
                         <p><strong>Site web :</strong> www.myfity.com</p>
@@ -42,7 +42,7 @@ include 'header.php';
 
                     <div class="mb-4">
                         <h2 class="h3 mb-3">Article 2 - Objet</h2>
-                        <p>Les présentes CGV ont pour objet de définir les modalités et conditions de vente des services proposés par Payblis SASU sur son site myfity.com.</p>
+                        <p>Les présentes CGV ont pour objet de définir les modalités et conditions de vente des services proposés par Grow Ecom sur son site myfity.com.</p>
                         <p>Les services proposés sont :</p>
                         <ul>
                             <li>Application de suivi nutritionnel et fitness</li>
@@ -55,19 +55,19 @@ include 'header.php';
                     <div class="mb-4">
                         <h2 class="h3 mb-3">Article 3 - Prix</h2>
                         <p>Les prix de nos services sont indiqués en euros toutes taxes comprises (TVA et autres taxes applicables au jour de la commande), sauf indication contraire et hors frais de traitement et d'expédition.</p>
-                        <p>En cas de commande vers un pays autre que la France métropolitaine, vous êtes l'importateur du ou des produits concernés. Des droits de douane ou autres taxes locales ou droits d'importation ou taxes d'État sont susceptibles d'être exigibles. Ces droits et sommes ne relèvent pas du ressort de Payblis SASU. Ils seront à votre charge et relèvent de votre entière responsabilité, tant en termes de déclarations que de paiements aux autorités et organismes compétents de votre pays.</p>
+                        <p>En cas de commande vers un pays autre que la France métropolitaine, vous êtes l'importateur du ou des produits concernés. Des droits de douane ou autres taxes locales ou droits d'importation ou taxes d'État sont susceptibles d'être exigibles. Ces droits et sommes ne relèvent pas du ressort de Grow Ecom. Ils seront à votre charge et relèvent de votre entière responsabilité, tant en termes de déclarations que de paiements aux autorités et organismes compétents de votre pays.</p>
                     </div>
 
                     <div class="mb-4">
                         <h2 class="h3 mb-3">Article 4 - Commandes</h2>
                         <p>Les informations contractuelles sont présentées en langue française et feront l'objet d'une confirmation au plus tard au moment de la validation de votre commande.</p>
-                        <p>Payblis SASU se réserve le droit de ne pas enregistrer un paiement, et de ne pas confirmer une commande pour quelque raison que ce soit, et plus particulièrement en cas de problème d'approvisionnement, ou en cas de difficulté concernant l'ordre reçu.</p>
+                        <p>Grow Ecom se réserve le droit de ne pas enregistrer un paiement, et de ne pas confirmer une commande pour quelque raison que ce soit, et plus particulièrement en cas de problème d'approvisionnement, ou en cas de difficulté concernant l'ordre reçu.</p>
                     </div>
 
                     <div class="mb-4">
                         <h2 class="h3 mb-3">Article 5 - Validation de votre commande</h2>
                         <p>Toute commande figurant sur le site suppose l'adhésion aux présentes Conditions Générales. Toute confirmation de commande entraîne votre adhésion pleine et entière aux présentes conditions, sans aucune réserve.</p>
-                        <p>Tous les renseignements fournis par l'acheteur lors de la passation de sa commande engagent celui-ci : en cas d'erreur dans l'adresse de livraison, Payblis SASU ne saurait être tenu responsable de l'impossibilité dans laquelle elle pourrait se trouver de livrer le produit.</p>
+                        <p>Tous les renseignements fournis par l'acheteur lors de la passation de sa commande engagent celui-ci : en cas d'erreur dans l'adresse de livraison, Grow Ecom ne saurait être tenu responsable de l'impossibilité dans laquelle elle pourrait se trouver de livrer le produit.</p>
                     </div>
 
                     <div class="mb-4">
@@ -101,7 +101,7 @@ include 'header.php';
 
                     <div class="mb-4">
                         <h2 class="h3 mb-3">Article 11 - Responsabilité</h2>
-                        <p>Les produits proposés sont conformes à la législation française en vigueur. La responsabilité de Payblis SASU ne saurait être engagée en cas de non-respect de la législation du pays où le produit est livré. Il vous appartient de vérifier auprès des autorités locales les possibilités d'importation ou d'utilisation des produits ou services que vous envisagez de commander.</p>
+                        <p>Les produits proposés sont conformes à la législation française en vigueur. La responsabilité de Grow Ecom ne saurait être engagée en cas de non-respect de la législation du pays où le produit est livré. Il vous appartient de vérifier auprès des autorités locales les possibilités d'importation ou d'utilisation des produits ou services que vous envisagez de commander.</p>
                     </div>
 
                     <div class="mb-4">
@@ -111,7 +111,7 @@ include 'header.php';
 
                     <div class="mb-4">
                         <h2 class="h3 mb-3">Article 13 - Propriété intellectuelle</h2>
-                        <p>Tous les éléments du site myfity.com sont et restent la propriété intellectuelle et exclusive de Payblis SASU. Nul n'est autorisé à reproduire, exploiter, rediffuser, ou utiliser à quelque titre que ce soit, même partiellement, des éléments du site.</p>
+                        <p>Tous les éléments du site myfity.com sont et restent la propriété intellectuelle et exclusive de Grow Ecom. Nul n'est autorisé à reproduire, exploiter, rediffuser, ou utiliser à quelque titre que ce soit, même partiellement, des éléments du site.</p>
                     </div>
 
                     <div class="mt-4 p-3 bg-light rounded">

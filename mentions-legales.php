@@ -23,13 +23,13 @@ include 'header.php';
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
                     <h2 class="h3 mb-3">Éditeur du site</h2>
-                    <p><strong>Raison sociale :</strong> Payblis SASU</p>
-                    <p><strong>Adresse :</strong> 99 AVENUE ACHILLE PERETTI, 92200 NEUILLY-SUR-SEINE, France</p>
-                    <p><strong>SIREN :</strong> 950843516</p>
-                    <p><strong>Numéro de TVA intracommunautaire :</strong> FR53950843516</p>
-                    <p><strong>Capital social :</strong> 1 000,00 €</p>
+                    <p><strong>Raison sociale :</strong> Grow Ecom</p>
+                    <p><strong>Adresse :</strong> 195 rue Pierre et Marie Curie, 27310 Bourg Achards</p>
+                    <p><strong>SIREN :</strong> 988820304</p>
+                    <p><strong>Numéro de TVA intracommunautaire :</strong> FR37988820304</p>
+                    <p><strong>Capital social :</strong> 100 €</p>
                     <p><strong>Forme juridique :</strong> Société par Actions Simplifiée Unipersonnelle (SASU)</p>
-                    <p><strong>Directeur de publication :</strong> Le représentant légal de Payblis SASU</p>
+                    <p><strong>Directeur de publication :</strong> Le représentant légal de Grow Ecom</p>
                     <p><strong>Contact :</strong> <a href="mailto:contact@myfity.com">contact@myfity.com</a></p>
 
                     <h2 class="h3 mb-3 mt-4">Hébergement</h2>
@@ -47,13 +47,13 @@ include 'header.php';
                     <p>Ce site utilise des cookies pour améliorer votre expérience utilisateur. Vous pouvez configurer votre navigateur pour refuser les cookies ou être informé quand des cookies sont envoyés.</p>
 
                     <h2 class="h3 mb-3 mt-4">Liens hypertextes</h2>
-                    <p>Les liens hypertextes mis en place dans le cadre du présent site web en direction d'autres ressources présentes sur le réseau Internet ne sauraient engager la responsabilité de Payblis SASU.</p>
+                    <p>Les liens hypertextes mis en place dans le cadre du présent site web en direction d'autres ressources présentes sur le réseau Internet ne sauraient engager la responsabilité de Grow Ecom.</p>
 
                     <h2 class="h3 mb-3 mt-4">Droit applicable</h2>
                     <p>Tout litige en relation avec l'utilisation du site <strong>myfity.com</strong> est soumis au droit français. En dehors des cas où la loi ne le permet pas, il est fait attribution exclusive de juridiction aux tribunaux compétents de Paris.</p>
 
                     <h2 class="h3 mb-3 mt-4">Modifications</h2>
-                    <p>Payblis SASU se réserve le droit de modifier ces mentions légales à tout moment. L'utilisateur s'engage à les consulter régulièrement.</p>
+                    <p>Grow Ecom se réserve le droit de modifier ces mentions légales à tout moment. L'utilisateur s'engage à les consulter régulièrement.</p>
 
                     <div class="mt-4 p-3 bg-light rounded">
                         <p class="mb-0"><strong>Dernière mise à jour :</strong> Janvier 2024</p>
