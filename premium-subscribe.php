@@ -1,11 +1,13 @@
 <?php
 session_start();
 require_once 'includes/translation.php';
-$lang = isset($_GET['lang']) ? $_GET['lang'] : 'fr';
-$fromLang = 'fr';
-$toLang = $lang;
-ob_start();
-include 'header.php';
+require_once 'config/database.php';
+require_once 'includes/functions.php';
+
+// Vérifier si l'utilisateur est connecté
+if (!isLoggedIn()) {
+    redirect('login.php');
+}
 $plan = isset($_GET['plan']) ? $_GET['plan'] : 'mensuel';
 $plans = [
     'mensuel' => [
@@ -29,8 +31,23 @@ $plans = [
 ];
 $selected = $plans[$plan] ?? $plans['mensuel'];
 ?>
-<main class="py-5">
-    <div class="container" style="max-width: 600px;">
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Devenir Premium - MyFity</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <?php include 'navigation.php'; ?>
+
+    <!-- Contenu principal -->
+    <div class="container py-4">
+        <main class="py-5">
+            <div class="container" style="max-width: 600px;">
         <div class="text-center mb-4">
             <h1 class="display-5 fw-bold mb-2"><i class="fas fa-gem text-warning"></i> Devenir Premium</h1>
             <p class="lead text-muted mb-1"><?php echo $selected['label']; ?> <span class="fw-bold text-primary ms-2"><?php echo $selected['price']; ?></span></p>
@@ -167,8 +184,8 @@ $selected = $plans[$plan] ?? $plans['mensuel'];
                 <i class="fas fa-arrow-left me-2"></i>Retour à l'accueil
             </a>
         </div>
-    </div>
-</main>
+            </main>
+        </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -317,15 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .fab.fa-cc-discover { color: #ff6000; }
 </style>
 
-<?php include 'footer.php'; ?>
-<?php
-$content = ob_get_contents();
-ob_end_clean();
-if ($lang !== 'fr') {
-    $translator = new TranslationManager();
-    $translatedContent = $translator->translatePage($content, $fromLang, $toLang);
-    echo $translatedContent;
-} else {
-    echo $content;
-}
-?> 
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

@@ -7,6 +7,16 @@ if (!isset($_SESSION)) {
     session_start();
 }
 
+// Récupérer le solde de crédits si l'utilisateur est connecté
+$userCredits = 0;
+if (isset($_SESSION['user_id'])) {
+    // Inclure les fonctions de crédits si elles existent
+    if (file_exists('includes/credit_functions.php')) {
+        require_once 'includes/credit_functions.php';
+        $userCredits = CreditManager::getUserCredits($_SESSION['user_id'])['credits_balance'] ?? 0;
+    }
+}
+
 // Définir les sous-menus pour chaque section
 $submenus = [
     'dashboard.php' => [],
@@ -27,6 +37,12 @@ $submenus = [
     'goals.php' => [
         ['title' => 'Mes objectifs', 'url' => 'goals.php'],
         ['title' => 'Progression', 'url' => 'goals-progress.php']
+    ],
+    'premium.php' => [
+        ['title' => 'Abonnement Premium', 'url' => 'premium.php'],
+        ['title' => 'Mon Abonnement', 'url' => 'my-subscription.php'],
+        ['title' => 'Acheter des Crédits', 'url' => 'buy-credits.php'],
+        ['title' => 'Mes Crédits IA', 'url' => 'my-credits.php']
     ],
     'suggestions.php' => [
         ['title' => 'Suggestions personnalisées', 'url' => 'suggestions.php']
@@ -52,6 +68,13 @@ foreach ($submenus as $menu => $items) {
             <img src="./assets/icons/icon-96x96.png" alt="MyFity" class="me-2" style="height: 30px; width: auto;">MyFity
         </a>
         <div class="d-flex align-items-center">
+            <!-- Solde de crédits -->
+            <a href="my-credits.php" class="nav-link position-relative me-3 credits-balance">
+                <i class="fas fa-coins text-warning me-1"></i>
+                <span class="credits-amount"><?php echo $userCredits; ?></span>
+                <span class="credits-label">crédits</span>
+            </a>
+            
             <a href="messages.php" class="nav-link position-relative me-3">
                 <i class="far fa-envelope"></i>
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
@@ -96,10 +119,17 @@ foreach ($submenus as $menu => $items) {
                         <i class="fas fa-bullseye me-1"></i>Objectifs
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'premium.php' ? 'active' : ''; ?>" href="premium.php">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle <?php echo in_array($current_page, ['premium.php', 'my-subscription.php', 'buy-credits.php', 'my-credits.php']) ? 'active' : ''; ?>" href="#" data-bs-toggle="dropdown">
                         <i class="fas fa-gem me-1"></i>Premium
                     </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="premium.php"><i class="fas fa-crown me-2"></i>Abonnement Premium</a></li>
+                        <li><a class="dropdown-item" href="my-subscription.php"><i class="fas fa-credit-card me-2"></i>Mon Abonnement</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="buy-credits.php"><i class="fas fa-coins me-2"></i>Acheter des Crédits</a></li>
+                        <li><a class="dropdown-item" href="my-credits.php"><i class="fas fa-robot me-2"></i>Mes Crédits IA</a></li>
+                    </ul>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link <?php echo $current_page === 'suggestions' ? 'active' : ''; ?>" href="suggestions.php?type=alimentation">
@@ -133,6 +163,15 @@ foreach ($submenus as $menu => $items) {
 <!-- Navigation mobile (bottom bar) -->
 <nav class="navbar fixed-bottom navbar-light bg-white border-top d-lg-none">
     <div class="container-fluid p-0">
+        <!-- Barre de crédits mobile -->
+        <div class="w-100 bg-warning text-dark py-1 text-center" style="font-size: 0.8rem;">
+            <i class="fas fa-coins me-1"></i>
+            <strong><?php echo $userCredits; ?></strong> crédits disponibles
+            <a href="buy-credits.php" class="ms-2 text-decoration-none" style="color: #856404;">
+                <i class="fas fa-plus-circle"></i>
+            </a>
+        </div>
+        
         <div class="row w-100 text-center g-0">
             <div class="col">
                 <a class="nav-link py-2 <?php echo $current_page === 'dashboard.php' ? 'text-primary' : ''; ?>" href="dashboard.php">
@@ -180,9 +219,10 @@ foreach ($submenus as $menu => $items) {
                         <li><a class="dropdown-item" href="calorie-history.php"><i class="fas fa-fire me-2"></i>Historique calorique</a></li>
                         <li><a class="dropdown-item" href="weight-log.php"><i class="fas fa-weight me-2"></i>Suivi de poids</a></li>
                         <li><a class="dropdown-item" href="goals.php"><i class="fas fa-bullseye me-2"></i>Objectifs</a></li>
-                        <li><a class="dropdown-item" href="premium.php"><i class="fas fa-gem me-2"></i>Premium</a></li>
+                        <li><a class="dropdown-item" href="premium.php"><i class="fas fa-crown me-2"></i>Abonnement Premium</a></li>
                         <li><a class="dropdown-item" href="my-subscription.php"><i class="fas fa-credit-card me-2"></i>Mon Abonnement</a></li>
-                        <li><a class="dropdown-item" href="my-credits.php"><i class="fas fa-coins me-2"></i>Mes Crédits IA</a></li>
+                        <li><a class="dropdown-item" href="buy-credits.php"><i class="fas fa-coins me-2"></i>Acheter des Crédits</a></li>
+                        <li><a class="dropdown-item" href="my-credits.php"><i class="fas fa-robot me-2"></i>Mes Crédits IA</a></li>
                         <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
                         <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-2"></i>Profil</a></li>
                     </ul>
@@ -201,6 +241,37 @@ foreach ($submenus as $menu => $items) {
 .top-nav .nav-link {
     color: #666;
     font-size: 0.9rem;
+}
+
+/* Styles pour l'affichage du solde de crédits */
+.credits-balance {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    border: 1px solid #ffc107;
+    border-radius: 20px;
+    padding: 0.5rem 1rem !important;
+    color: #856404 !important;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.credits-balance:hover {
+    background: linear-gradient(135deg, #ffeaa7, #fff3cd);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+    color: #856404 !important;
+    text-decoration: none;
+}
+
+.credits-amount {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #d68910;
+}
+
+.credits-label {
+    font-size: 0.8rem;
+    opacity: 0.8;
 }
 
 .top-nav .navbar-brand {
@@ -234,10 +305,42 @@ foreach ($submenus as $menu => $items) {
     background-color: rgba(255,255,255,0.1);
 }
 
+/* Styles pour le menu déroulant Premium */
+.main-nav .dropdown-menu {
+    background-color: #0066ee;
+    border: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    margin-top: 0;
+}
+
+.main-nav .dropdown-item {
+    color: white;
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.main-nav .dropdown-item:hover {
+    background-color: rgba(255,255,255,0.1);
+    color: white;
+}
+
+.main-nav .dropdown-divider {
+    border-color: rgba(255,255,255,0.2);
+    margin: 0.5rem 0;
+}
+
 /* Ajuster le padding du body pour la barre de navigation fixe en bas */
 @media (max-width: 991.98px) {
     body {
-        padding-bottom: 85px !important;
+        padding-bottom: 105px !important;
+    }
+    
+    /* Styles pour la barre de crédits mobile */
+    .navbar.fixed-bottom .bg-warning {
+        background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+        border-bottom: 1px solid #ffc107;
     }
     
     .navbar.fixed-bottom {

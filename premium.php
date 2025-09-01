@@ -4,19 +4,29 @@ require_once 'config/database.php';
 require_once 'includes/functions.php';
 require_once 'includes/translation.php';
 
-// Détecter la langue demandée
-$lang = isset($_GET['lang']) ? $_GET['lang'] : 'fr';
-$fromLang = 'fr';
-$toLang = $lang;
-
-// Démarrer la capture de sortie pour la traduction
-ob_start();
-
-include 'header.php';
+// Vérifier si l'utilisateur est connecté
+if (!isLoggedIn()) {
+    redirect('login.php');
+}
 ?>
 
-<main class="py-5">
-    <div class="container">
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium - MyFity</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <?php include 'navigation.php'; ?>
+
+    <!-- Contenu principal -->
+    <div class="container py-4">
+        <main class="py-5">
+            <div class="container">
         <!-- Hero Section -->
         <div class="text-center mb-5">
             <h1 class="display-4 fw-bold mb-4">MyFity Premium</h1>
@@ -262,22 +272,10 @@ include 'header.php';
             <a href="register.php" class="btn btn-light btn-lg">Commencer l'essai gratuit</a>
             <p class="small mt-3">Essai gratuit de 7 jours • Annulation à tout moment</p>
         </div>
-    </div>
-</main>
+            </main>
+        </div>
 
-<?php include 'footer.php'; ?>
-
-<?php
-// Récupérer le contenu de la page
-$content = ob_get_contents();
-ob_end_clean();
-
-// Appliquer la traduction si nécessaire
-if ($lang !== 'fr') {
-    $translator = new TranslationManager();
-    $translatedContent = $translator->translatePage($content, $fromLang, $toLang);
-    echo $translatedContent;
-} else {
-    echo $content;
-}
-?> 
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
