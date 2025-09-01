@@ -24,12 +24,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Récupérer les informations du package
     $creditPackages = CreditManager::getCreditPackages();
-    if (!isset($creditPackages[$package])) {
-        $errors[] = "Package de crédits invalide";
-    } else {
+    
+    if ($package === 'custom' && isset($_POST['custom_credits'])) {
+        $customCredits = intval($_POST['custom_credits']);
+        if ($customCredits >= 1 && $customCredits <= 1000) {
+            $packageData = CreditManager::calculateCustomPrice($customCredits);
+            $creditsAmount = $packageData['credits'];
+            $amount = $packageData['price'];
+        } else {
+            $errors[] = "Nombre de crédits personnalisés invalide";
+        }
+    } elseif (isset($creditPackages[$package])) {
         $packageData = $creditPackages[$package];
-        $creditsAmount = $packageData['credits'];
+        $creditsAmount = $packageData['credits'] + $packageData['bonus'];
         $amount = $packageData['price'];
+    } else {
+        $errors[] = "Package de crédits invalide";
     }
     
     // Préparer les données de paiement

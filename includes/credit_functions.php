@@ -215,7 +215,9 @@ class CreditManager {
                 'price' => 4.99,
                 'price_per_credit' => 0.50,
                 'label' => 'Pack Découverte',
-                'description' => 'Idéal pour tester l\'IA'
+                'description' => 'Idéal pour tester l\'IA',
+                'bonus' => 0,
+                'bonus_percent' => 0
             ],
             'medium' => [
                 'credits' => 50,
@@ -223,22 +225,82 @@ class CreditManager {
                 'price_per_credit' => 0.40,
                 'label' => 'Pack Standard',
                 'description' => 'Le plus populaire',
-                'popular' => true
+                'popular' => true,
+                'bonus' => 2,
+                'bonus_percent' => 4
             ],
             'large' => [
                 'credits' => 150,
                 'price' => 49.99,
                 'price_per_credit' => 0.33,
                 'label' => 'Pack Premium',
-                'description' => 'Économisez 34%'
+                'description' => 'Économisez 34% + 3% bonus',
+                'bonus' => 5,
+                'bonus_percent' => 3
             ],
             'xlarge' => [
                 'credits' => 500,
                 'price' => 149.99,
                 'price_per_credit' => 0.30,
                 'label' => 'Pack Pro',
-                'description' => 'Économisez 40%'
+                'description' => 'Économisez 40% + 5% bonus',
+                'bonus' => 25,
+                'bonus_percent' => 5
+            ],
+            'mega' => [
+                'credits' => 1000,
+                'price' => 249.99,
+                'price_per_credit' => 0.25,
+                'label' => 'Pack Mega',
+                'description' => 'Économisez 50% + 10% bonus',
+                'bonus' => 100,
+                'bonus_percent' => 10
             ]
+        ];
+    }
+    
+    /**
+     * Calculer le prix pour un nombre de crédits personnalisé
+     */
+    public static function calculateCustomPrice($credits) {
+        $basePrice = 0.50; // Prix de base par crédit
+        
+        // Calculer le prix avec remises progressives
+        if ($credits >= 1000) {
+            $pricePerCredit = 0.25; // 50% de réduction
+        } elseif ($credits >= 500) {
+            $pricePerCredit = 0.30; // 40% de réduction
+        } elseif ($credits >= 150) {
+            $pricePerCredit = 0.33; // 34% de réduction
+        } elseif ($credits >= 50) {
+            $pricePerCredit = 0.40; // 20% de réduction
+        } elseif ($credits >= 20) {
+            $pricePerCredit = 0.45; // 10% de réduction
+        } else {
+            $pricePerCredit = $basePrice;
+        }
+        
+        $totalPrice = $credits * $pricePerCredit;
+        
+        // Ajouter des bonus selon le montant
+        $bonus = 0;
+        if ($credits >= 1000) {
+            $bonus = floor($credits * 0.10); // 10% bonus
+        } elseif ($credits >= 500) {
+            $bonus = floor($credits * 0.05); // 5% bonus
+        } elseif ($credits >= 150) {
+            $bonus = floor($credits * 0.03); // 3% bonus
+        } elseif ($credits >= 50) {
+            $bonus = floor($credits * 0.04); // 4% bonus
+        }
+        
+        return [
+            'credits' => $credits,
+            'price' => round($totalPrice, 2),
+            'price_per_credit' => $pricePerCredit,
+            'bonus' => $bonus,
+            'total_credits' => $credits + $bonus,
+            'savings_percent' => round((($basePrice - $pricePerCredit) / $basePrice) * 100, 0)
         ];
     }
     

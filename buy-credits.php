@@ -15,12 +15,24 @@ $userCredits = CreditManager::getUserCredits($userId);
 $creditPackages = CreditManager::getCreditPackages();
 $selectedPackage = isset($_GET['package']) ? $_GET['package'] : 'medium';
 
-// Vérifier si le package sélectionné existe
-if (!isset($creditPackages[$selectedPackage])) {
-    $selectedPackage = 'medium';
+// Gérer le package personnalisé
+if ($selectedPackage === 'custom' && isset($_GET['credits'])) {
+    $customCredits = intval($_GET['credits']);
+    if ($customCredits >= 1 && $customCredits <= 1000) {
+        $selectedPackageData = CreditManager::calculateCustomPrice($customCredits);
+        $selectedPackageData['label'] = 'Pack Personnalisé';
+        $selectedPackageData['description'] = 'Crédits personnalisés selon vos besoins';
+    } else {
+        $selectedPackage = 'medium';
+        $selectedPackageData = $creditPackages[$selectedPackage];
+    }
+} else {
+    // Vérifier si le package sélectionné existe
+    if (!isset($creditPackages[$selectedPackage])) {
+        $selectedPackage = 'medium';
+    }
+    $selectedPackageData = $creditPackages[$selectedPackage];
 }
-
-$selectedPackageData = $creditPackages[$selectedPackage];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -74,24 +86,41 @@ $selectedPackageData = $creditPackages[$selectedPackage];
                 <!-- Sélection des packages -->
                 <div class="row g-4 mb-5">
                     <?php foreach ($creditPackages as $packageKey => $package): ?>
-                    <div class="col-md-6 col-lg-3">
+                    <div class="col-md-6 col-lg-4">
                         <div class="card h-100 border-0 shadow-sm <?php echo $selectedPackage === $packageKey ? 'border-primary' : ''; ?>">
                             <?php if (isset($package['popular'])): ?>
                             <div class="card-header bg-primary text-white text-center py-2">
                                 <small class="fw-bold">LE PLUS POPULAIRE</small>
                             </div>
                             <?php endif; ?>
+                            <?php if ($package['bonus'] > 0): ?>
+                            <div class="position-absolute top-0 end-0 m-2">
+                                <span class="badge bg-warning text-dark">
+                                    <i class="fas fa-gift me-1"></i>+<?php echo $package['bonus']; ?> bonus
+                                </span>
+                            </div>
+                            <?php endif; ?>
                             <div class="card-body p-4 text-center">
                                 <h5 class="fw-bold mb-2"><?php echo $package['label']; ?></h5>
                                 <div class="mb-3">
-                                    <span class="display-6 fw-bold text-primary"><?php echo $package['credits']; ?></span>
+                                    <span class="display-6 fw-bold text-primary"><?php echo $package['credits'] + $package['bonus']; ?></span>
                                     <span class="text-muted"> crédits</span>
+                                    <?php if ($package['bonus'] > 0): ?>
+                                    <div class="small text-warning">
+                                        <i class="fas fa-gift me-1"></i><?php echo $package['bonus_percent']; ?>% bonus offert
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="mb-3">
                                     <span class="h4 fw-bold"><?php echo number_format($package['price'], 2); ?>€</span>
                                     <div class="text-muted small">
                                         <?php echo number_format($package['price_per_credit'], 2); ?>€ par crédit
                                     </div>
+                                    <?php if ($package['bonus'] > 0): ?>
+                                    <div class="text-success small">
+                                        <i class="fas fa-arrow-down me-1"></i>Économisez <?php echo $package['bonus_percent']; ?>%
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                                 <p class="text-muted small mb-3"><?php echo $package['description']; ?></p>
                                 <a href="?package=<?php echo $packageKey; ?>" 
@@ -106,6 +135,48 @@ $selectedPackageData = $creditPackages[$selectedPackage];
                         </div>
                     </div>
                     <?php endforeach; ?>
+                </div>
+
+                <!-- Slider personnalisé -->
+                <div class="card border-0 shadow-sm mb-5">
+                    <div class="card-header bg-light">
+                        <h5 class="fw-bold mb-0">
+                            <i class="fas fa-sliders-h me-2"></i>
+                            Crédits personnalisés
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <label for="customCredits" class="form-label fw-bold">
+                                    Nombre de crédits : <span id="customCreditsValue">50</span>
+                                </label>
+                                <input type="range" class="form-range" id="customCredits" 
+                                       min="1" max="1000" value="50" step="1">
+                                <div class="d-flex justify-content-between text-muted small">
+                                    <span>1 crédit</span>
+                                    <span>1000 crédits</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="h4 fw-bold text-primary mb-1" id="customPrice">25.00€</div>
+                                        <div class="text-muted small mb-2" id="customPricePerCredit">0.50€ par crédit</div>
+                                        <div class="text-warning small mb-2" id="customBonus" style="display: none;">
+                                            <i class="fas fa-gift me-1"></i><span id="customBonusAmount">0</span> bonus
+                                        </div>
+                                        <div class="text-success small" id="customSavings" style="display: none;">
+                                            <i class="fas fa-arrow-down me-1"></i>Économisez <span id="customSavingsPercent">0</span>%
+                                        </div>
+                                        <button type="button" class="btn btn-primary mt-2" id="selectCustom">
+                                            <i class="fas fa-check me-2"></i>Sélectionner
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Formulaire de paiement -->
@@ -135,6 +206,9 @@ $selectedPackageData = $creditPackages[$selectedPackage];
 
                         <form id="creditPaymentForm" method="POST" action="process-credit-purchase.php">
                             <input type="hidden" name="package" value="<?php echo htmlspecialchars($selectedPackage); ?>">
+                            <?php if ($selectedPackage === 'custom'): ?>
+                            <input type="hidden" name="custom_credits" value="<?php echo htmlspecialchars($_GET['credits']); ?>">
+                            <?php endif; ?>
                             
                             <!-- Résumé de la commande -->
                             <div class="row mb-4">
@@ -146,13 +220,25 @@ $selectedPackageData = $creditPackages[$selectedPackage];
                                                 <span><?php echo $selectedPackageData['label']; ?> (<?php echo $selectedPackageData['credits']; ?> crédits)</span>
                                                 <span class="fw-bold"><?php echo number_format($selectedPackageData['price'], 2); ?>€</span>
                                             </div>
+                                            <?php if ($selectedPackageData['bonus'] > 0): ?>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span class="text-warning">
+                                                    <i class="fas fa-gift me-1"></i>Bonus offert (<?php echo $selectedPackageData['bonus_percent']; ?>%)
+                                                </span>
+                                                <span class="text-warning fw-bold">+<?php echo $selectedPackageData['bonus']; ?> crédits</span>
+                                            </div>
+                                            <?php endif; ?>
                                             <div class="d-flex justify-content-between mb-2">
                                                 <span class="text-muted">Prix par crédit</span>
                                                 <span class="text-muted"><?php echo number_format($selectedPackageData['price_per_credit'], 2); ?>€</span>
                                             </div>
                                             <hr class="my-2">
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span class="fw-bold">Total crédits reçus</span>
+                                                <span class="fw-bold text-primary"><?php echo $selectedPackageData['credits'] + $selectedPackageData['bonus']; ?> crédits</span>
+                                            </div>
                                             <div class="d-flex justify-content-between fw-bold">
-                                                <span>Total</span>
+                                                <span>Total à payer</span>
                                                 <span class="text-primary"><?php echo number_format($selectedPackageData['price'], 2); ?>€</span>
                                             </div>
                                         </div>
@@ -309,6 +395,66 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
+    // Gestion du slider personnalisé
+    const customCreditsSlider = document.getElementById('customCredits');
+    const customCreditsValue = document.getElementById('customCreditsValue');
+    const customPrice = document.getElementById('customPrice');
+    const customPricePerCredit = document.getElementById('customPricePerCredit');
+    const customBonus = document.getElementById('customBonus');
+    const customBonusAmount = document.getElementById('customBonusAmount');
+    const customSavings = document.getElementById('customSavings');
+    const customSavingsPercent = document.getElementById('customSavingsPercent');
+    const selectCustomBtn = document.getElementById('selectCustom');
+
+    // Fonction pour calculer le prix personnalisé
+    function updateCustomPrice() {
+        const credits = parseInt(customCreditsSlider.value);
+        customCreditsValue.textContent = credits;
+        
+        // Appel AJAX pour calculer le prix
+        fetch('calculate-custom-price.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'credits=' + credits
+        })
+        .then(response => response.json())
+        .then(data => {
+            customPrice.textContent = data.price + '€';
+            customPricePerCredit.textContent = data.price_per_credit + '€ par crédit';
+            
+            if (data.bonus > 0) {
+                customBonus.style.display = 'block';
+                customBonusAmount.textContent = data.bonus;
+            } else {
+                customBonus.style.display = 'none';
+            }
+            
+            if (data.savings_percent > 0) {
+                customSavings.style.display = 'block';
+                customSavingsPercent.textContent = data.savings_percent;
+            } else {
+                customSavings.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+        });
+    }
+
+    // Événement pour le slider
+    customCreditsSlider.addEventListener('input', updateCustomPrice);
+    
+    // Événement pour sélectionner le pack personnalisé
+    selectCustomBtn.addEventListener('click', function() {
+        const credits = parseInt(customCreditsSlider.value);
+        window.location.href = '?package=custom&credits=' + credits;
+    });
+
+    // Initialiser le prix personnalisé
+    updateCustomPrice();
+
     // Formatage du numéro de carte
     const cardNumber = document.getElementById('cardNumber');
     const cardType = document.getElementById('cardType');
@@ -446,6 +592,48 @@ document.addEventListener('DOMContentLoaded', function() {
 .fab.fa-cc-mastercard { color: #eb001b; }
 .fab.fa-cc-amex { color: #006fcf; }
 .fab.fa-cc-discover { color: #ff6000; }
+
+/* Styles pour le slider personnalisé */
+.form-range {
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #e9ecef 0%, #0066cc 50%, #e9ecef 100%);
+}
+
+.form-range::-webkit-slider-thumb {
+    background: #0066cc;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
+
+.form-range::-webkit-slider-thumb:hover {
+    background: #0056d6;
+    transform: scale(1.1);
+}
+
+.form-range::-moz-range-thumb {
+    background: #0066cc;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
+
+.form-range::-moz-range-thumb:hover {
+    background: #0056d6;
+    transform: scale(1.1);
+}
+
+/* Animation pour les bonus */
+.badge.bg-warning {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
     </style>
 
     <!-- Scripts -->
