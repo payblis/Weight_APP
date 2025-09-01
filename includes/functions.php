@@ -2202,14 +2202,47 @@ function getCurrentUrlWithLang($lang) {
  */
 function showUserStatusBadge() {
     if (!isset($_SESSION['user_id'])) return;
-    // Fake: tout le monde est free
-    $status = 'Free';
-    $color = 'secondary';
-    $icon = 'fa-user';
-    if ($status === 'Premium') {
-        $color = 'warning';
-        $icon = 'fa-gem';
+    
+    // Vérifier le statut Premium de l'utilisateur
+    $userId = $_SESSION['user_id'];
+    
+    try {
+        // Vérifier si les tables d'abonnement existent
+        $sql = "SHOW TABLES LIKE 'subscriptions'";
+        $result = fetchOne($sql);
+        
+        if ($result) {
+            // Utiliser le système d'abonnements
+            $sql = "SELECT premium_status, premium_expires_at FROM users WHERE id = ?";
+            $user = fetchOne($sql, [$userId]);
+            
+            if ($user) {
+                $status = 'Free';
+                $color = 'secondary';
+                $icon = 'fa-user';
+                
+                if ($user['premium_status'] === 'premium') {
+                    // Vérifier si l'abonnement n'a pas expiré
+                    if ($user['premium_expires_at'] && $user['premium_expires_at'] > date('Y-m-d H:i:s')) {
+                        $status = 'Premium';
+                        $color = 'warning';
+                        $icon = 'fa-gem';
+                    }
+                }
+            }
+        } else {
+            // Fallback si les tables n'existent pas encore
+            $status = 'Free';
+            $color = 'secondary';
+            $icon = 'fa-user';
+        }
+    } catch (Exception $e) {
+        // En cas d'erreur, afficher le statut par défaut
+        $status = 'Free';
+        $color = 'secondary';
+        $icon = 'fa-user';
     }
-    echo '<a href="status.php" class="badge bg-' . $color . ' text-decoration-none ms-2" style="font-size:1rem;vertical-align:middle;">'
+    
+    echo '<a href="my-subscription.php" class="badge bg-' . $color . ' text-decoration-none ms-2" style="font-size:1rem;vertical-align:middle;">'
         . '<i class="fas ' . $icon . ' me-1"></i>' . $status . '</a>';
 }

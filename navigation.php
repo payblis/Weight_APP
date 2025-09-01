@@ -181,6 +181,7 @@ foreach ($submenus as $menu => $items) {
                         <li><a class="dropdown-item" href="weight-log.php"><i class="fas fa-weight me-2"></i>Suivi de poids</a></li>
                         <li><a class="dropdown-item" href="goals.php"><i class="fas fa-bullseye me-2"></i>Objectifs</a></li>
                         <li><a class="dropdown-item" href="premium.php"><i class="fas fa-gem me-2"></i>Premium</a></li>
+                        <li><a class="dropdown-item" href="my-subscription.php"><i class="fas fa-credit-card me-2"></i>Mon Abonnement</a></li>
                         <li><a class="dropdown-item" href="settings.php"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
                         <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user me-2"></i>Profil</a></li>
                     </ul>

@@ -1,3 +1,7 @@
+<?php
+// Inclure les fonctions utilitaires
+require_once 'includes/functions.php';
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
