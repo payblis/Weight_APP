@@ -17,13 +17,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Récupérer les données du formulaire
     $plan = $_POST['plan'] ?? 'mensuel';
-    $firstName = trim($_POST['firstName'] ?? '');
-    $lastName = trim($_POST['lastName'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $cardName = trim($_POST['cardName'] ?? '');
     $cardNumber = trim($_POST['cardNumber'] ?? '');
     $cardExpiry = trim($_POST['cardExpiry'] ?? '');
     $cardCVC = trim($_POST['cardCVC'] ?? '');
+    
+    // Récupérer les informations de l'utilisateur connecté
+    $firstName = $_SESSION['first_name'] ?? '';
+    $lastName = $_SESSION['last_name'] ?? '';
     
     // Définir les prix selon le plan
     $prices = [

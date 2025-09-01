@@ -78,19 +78,11 @@ $selected = $plans[$plan] ?? $plans['mensuel'];
                     <!-- Informations personnelles -->
                     <div class="mb-4">
                         <h5 class="fw-bold mb-3"><i class="fas fa-user me-2"></i>Informations personnelles</h5>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="firstName" class="form-label">Prénom</label>
-                                <input type="text" class="form-control" id="firstName" name="firstName" placeholder="Jean" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="lastName" class="form-label">Nom</label>
-                                <input type="text" class="form-control" id="lastName" name="lastName" placeholder="Dupont" required>
-                            </div>
-                        </div>
                         <div class="mt-3">
                             <label for="email" class="form-label">Adresse email</label>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="votre@email.com" required>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="<?php echo htmlspecialchars($_SESSION['email'] ?? ''); ?>" 
+                                   placeholder="votre@email.com" required>
                         </div>
                     </div>
 
@@ -99,8 +91,8 @@ $selected = $plans[$plan] ?? $plans['mensuel'];
                         <h5 class="fw-bold mb-3"><i class="fas fa-credit-card me-2"></i>Informations de paiement</h5>
                         
                         <div class="mb-3">
-                            <label for="cardName" class="form-label">Nom sur la carte</label>
-                            <input type="text" class="form-control" id="cardName" name="cardName" placeholder="Jean Dupont" required>
+                            <label for="cardName" class="form-label">Nom du titulaire de la carte</label>
+                            <input type="text" class="form-control" id="cardName" name="cardName" placeholder="Nom du titulaire de la carte" required>
                         </div>
                         
                         <div class="mb-3">

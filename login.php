@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Si aucune erreur, tenter la connexion
     if (empty($errors)) {
         // Rechercher l'utilisateur dans la base de données
-        $sql = "SELECT id, username, email, password FROM users WHERE email = ?";
+        $sql = "SELECT id, username, email, password, first_name, last_name FROM users WHERE email = ?";
         $user = fetchOne($sql, [$email]);
         
         if ($user && password_verify($password, $user['password'])) {
@@ -44,6 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['email'] = $user['email'];
+            $_SESSION['first_name'] = $user['first_name'] ?? '';
+            $_SESSION['last_name'] = $user['last_name'] ?? '';
             $_SESSION['logged_in'] = true;
             
             // Si "Se souvenir de moi" est coché, créer un cookie
@@ -83,7 +85,7 @@ if (!isLoggedIn() && isset($_COOKIE['remember_token'])) {
     
     if ($table_exists) {
         // Rechercher le token dans la base de données
-        $sql = "SELECT rt.user_id, u.username, u.email 
+        $sql = "SELECT rt.user_id, u.username, u.email, u.first_name, u.last_name 
                 FROM remember_tokens rt 
                 JOIN users u ON rt.user_id = u.id 
                 WHERE rt.token = ? AND rt.expires_at > NOW()";
@@ -94,6 +96,8 @@ if (!isLoggedIn() && isset($_COOKIE['remember_token'])) {
             $_SESSION['user_id'] = $token_data['user_id'];
             $_SESSION['username'] = $token_data['username'];
             $_SESSION['email'] = $token_data['email'];
+            $_SESSION['first_name'] = $token_data['first_name'] ?? '';
+            $_SESSION['last_name'] = $token_data['last_name'] ?? '';
             $_SESSION['logged_in'] = true;
             
             // Rediriger vers le tableau de bord

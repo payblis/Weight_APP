@@ -183,21 +183,13 @@ class SubscriptionManager {
         $errors = [];
         
         // Validation des informations personnelles
-        if (empty($data['firstName'])) {
-            $errors[] = "Le prénom est requis";
-        }
-        
-        if (empty($data['lastName'])) {
-            $errors[] = "Le nom est requis";
-        }
-        
         if (empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             $errors[] = "Une adresse email valide est requise";
         }
         
         // Validation des informations de carte
         if (empty($data['cardName'])) {
-            $errors[] = "Le nom sur la carte est requis";
+            $errors[] = "Le nom du titulaire de la carte est requis";
         }
         
         if (empty($data['cardNumber']) || strlen(preg_replace('/\s/', '', $data['cardNumber'])) < 13) {
